@@ -7,6 +7,7 @@
 ![Express](https://img.shields.io/badge/Express.js-Backend-black?logo=express)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-orange?logo=mysql)
 ![JWT](https://img.shields.io/badge/Auth-JWT-success)
+![Nodemailer](https://img.shields.io/badge/Email-SMTP-blue)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 ---
@@ -21,104 +22,83 @@ The system enables logistics companies to efficiently manage vehicles, drivers, 
 
 # ✨ Features
 
-## 🔐 Authentication
+## 🔐 Authentication & Security (Upgraded)
 
-- Secure Login
-- JWT Authentication
-- Role-Based Access Control (RBAC)
-- Protected Routes
+- **Secure Glassmorphic Login**: Fully centered, responsive authentication layout.
+- **Email OTP Verification**: Registration requires a secure 6-digit verification code.
+  - OTP expires dynamically in **3 minutes**.
+  - Rate limited to maximum **5 verification attempts** (with automatic locking).
+  - Resend allowed only after a **60-second cooldown**.
+  - Server-side bcrypt-hashed OTP storage.
+- **SMTP Sandbox & Debug Fallback**: If no SMTP server is configured, the server creates an automatic sandbox account on `ethereal.email` (printing a preview link in the console) or writes the OTP instantly to `server/otp-debug.txt` if offline.
+- **Role-Based Access Control (RBAC)**: Protects UI components and API endpoints based on user roles (`SUPER_ADMIN`, `FLEET_MANAGER`, `DISPATCHER`, `SAFETY_OFFICER`, `FINANCIAL_ANALYST`).
 
 ---
 
 ## 📊 Dashboard
 
-- Fleet KPIs
-- Active Vehicles
-- Available Vehicles
-- Vehicles in Maintenance
-- Active Trips
-- Pending Trips
-- Drivers On Duty
-- Fleet Utilization
-- Charts & Analytics
+- Fleet KPIs (Active/Available/Maintenance Vehicles)
+- Active & Pending Trips count
+- Drivers On Duty telemetry
+- Real-time Fleet Utilization rate
+- Interactive Charts & Analytics
+- Live chronological activity timeline
 
 ---
 
 ## 🚛 Vehicle Management
 
-- Add Vehicle
-- Update Vehicle
-- Delete Vehicle
-- Vehicle Status
-- Vehicle Capacity
-- Odometer Tracking
-- Acquisition Cost
-- Vehicle Registry
+- Add Vehicle / Edit Vehicle
+- Delete Vehicle (locked if assigned to active trips)
+- Vehicle Status registry
+- Odometer & Capacity Tracking
+- Acquisition cost tracking
 
 ---
 
 ## 👨‍✈️ Driver Management
 
-- Driver Registration
-- License Tracking
-- License Expiry
-- Safety Score
-- Driver Status
-- Contact Information
+- Driver Registration profile
+- Contact details & License tracking
+- Automated license expiry alerts (within 30 days)
+- Safety Score mapping (0-100)
+- Driver active status checks
 
 ---
 
 ## 🛣️ Trip Management
 
-- Create Trip
-- Assign Driver
-- Assign Vehicle
-- Route Planning
-- Cargo Validation
-- Trip Lifecycle
-
-```
-Draft
-   ↓
-Dispatched
-   ↓
-Completed
-
-or
-
-Cancelled
-```
+- Create/Dispatch Trip
+- Driver & Vehicle availability checks
+- Native clock time pickers
+- Cargo capacity validations
+- Active trip state-machine lifecycle (Draft -> Scheduled -> In Progress -> Completed or Cancelled)
 
 ---
 
 ## 🔧 Maintenance
 
-- Maintenance Records
-- Oil Change
-- Repairs
-- Service History
-- Automatic Vehicle Status Update
+- Maintenance log records (repairs, oil changes, service history)
+- Maintenance due alert triggers
+- Automatic vehicle status locking while "In Shop"
+- Real-time repair cost tracking
 
 ---
 
 ## ⛽ Fuel & Expense
 
-- Fuel Logs
-- Fuel Cost
-- Toll Expenses
-- Maintenance Expenses
-- Operational Cost Calculation
+- Fuel transaction logs & efficiency ratios
+- Toll & parking logs
+- Expense categorization and verification
+- Operational cost calculations
 
 ---
 
-## 📈 Reports
+## 📈 Reports & Analytics
 
-- Fuel Efficiency
-- Vehicle ROI
-- Fleet Utilization
-- Operational Cost
-- CSV Export
-- Dashboard Analytics
+- 6 operational report templates (utilization, driver performance, fuel consumption, efficiency metrics, repairs, expenses)
+- Contextual filter parameters
+- Print-ready PDF, Excel, and CSV download exports
 
 ---
 
@@ -149,7 +129,7 @@ Cancelled
 ## Frontend
 
 - React
-- React Router
+- React Router (v6)
 - Axios
 - Tailwind CSS
 - Chart.js
@@ -161,7 +141,8 @@ Cancelled
 - Node.js
 - Express.js
 - JWT Authentication
-- bcrypt
+- bcryptjs
+- Nodemailer
 - REST API
 
 ---
@@ -224,10 +205,11 @@ TransitOps/
 │   └── server.js
 │
 ├── database/
-│   └── transitops.sql
+│   └── schema.sql
+│   └── seed.sql
 │
 ├── README.md
-└── package.json
+│   └── package.json
 ```
 
 ---
@@ -273,30 +255,41 @@ npm run dev
 Create Database
 
 ```sql
-CREATE DATABASE transitops;
+CREATE DATABASE transitops_db;
 ```
 
 Import
 
 ```bash
-database/transitops.sql
+mysql -u root -p transitops_db < database/schema.sql
+mysql -u root -p transitops_db < database/seed.sql
 ```
 
 ---
 
 # 🔑 Environment Variables
 
-Create **.env**
+Create **.env** in `server/` directory:
 
 ```env
 PORT=5000
+NODE_ENV=development
 
 DB_HOST=localhost
+DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=yourpassword
-DB_NAME=transitops
+DB_NAME=transitops_db
 
 JWT_SECRET=your_secret_key
+JWT_EXPIRES_IN=24h
+
+# SMTP configuration (Optional - fallback to Ethereal sandbox test account)
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=your_smtp_username
+SMTP_PASS=your_smtp_password
+SMTP_FROM=no-reply@transitops.com
 ```
 
 ---
@@ -306,9 +299,15 @@ JWT_SECRET=your_secret_key
 ## Authentication
 
 ```
-POST /api/auth/login
+POST /api/v1/auth/login
 
-POST /api/auth/register
+POST /api/v1/auth/register
+
+POST /api/v1/auth/verify-otp
+
+POST /api/v1/auth/resend-otp
+
+GET  /api/v1/auth/me
 ```
 
 ---
@@ -316,13 +315,13 @@ POST /api/auth/register
 ## Vehicles
 
 ```
-GET    /api/vehicles
+GET    /api/v1/vehicles
 
-POST   /api/vehicles
+POST   /api/v1/vehicles
 
-PUT    /api/vehicles/:id
+PUT    /api/v1/vehicles/:id
 
-DELETE /api/vehicles/:id
+DELETE /api/v1/vehicles/:id
 ```
 
 ---
@@ -330,13 +329,13 @@ DELETE /api/vehicles/:id
 ## Drivers
 
 ```
-GET    /api/drivers
+GET    /api/v1/drivers
 
-POST   /api/drivers
+POST   /api/v1/drivers
 
-PUT    /api/drivers/:id
+PUT    /api/v1/drivers/:id
 
-DELETE /api/drivers/:id
+DELETE /api/v1/drivers/:id
 ```
 
 ---
@@ -344,11 +343,13 @@ DELETE /api/drivers/:id
 ## Trips
 
 ```
-GET /api/trips
+GET    /api/v1/trips
 
-POST /api/trips
+POST   /api/v1/trips
 
-PUT /api/trips/:id
+PUT    /api/v1/trips/:id
+
+DELETE /api/v1/trips/:id
 ```
 
 ---
@@ -356,9 +357,13 @@ PUT /api/trips/:id
 ## Maintenance
 
 ```
-GET /api/maintenance
+GET    /api/v1/maintenance
 
-POST /api/maintenance
+POST   /api/v1/maintenance
+
+PUT    /api/v1/maintenance/:id
+
+DELETE /api/v1/maintenance/:id
 ```
 
 ---
@@ -366,9 +371,13 @@ POST /api/maintenance
 ## Fuel Logs
 
 ```
-GET /api/fuel
+GET    /api/v1/fuel
 
-POST /api/fuel
+POST   /api/v1/fuel
+
+PUT    /api/v1/fuel/:id
+
+DELETE /api/v1/fuel/:id
 ```
 
 ---
@@ -376,9 +385,13 @@ POST /api/fuel
 ## Expenses
 
 ```
-GET /api/expenses
+GET    /api/v1/expenses
 
-POST /api/expenses
+POST   /api/v1/expenses
+
+PUT    /api/v1/expenses/:id
+
+DELETE /api/v1/expenses/:id
 ```
 
 ---
