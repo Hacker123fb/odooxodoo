@@ -34,7 +34,10 @@ export const tripService = {
 
 export const maintenanceService = {
   getAll: (params) => axiosInstance.get('/maintenance', { params }),
-  create: (data) => axiosInstance.post('/maintenance', data)
+  getById: (id) => axiosInstance.get(`/maintenance/${id}`),
+  create: (data) => axiosInstance.post('/maintenance', data),
+  update: (id, data) => axiosInstance.put(`/maintenance/${id}`, data),
+  delete: (id) => axiosInstance.delete(`/maintenance/${id}`)
 };
 
 export const fuelService = {

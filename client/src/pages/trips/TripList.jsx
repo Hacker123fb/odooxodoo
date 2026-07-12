@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
-import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2, FiMapPin, FiCalendar, FiXCircle } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiEye, FiEdit, FiMapPin, FiCalendar, FiXCircle } from 'react-icons/fi';
 
 /**
  * Lists all trips with options to filter, search, cancel, and edit
@@ -83,7 +83,6 @@ export const TripList = () => {
     if (!cancelTripId) return;
     setIsCancelling(true);
     try {
-      // Find current trip data first to send correct values
       const tripRes = await tripService.getById(cancelTripId);
       if (tripRes.success) {
         const updatedPayload = {
@@ -114,11 +113,11 @@ export const TripList = () => {
         <div className="space-y-0.5">
           <div className="flex items-center gap-1 text-slate-700 dark:text-slate-250">
             <FiMapPin className="w-3 h-3 text-emerald-500 shrink-0" />
-            <span className="text-xs font-semibold">{row.origin_name} ({row.origin_city})</span>
+            <span className="text-xs font-semibold">{row.source_location}</span>
           </div>
           <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
             <FiMapPin className="w-3 h-3 text-rose-500 shrink-0" />
-            <span className="text-xs font-semibold">{row.destination_name} ({row.destination_city})</span>
+            <span className="text-xs font-semibold">{row.destination_location}</span>
           </div>
         </div>
       )
@@ -158,12 +157,12 @@ export const TripList = () => {
     {
       header: 'Status',
       cell: (row) => {
-        let style = 'bg-slate-50 text-slate-600 dark:bg-slate-950/20';
-        if (row.status === 'SCHEDULED') style = 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400';
+        let style = 'bg-slate-50 text-slate-650 dark:bg-slate-950/20';
+        if (row.status === 'SCHEDULED') style = 'bg-blue-50 text-blue-605 dark:bg-blue-950/20 dark:text-blue-400';
         else if (row.status === 'IN_PROGRESS') style = 'bg-amber-50 text-amber-605 dark:bg-amber-950/20 dark:text-amber-400';
         else if (row.status === 'COMPLETED') style = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-450';
         else if (row.status === 'CANCELLED') style = 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-455';
-        else if (row.status === 'DELAYED') style = 'bg-purple-50 text-purple-600 dark:bg-purple-950/20 dark:text-purple-400';
+        else if (row.status === 'DELAYED') style = 'bg-purple-50 text-purple-650 dark:bg-purple-950/20 dark:text-purple-400';
 
         return (
           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${style}`}>
@@ -178,7 +177,7 @@ export const TripList = () => {
         <div className="flex gap-2">
           <button
             onClick={() => navigate(`/trips/${row.id}`)}
-            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
+            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-605 dark:text-slate-300 transition-colors"
             title="View Details"
           >
             <FiEye className="w-4 h-4" />
@@ -246,7 +245,7 @@ export const TripList = () => {
             <FiSearch className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
-              placeholder="Search trip number, driver name, or vehicle registration..."
+              placeholder="Search trip number, driver, vehicle plate, or locations..."
               value={searchVal}
               onChange={(e) => setSearchVal(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-sm py-2 pl-9 pr-4 rounded-lg outline-none focus:border-primary-500 transition-colors"
@@ -258,7 +257,7 @@ export const TripList = () => {
             <select
               value={statusVal}
               onChange={(e) => setStatusVal(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-250 text-sm py-2 px-3 rounded-lg outline-none focus:border-primary-500 transition-colors"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 text-slate-855 dark:text-slate-250 text-sm py-2 px-3 rounded-lg outline-none focus:border-primary-500 transition-colors"
             >
               <option value="">All Statuses</option>
               <option value="SCHEDULED">Scheduled</option>

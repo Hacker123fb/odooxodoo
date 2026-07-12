@@ -15,29 +15,23 @@ export const tripModel = {
              vma.name AS vehicle_make,
              d.full_name AS driver_name,
              d.employee_id AS driver_code,
-             loc_org.name AS origin_name,
-             loc_org.city AS origin_city,
-             loc_dest.name AS destination_name,
-             loc_dest.city AS destination_city,
              u.full_name AS creator_name
       FROM trips t
       JOIN vehicles v ON t.vehicle_id = v.id
       JOIN vehicle_models vm ON v.model_id = vm.id
       JOIN vehicle_makes vma ON vm.make_id = vma.id
       JOIN drivers d ON t.driver_id = d.id
-      JOIN locations loc_org ON t.origin_id = loc_org.id
-      JOIN locations loc_dest ON t.destination_id = loc_dest.id
       JOIN users u ON t.created_by = u.id
     `;
     
     const conditions = [];
     const params = [];
 
-    // Search query matches trip number, driver name, or vehicle plate
+    // Search query matches trip number, driver name, vehicle plate, or locations
     if (search.trim() !== '') {
-      conditions.push('(t.trip_number LIKE ? OR d.full_name LIKE ? OR v.registration_number LIKE ?)');
+      conditions.push('(t.trip_number LIKE ? OR d.full_name LIKE ? OR v.registration_number LIKE ? OR t.source_location LIKE ? OR t.destination_location LIKE ?)');
       const wild = `%${search}%`;
-      params.push(wild, wild, wild);
+      params.push(wild, wild, wild, wild, wild);
     }
 
     if (status.trim() !== '') {
@@ -87,18 +81,12 @@ export const tripModel = {
              vma.name AS vehicle_make,
              d.full_name AS driver_name,
              d.employee_id AS driver_code,
-             loc_org.name AS origin_name,
-             loc_org.city AS origin_city,
-             loc_dest.name AS destination_name,
-             loc_dest.city AS destination_city,
              u.full_name AS creator_name
       FROM trips t
       JOIN vehicles v ON t.vehicle_id = v.id
       JOIN vehicle_models vm ON v.model_id = vm.id
       JOIN vehicle_makes vma ON vm.make_id = vma.id
       JOIN drivers d ON t.driver_id = d.id
-      JOIN locations loc_org ON t.origin_id = loc_org.id
-      JOIN locations loc_dest ON t.destination_id = loc_dest.id
       JOIN users u ON t.created_by = u.id
       WHERE t.id = ?
     `;
@@ -109,17 +97,17 @@ export const tripModel = {
   /**
    * Insert new trip record
    */
-  async create({ tripNumber, vehicleId, driverId, originId, destinationId, scheduledDeparture, scheduledArrival, distanceKm, status, notes, createdBy }) {
+  async create({ tripNumber, vehicleId, driverId, sourceLocation, destinationLocation, scheduledDeparture, scheduledArrival, distanceKm, status, notes, createdBy }) {
     const sql = `
-      INSERT INTO trips (trip_number, vehicle_id, driver_id, origin_id, destination_id, scheduled_departure, scheduled_arrival, distance_km, status, notes, created_by)
+      INSERT INTO trips (trip_number, vehicle_id, driver_id, source_location, destination_location, scheduled_departure, scheduled_arrival, distance_km, status, notes, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await pool.query(sql, [
       tripNumber,
       vehicleId,
       driverId,
-      originId,
-      destinationId,
+      sourceLocation,
+      destinationLocation,
       scheduledDeparture,
       scheduledArrival,
       distanceKm,
@@ -133,17 +121,17 @@ export const tripModel = {
   /**
    * Update existing trip record
    */
-  async update(id, { vehicleId, driverId, originId, destinationId, scheduledDeparture, scheduledArrival, distanceKm, status, notes, actualDeparture, actualArrival, cancellationReason }) {
+  async update(id, { vehicleId, driverId, sourceLocation, destinationLocation, scheduledDeparture, scheduledArrival, distanceKm, status, notes, actualDeparture, actualArrival, cancellationReason }) {
     const sql = `
       UPDATE trips
-      SET vehicle_id = ?, driver_id = ?, origin_id = ?, destination_id = ?, scheduled_departure = ?, scheduled_arrival = ?, distance_km = ?, status = ?, notes = ?, actual_departure = ?, actual_arrival = ?, cancellation_reason = ?
+      SET vehicle_id = ?, driver_id = ?, source_location = ?, destination_location = ?, scheduled_departure = ?, scheduled_arrival = ?, distance_km = ?, status = ?, notes = ?, actual_departure = ?, actual_arrival = ?, cancellation_reason = ?
       WHERE id = ?
     `;
     await pool.query(sql, [
       vehicleId,
       driverId,
-      originId,
-      destinationId,
+      sourceLocation,
+      destinationLocation,
       scheduledDeparture,
       scheduledArrival,
       distanceKm,

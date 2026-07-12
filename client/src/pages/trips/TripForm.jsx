@@ -18,7 +18,6 @@ export const TripForm = () => {
 
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
-  const [locations, setLocations] = useState([]);
   const [isLoading, setIsLoading] = useState(isEdit);
   const [isSaving, setIsSaving] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -35,33 +34,32 @@ export const TripForm = () => {
     formState: { errors }
   } = useForm({
     defaultValues: {
-      origin_id: '',
-      destination_id: '',
-      vehicle_id: '',
-      driver_id: '',
-      departure_date: '',
-      departure_time: '',
-      arrival_date: '',
-      arrival_time: '',
-      distance_km: '',
-      estimated_fuel: '',
-      cargo_passenger_desc: '',
-      user_notes: '',
+      sourceLocation: '',
+      destinationLocation: '',
+      vehicleId: '',
+      driverId: '',
+      departureDate: '',
+      departureTime: '',
+      expectedArrivalDate: '',
+      expectedArrivalTime: '',
+      distanceKm: '',
+      estimatedFuel: '',
+      cargoPassengerDesc: '',
+      userNotes: '',
       status: 'SCHEDULED'
     }
   });
 
-  // Fetch dropdown selector lists
+  // Fetch dropdown selector lists for vehicles and drivers
   const loadOptions = async () => {
     try {
       const res = await tripService.getOptions(isEdit ? { excludeTripId: id } : {});
       if (res.success && res.data) {
         setVehicles(res.data.vehicles || []);
         setDrivers(res.data.drivers || []);
-        setLocations(res.data.locations || []);
       }
     } catch (err) {
-      showToast('Failed to load selector options.', 'error');
+      showToast('Failed to load vehicle or driver options.', 'error');
     }
   };
 
@@ -79,33 +77,20 @@ export const TripForm = () => {
         if (res.success && res.data) {
           const t = res.data;
           
-          setValue('origin_id', t.origin_id);
-          setValue('destination_id', t.destination_id);
-          setValue('vehicle_id', t.vehicle_id);
-          setValue('driver_id', t.driver_id);
-
-          // Split Departure datetime ISO string
-          if (t.scheduled_departure) {
-            const depDate = new Date(t.scheduled_departure).toISOString().split('T')[0];
-            const depTime = new Date(t.scheduled_departure).toTimeString().slice(0, 5);
-            setValue('departure_date', depDate);
-            setValue('departure_time', depTime);
-          }
-
-          // Split Arrival datetime ISO string
-          if (t.scheduled_arrival) {
-            const arrDate = new Date(t.scheduled_arrival).toISOString().split('T')[0];
-            const arrTime = new Date(t.scheduled_arrival).toTimeString().slice(0, 5);
-            setValue('arrival_date', arrDate);
-            setValue('arrival_time', arrTime);
-          }
-
-          setValue('distance_km', t.distance_km);
-          setValue('estimated_fuel', t.estimated_fuel || '');
-          setValue('cargo_passenger_desc', t.cargo_passenger_desc || '');
-          setValue('user_notes', t.user_remarks || '');
-          setValue('status', t.status);
-          setCurrentStatus(t.status);
+          setValue('sourceLocation', t.sourceLocation || '');
+          setValue('destinationLocation', t.destinationLocation || '');
+          setValue('vehicleId', t.vehicleId || '');
+          setValue('driverId', t.driverId || '');
+          setValue('departureDate', t.departureDate || '');
+          setValue('departureTime', t.departureTime || '');
+          setValue('expectedArrivalDate', t.expectedArrivalDate || '');
+          setValue('expectedArrivalTime', t.expectedArrivalTime || '');
+          setValue('distanceKm', t.distanceKm || '');
+          setValue('estimatedFuel', t.estimatedFuel || '');
+          setValue('cargoPassengerDesc', t.cargoPassengerDesc || '');
+          setValue('userNotes', t.userNotes || '');
+          setValue('status', t.status || 'SCHEDULED');
+          setCurrentStatus(t.status || 'SCHEDULED');
         }
       } catch (err) {
         showToast(err.message || 'Failed to retrieve trip profile.', 'error');
@@ -121,21 +106,19 @@ export const TripForm = () => {
     setIsSaving(true);
     setApiError(null);
 
-    // Combine Date and Time pickers into single ISO strings
-    const scheduled_departure = new Date(`${data.departure_date}T${data.departure_time}:00`).toISOString();
-    const scheduled_arrival = new Date(`${data.arrival_date}T${data.arrival_time}:00`).toISOString();
-
     const payload = {
-      origin_id: parseInt(data.origin_id, 10),
-      destination_id: parseInt(data.destination_id, 10),
-      vehicle_id: parseInt(data.vehicle_id, 10),
-      driver_id: parseInt(data.driver_id, 10),
-      scheduled_departure,
-      scheduled_arrival,
-      distance_km: parseFloat(data.distance_km),
-      estimated_fuel: data.estimated_fuel ? parseFloat(data.estimated_fuel) : null,
-      cargo_passenger_desc: data.cargo_passenger_desc,
-      user_notes: data.user_notes,
+      sourceLocation: data.sourceLocation,
+      destinationLocation: data.destinationLocation,
+      vehicleId: parseInt(data.vehicleId, 10),
+      driverId: parseInt(data.driverId, 10),
+      departureDate: data.departureDate,
+      departureTime: data.departureTime,
+      expectedArrivalDate: data.expectedArrivalDate,
+      expectedArrivalTime: data.expectedArrivalTime,
+      distanceKm: parseFloat(data.distanceKm),
+      estimatedFuel: data.estimatedFuel ? parseFloat(data.estimatedFuel) : null,
+      cargoPassengerDesc: data.cargoPassengerDesc,
+      userNotes: data.userNotes,
       status: data.status
     };
 
@@ -157,10 +140,7 @@ export const TripForm = () => {
     } catch (err) {
       if (err.errors && Array.isArray(err.errors)) {
         err.errors.forEach(e => {
-          let fieldName = e.field;
-          if (fieldName === 'scheduled_departure') fieldName = 'departure_date';
-          if (fieldName === 'scheduled_arrival') fieldName = 'arrival_date';
-          setError(fieldName, { type: 'server', message: e.message });
+          setError(e.field, { type: 'server', message: e.message });
         });
         showToast('Please correct the highlighted fields.', 'error');
       } else {
@@ -169,6 +149,18 @@ export const TripForm = () => {
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Scroll to first invalid field on form submission error
+  const onInvalid = (errs) => {
+    const firstErrorField = Object.keys(errs)[0];
+    if (firstErrorField) {
+      const element = document.getElementsByName(firstErrorField)[0] || document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
     }
   };
 
@@ -193,56 +185,38 @@ export const TripForm = () => {
         </p>
       </div>
 
-      <FormWrapper onSubmit={handleSubmit(onSubmit)} error={apiError}>
+      <FormWrapper onSubmit={handleSubmit(onSubmit, onInvalid)} error={apiError}>
         
         {/* Source and Destination row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
-          <div className="flex flex-col gap-1 w-full">
-            <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">
-              Source Location *
-            </label>
-            <select
-              disabled={isEnded}
-              className={`w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border rounded-lg outline-none transition-all text-slate-900 dark:text-slate-100 ${
-                errors.origin_id
-                  ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                  : 'border-slate-350 dark:border-slate-700 focus:border-primary-500'
-              }`}
-              {...register('origin_id', { required: 'Source location is required.' })}
-            >
-              <option value="">Select origin...</option>
-              {locations.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.city})</option>
-              ))}
-            </select>
-            {errors.origin_id && (
-              <span className="text-xs font-medium text-rose-500 mt-0.5">{errors.origin_id.message}</span>
-            )}
-          </div>
+          <Input
+            id="sourceLocation"
+            label="Source Location *"
+            disabled={isEnded}
+            error={errors.sourceLocation}
+            placeholder="e.g. Ahmedabad"
+            {...register('sourceLocation', { 
+              required: 'Source Location is required.',
+              minLength: { value: 2, message: 'Source Location must be at least 2 characters.' },
+              maxLength: { value: 100, message: 'Source Location must not exceed 100 characters.' },
+              setValueAs: (val) => val?.trim()
+            })}
+          />
 
-          <div className="flex flex-col gap-1 w-full">
-            <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">
-              Destination Location *
-            </label>
-            <select
-              disabled={isEnded}
-              className={`w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border rounded-lg outline-none transition-all text-slate-900 dark:text-slate-100 ${
-                errors.destination_id
-                  ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                  : 'border-slate-350 dark:border-slate-700 focus:border-primary-500'
-              }`}
-              {...register('destination_id', { required: 'Destination location is required.' })}
-            >
-              <option value="">Select destination...</option>
-              {locations.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.city})</option>
-              ))}
-            </select>
-            {errors.destination_id && (
-              <span className="text-xs font-medium text-rose-500 mt-0.5">{errors.destination_id.message}</span>
-            )}
-          </div>
+          <Input
+            id="destinationLocation"
+            label="Destination Location *"
+            disabled={isEnded}
+            error={errors.destinationLocation}
+            placeholder="e.g. Vadodara"
+            {...register('destinationLocation', { 
+              required: 'Destination Location is required.',
+              minLength: { value: 2, message: 'Destination Location must be at least 2 characters.' },
+              maxLength: { value: 100, message: 'Destination Location must not exceed 100 characters.' },
+              setValueAs: (val) => val?.trim()
+            })}
+          />
 
         </div>
 
@@ -250,48 +224,50 @@ export const TripForm = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+            <label htmlFor="vehicleId" className="text-xs font-semibold text-slate-655 dark:text-slate-400">
               Assigned Vehicle *
             </label>
             <select
+              id="vehicleId"
               disabled={isEnded}
               className={`w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border rounded-lg outline-none transition-all text-slate-900 dark:text-slate-100 ${
-                errors.vehicle_id
+                errors.vehicleId
                   ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                  : 'border-slate-350 dark:border-slate-700 focus:border-primary-500'
+                  : 'border-slate-350 dark:border-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20'
               }`}
-              {...register('vehicle_id', { required: 'Vehicle is required.' })}
+              {...register('vehicleId', { required: 'Vehicle is required.' })}
             >
               <option value="">Select vehicle...</option>
               {vehicles.map(v => (
                 <option key={v.id} value={v.id}>{v.registration_number} ({v.make_name} {v.model_name})</option>
               ))}
             </select>
-            {errors.vehicle_id && (
-              <span className="text-xs font-medium text-rose-500 mt-0.5">{errors.vehicle_id.message}</span>
+            {errors.vehicleId && (
+              <span className="text-xs font-medium text-rose-500 mt-0.5">{errors.vehicleId.message}</span>
             )}
           </div>
 
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+            <label htmlFor="driverId" className="text-xs font-semibold text-slate-655 dark:text-slate-400">
               Assigned Driver *
             </label>
             <select
+              id="driverId"
               disabled={isEnded}
               className={`w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border rounded-lg outline-none transition-all text-slate-900 dark:text-slate-100 ${
-                errors.driver_id
+                errors.driverId
                   ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                  : 'border-slate-350 dark:border-slate-700 focus:border-primary-500'
+                  : 'border-slate-350 dark:border-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20'
               }`}
-              {...register('driver_id', { required: 'Driver is required.' })}
+              {...register('driverId', { required: 'Driver is required.' })}
             >
               <option value="">Select driver...</option>
               {drivers.map(d => (
                 <option key={d.id} value={d.id}>{d.full_name} (Code: {d.employee_id})</option>
               ))}
             </select>
-            {errors.driver_id && (
-              <span className="text-xs font-medium text-rose-500 mt-0.5">{errors.driver_id.message}</span>
+            {errors.driverId && (
+              <span className="text-xs font-medium text-rose-500 mt-0.5">{errors.driverId.message}</span>
             )}
           </div>
 
@@ -301,19 +277,21 @@ export const TripForm = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <Input
+            id="departureDate"
             label="Departure Date *"
             type="date"
             disabled={isEnded}
-            error={errors.departure_date}
-            {...register('departure_date', { required: 'Departure date is required.' })}
+            error={errors.departureDate}
+            {...register('departureDate', { required: 'Departure Date is required.' })}
           />
 
           <Input
+            id="departureTime"
             label="Departure Time *"
             type="time"
             disabled={isEnded}
-            error={errors.departure_time}
-            {...register('departure_time', { required: 'Departure time is required.' })}
+            error={errors.departureTime}
+            {...register('departureTime', { required: 'Departure Time is required.' })}
           />
 
         </div>
@@ -322,19 +300,21 @@ export const TripForm = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <Input
+            id="expectedArrivalDate"
             label="Expected Arrival Date *"
             type="date"
             disabled={isEnded}
-            error={errors.arrival_date}
-            {...register('arrival_date', { required: 'Expected arrival date is required.' })}
+            error={errors.expectedArrivalDate}
+            {...register('expectedArrivalDate', { required: 'Expected Arrival Date is required.' })}
           />
 
           <Input
+            id="expectedArrivalTime"
             label="Expected Arrival Time *"
             type="time"
             disabled={isEnded}
-            error={errors.arrival_time}
-            {...register('arrival_time', { required: 'Expected arrival time is required.' })}
+            error={errors.expectedArrivalTime}
+            {...register('expectedArrivalTime', { required: 'Expected Arrival Time is required.' })}
           />
 
         </div>
@@ -343,26 +323,28 @@ export const TripForm = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <Input
+            id="distanceKm"
             label="Distance (km) *"
             type="number"
             step="0.1"
             disabled={isEnded}
-            error={errors.distance_km}
+            error={errors.distanceKm}
             placeholder="e.g. 240.5"
-            {...register('distance_km', { 
+            {...register('distanceKm', { 
               required: 'Distance is required.',
               min: { value: 0.1, message: 'Distance must be greater than zero.' }
             })}
           />
 
           <Input
+            id="estimatedFuel"
             label="Estimated Fuel Consumption (L)"
             type="number"
             step="0.01"
             disabled={isEnded}
-            error={errors.estimated_fuel}
+            error={errors.estimatedFuel}
             placeholder="e.g. 45.5"
-            {...register('estimated_fuel', {
+            {...register('estimatedFuel', {
               min: { value: 0, message: 'Fuel consumption cannot be negative.' }
             })}
           />
@@ -371,38 +353,41 @@ export const TripForm = () => {
 
         {/* Cargo Passenger Description */}
         <div className="flex flex-col gap-1 w-full">
-          <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+          <label htmlFor="cargoPassengerDesc" className="text-xs font-semibold text-slate-650 dark:text-slate-400">
             Cargo / Passenger Description
           </label>
           <textarea
+            id="cargoPassengerDesc"
             rows="2"
             disabled={isEnded}
             placeholder="Specify materials details, passenger groups info, load lists details..."
             className="w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-700 rounded-lg outline-none focus:border-primary-500 text-slate-900 dark:text-slate-100"
-            {...register('cargo_passenger_desc')}
+            {...register('cargoPassengerDesc')}
           />
         </div>
 
         {/* Remarks */}
         <div className="flex flex-col gap-1 w-full">
-          <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+          <label htmlFor="userNotes" className="text-xs font-semibold text-slate-650 dark:text-slate-400">
             Remarks
           </label>
           <textarea
+            id="userNotes"
             rows="2"
             disabled={isEnded}
             placeholder="Route alerts, depot instructions, or operational remarks..."
             className="w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-700 rounded-lg outline-none focus:border-primary-500 text-slate-900 dark:text-slate-100"
-            {...register('user_notes')}
+            {...register('userNotes')}
           />
         </div>
 
         {/* Trip Status dropdown */}
         <div className="flex flex-col gap-1 w-full">
-          <label className="text-xs font-semibold text-slate-650 dark:text-slate-400">
+          <label htmlFor="status" className="text-xs font-semibold text-slate-650 dark:text-slate-400">
             Trip Status *
           </label>
           <select
+            id="status"
             className="w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-700 rounded-lg outline-none focus:border-primary-500 text-slate-900 dark:text-slate-100"
             {...register('status', { required: 'Status is required.' })}
           >

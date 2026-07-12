@@ -39,7 +39,44 @@ export const dbInit = async () => {
       }
     }
 
-    // 2. Idempotently insert roles
+    // 2. Perform Schema Migration for Trips locations columns if fk still exists
+    const [cols] = await connection.query(
+      `SELECT COLUMN_NAME 
+       FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'trips' AND COLUMN_NAME = 'source_location'`
+    );
+
+    if (cols.length === 0) {
+      console.log('[DATABASE] Migrating trips table to store locations as plain text...');
+      
+      // Try to drop foreign key fk_trips_origin_id
+      try { await connection.query('ALTER TABLE trips DROP FOREIGN KEY fk_trips_origin_id'); } catch(e) {}
+      // Try to drop foreign key fk_trips_destination_id
+      try { await connection.query('ALTER TABLE trips DROP FOREIGN KEY fk_trips_destination_id'); } catch(e) {}
+      
+      // Try to drop index idx_trips_origin_id
+      try { await connection.query('ALTER TABLE trips DROP KEY idx_trips_origin_id'); } catch(e) {}
+      // Try to drop index idx_trips_destination_id
+      try { await connection.query('ALTER TABLE trips DROP KEY idx_trips_destination_id'); } catch(e) {}
+
+      // Drop old columns if they exist
+      try { await connection.query('ALTER TABLE trips DROP COLUMN origin_id'); } catch(e) {}
+      try { await connection.query('ALTER TABLE trips DROP COLUMN destination_id'); } catch(e) {}
+
+      // Add columns
+      try {
+        await connection.query(
+          `ALTER TABLE trips 
+           ADD COLUMN source_location VARCHAR(100) NOT NULL AFTER trip_number,
+           ADD COLUMN destination_location VARCHAR(100) NOT NULL AFTER source_location`
+        );
+        console.log('[DATABASE] trips table schema migration completed successfully.');
+      } catch (err) {
+        console.error('[DATABASE] Error adding new columns:', err.message);
+      }
+    }
+
+    // 3. Idempotently insert roles
     const defaultRoles = [
       { name: 'SUPER_ADMIN', desc: 'Full system access — manages roles, users, and configurations' },
       { name: 'FLEET_MANAGER', desc: 'Fleet administrator — manages vehicles and drivers' },
@@ -57,14 +94,14 @@ export const dbInit = async () => {
     }
     console.log('[DATABASE] Roles verification completed.');
 
-    // 3. Locate SUPER_ADMIN role ID
+    // 4. Locate SUPER_ADMIN role ID
     const [roles] = await connection.query('SELECT id FROM roles WHERE name = ?', ['SUPER_ADMIN']);
     if (roles.length === 0) {
       throw new Error('SUPER_ADMIN role registration failed.');
     }
     const superAdminRoleId = roles[0].id;
 
-    // 4. Create default Super Admin user account if missing
+    // 5. Create default Super Admin user account if missing
     const defaultAdminEmail = 'admin@transitops.com';
     const [users] = await connection.query('SELECT id FROM users WHERE email = ?', [defaultAdminEmail]);
 

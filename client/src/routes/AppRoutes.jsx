@@ -15,7 +15,9 @@ import DriverDetails from '../pages/drivers/DriverDetails.jsx';
 import TripList from '../pages/trips/TripList.jsx';
 import TripForm from '../pages/trips/TripForm.jsx';
 import TripDetails from '../pages/trips/TripDetails.jsx';
-import Maintenance from '../pages/Maintenance.jsx';
+import MaintenanceList from '../pages/maintenance/MaintenanceList.jsx';
+import MaintenanceForm from '../pages/maintenance/MaintenanceForm.jsx';
+import MaintenanceDetails from '../pages/maintenance/MaintenanceDetails.jsx';
 import Fuel from '../pages/Fuel.jsx';
 import Expenses from '../pages/Expenses.jsx';
 import Reports from '../pages/Reports.jsx';
@@ -47,7 +49,10 @@ export const AppRoutes = () => {
         <Route path="/trips/new" element={<TripForm />} />
         <Route path="/trips/edit/:id" element={<TripForm />} />
         <Route path="/trips/:id" element={<TripDetails />} />
-        <Route path="/maintenance" element={<Maintenance />} />
+        <Route path="/maintenance" element={<MaintenanceList />} />
+        <Route path="/maintenance/new" element={<MaintenanceForm />} />
+        <Route path="/maintenance/edit/:id" element={<MaintenanceForm />} />
+        <Route path="/maintenance/:id" element={<MaintenanceDetails />} />
         <Route path="/fuel" element={<Fuel />} />
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/reports" element={<Reports />} />

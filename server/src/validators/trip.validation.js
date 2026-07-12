@@ -5,62 +5,87 @@ import { validate } from '../middleware/validationMiddleware.js';
  * Validates request parameter entries for registering or updating trips
  */
 export const validateTrip = [
-  body('origin_id')
-    .isInt({ min: 1 })
-    .withMessage('Source location is required.'),
+  body('sourceLocation')
+    .trim()
+    .notEmpty()
+    .withMessage('Source Location is required.')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Source Location must be between 2 and 100 characters.'),
   
-  body('destination_id')
-    .isInt({ min: 1 })
-    .withMessage('Destination location is required.')
+  body('destinationLocation')
+    .trim()
+    .notEmpty()
+    .withMessage('Destination Location is required.')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Destination Location must be between 2 and 100 characters.')
     .custom((value, { req }) => {
-      if (parseInt(value, 10) === parseInt(req.body.origin_id, 10)) {
-        throw new Error('Destination location cannot be the same as the source.');
+      if (value && req.body.sourceLocation && value.toLowerCase() === req.body.sourceLocation.toLowerCase()) {
+        throw new Error('Destination Location cannot be the same as the Source Location.');
       }
       return true;
     }),
   
-  body('vehicle_id')
+  body('vehicleId')
+    .notEmpty()
+    .withMessage('Vehicle is required.')
     .isInt({ min: 1 })
     .withMessage('Vehicle is required.'),
   
-  body('driver_id')
+  body('driverId')
+    .notEmpty()
+    .withMessage('Driver is required.')
     .isInt({ min: 1 })
     .withMessage('Driver is required.'),
   
-  body('scheduled_departure')
+  body('departureDate')
     .notEmpty()
-    .withMessage('Departure Date and Time are required.')
+    .withMessage('Departure Date is required.')
     .isISO8601()
-    .withMessage('Departure must be a valid date format.')
+    .withMessage('Departure Date must be a valid date.')
     .custom((value, { req }) => {
-      // Check only on create. For updates, we can relax past departure check if it already started.
       if (req.method === 'POST') {
-        const departureDate = new Date(value);
+        const departureDate = new Date(`${value}T${req.body.departureTime || '00:00'}:00`);
         const now = new Date();
-        // Give 5 minutes buffer for network lags
-        now.setMinutes(now.getMinutes() - 5);
+        now.setMinutes(now.getMinutes() - 5); // 5 min buffer
         if (departureDate < now) {
-          throw new Error('Departure date cannot be in the past.');
+          throw new Error('Departure Date cannot be in the past.');
         }
       }
       return true;
     }),
-  
-  body('scheduled_arrival')
+
+  body('departureTime')
     .notEmpty()
-    .withMessage('Expected Arrival Date and Time are required.')
+    .withMessage('Departure Time is required.')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Departure Time must be a valid time (HH:MM).'),
+  
+  body('expectedArrivalDate')
+    .notEmpty()
+    .withMessage('Expected Arrival Date is required.')
     .isISO8601()
-    .withMessage('Expected arrival must be a valid date format.')
+    .withMessage('Expected Arrival Date must be a valid date.')
     .custom((value, { req }) => {
-      const arrivalDate = new Date(value);
-      const departureDate = new Date(req.body.scheduled_departure);
+      const departureDateStr = `${req.body.departureDate}T${req.body.departureTime || '00:00'}:00`;
+      const arrivalDateStr = `${value}T${req.body.expectedArrivalTime || '00:00'}:00`;
+      const departureDate = new Date(departureDateStr);
+      const arrivalDate = new Date(arrivalDateStr);
+      
       if (arrivalDate <= departureDate) {
-        throw new Error('Expected arrival must be after departure.');
+        throw new Error('Expected Arrival must be after Departure.');
       }
       return true;
     }),
+
+  body('expectedArrivalTime')
+    .notEmpty()
+    .withMessage('Expected Arrival Time is required.')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Expected Arrival Time must be a valid time (HH:MM).'),
   
-  body('distance_km')
+  body('distanceKm')
+    .notEmpty()
+    .withMessage('Distance is required.')
     .isFloat({ gt: 0 })
     .withMessage('Distance must be greater than zero.'),
   
@@ -69,15 +94,15 @@ export const validateTrip = [
     .isIn(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DELAYED'])
     .withMessage('Invalid status value.'),
   
-  body('estimated_fuel')
+  body('estimatedFuel')
     .optional({ nullable: true, checkFalsy: true })
     .isFloat({ min: 0 })
     .withMessage('Estimated fuel consumption cannot be negative.'),
 
-  body('cargo_passenger_desc')
+  body('cargoPassengerDesc')
     .optional({ nullable: true, checkFalsy: true }),
 
-  body('user_notes')
+  body('userNotes')
     .optional({ nullable: true, checkFalsy: true }),
 
   validate

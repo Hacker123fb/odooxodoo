@@ -50,10 +50,10 @@ export const TripDetails = () => {
   if (!trip) return null;
 
   // Status Badge styles mapping
-  let badgeStyle = 'bg-slate-50 text-slate-650 dark:bg-slate-950/20 dark:text-slate-450';
+  let badgeStyle = 'bg-slate-50 text-slate-655 dark:bg-slate-950/20 dark:text-slate-450';
   if (trip.status === 'SCHEDULED') badgeStyle = 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400';
   else if (trip.status === 'IN_PROGRESS') badgeStyle = 'bg-amber-50 text-amber-605 dark:bg-amber-950/20 dark:text-amber-400';
-  else if (trip.status === 'COMPLETED') badgeStyle = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-450';
+  else if (trip.status === 'COMPLETED') badgeStyle = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-455';
   else if (trip.status === 'CANCELLED') badgeStyle = 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-455';
   else if (trip.status === 'DELAYED') badgeStyle = 'bg-purple-50 text-purple-600 dark:bg-purple-950/20 dark:text-purple-400';
 
@@ -92,10 +92,10 @@ export const TripDetails = () => {
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-none">
               Trip Number: {trip.trip_number}
             </h2>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 mt-2 font-semibold">
-              <span className="flex items-center gap-0.5"><FiMapPin className="text-emerald-500" /> {trip.origin_name}</span>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-405 mt-2 font-semibold">
+              <span className="flex items-center gap-0.5"><FiMapPin className="text-emerald-500" /> {trip.source_location}</span>
               <span>➔</span>
-              <span className="flex items-center gap-0.5"><FiMapPin className="text-rose-500" /> {trip.destination_name}</span>
+              <span className="flex items-center gap-0.5"><FiMapPin className="text-rose-500" /> {trip.destination_location}</span>
             </div>
           </div>
 
@@ -122,34 +122,34 @@ export const TripDetails = () => {
           
           {/* Dispatch schedule */}
           <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-800/80 rounded-xl space-y-3.5">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-405 uppercase tracking-wider flex items-center gap-1.5">
               <FiCalendar className="w-4 h-4 text-primary-500" /> Schedule Parameters
             </h4>
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider mb-0.5">Scheduled Departure</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-205">{new Date(trip.scheduled_departure).toLocaleString()}</span>
+                <span className="font-semibold text-slate-750 dark:text-slate-205">{new Date(trip.scheduled_departure).toLocaleString()}</span>
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider mb-0.5">Expected Arrival</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-205">{new Date(trip.scheduled_arrival).toLocaleString()}</span>
+                <span className="font-semibold text-slate-750 dark:text-slate-205">{new Date(trip.scheduled_arrival).toLocaleString()}</span>
               </div>
             </div>
           </div>
 
           {/* Actual Logs */}
           <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-800/80 rounded-xl space-y-3.5">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-450 uppercase tracking-wider flex items-center gap-1.5">
               <FiCheckCircle className="w-4 h-4 text-emerald-500" /> Actual Operations Logs
             </h4>
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider mb-0.5">Actual Departure</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-205">{trip.actual_departure ? new Date(trip.actual_departure).toLocaleString() : 'Pending Start'}</span>
+                <span className="font-semibold text-slate-750 dark:text-slate-205">{trip.actual_departure ? new Date(trip.actual_departure).toLocaleString() : 'Pending Start'}</span>
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider mb-0.5">Actual Arrival</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-205">{trip.actual_arrival ? new Date(trip.actual_arrival).toLocaleString() : 'In Transit / Pending'}</span>
+                <span className="font-semibold text-slate-750 dark:text-slate-205">{trip.actual_arrival ? new Date(trip.actual_arrival).toLocaleString() : 'In Transit / Pending'}</span>
               </div>
             </div>
           </div>
@@ -166,7 +166,7 @@ export const TripDetails = () => {
             </div>
             <div className="space-y-0.5">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Assigned Vehicle</span>
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">
+              <h4 className="text-sm font-bold text-slate-805 dark:text-slate-200 leading-tight">
                 {trip.vehicle_plate}
               </h4>
               <p className="text-xs text-slate-450">
@@ -182,7 +182,7 @@ export const TripDetails = () => {
             </div>
             <div className="space-y-0.5">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Assigned Driver</span>
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">
+              <h4 className="text-sm font-bold text-slate-805 dark:text-slate-200 leading-tight">
                 {trip.driver_name}
               </h4>
               <p className="text-xs text-slate-450">
@@ -200,7 +200,7 @@ export const TripDetails = () => {
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
               Planned Distance
             </span>
-            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            <span className="text-sm font-semibold text-slate-805 dark:text-slate-200">
               {parseFloat(trip.distance_km).toLocaleString()} km
             </span>
           </div>
@@ -209,7 +209,7 @@ export const TripDetails = () => {
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
               Est. Fuel Consumption
             </span>
-            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            <span className="text-sm font-semibold text-slate-805 dark:text-slate-200">
               {trip.estimated_fuel ? `${parseFloat(trip.estimated_fuel).toLocaleString()} L` : 'Not Specified'}
             </span>
           </div>
@@ -218,7 +218,7 @@ export const TripDetails = () => {
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
               Cargo / Passenger Load
             </span>
-            <span className="text-sm font-semibold text-slate-850 dark:text-slate-200 truncate" title={trip.cargo_passenger_desc}>
+            <span className="text-sm font-semibold text-slate-855 dark:text-slate-200 truncate" title={trip.cargo_passenger_desc}>
               {trip.cargo_passenger_desc || 'General transport route'}
             </span>
           </div>
@@ -230,7 +230,7 @@ export const TripDetails = () => {
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
             Operational Remarks
           </h4>
-          <p className="text-sm text-slate-705 dark:text-slate-300 italic">
+          <p className="text-sm text-slate-700 dark:text-slate-300 italic">
             {trip.user_remarks ? `"${trip.user_remarks}"` : 'No custom remarks recorded for this dispatch.'}
           </p>
         </div>

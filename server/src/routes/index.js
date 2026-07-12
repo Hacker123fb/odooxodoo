@@ -4,6 +4,7 @@ import authRouter from './auth.js';
 import vehicleRouter from './vehicle.routes.js';
 import driverRouter from './driver.routes.js';
 import tripRouter from './trip.routes.js';
+import maintenanceRouter from './maintenance.routes.js';
 
 const router = Router();
 
@@ -22,6 +23,9 @@ router.use('/drivers', driverRouter);
 // 5. Trips routes
 router.use('/trips', tripRouter);
 
+// 6. Maintenance routes
+router.use('/maintenance', maintenanceRouter);
+
 // Helper helper to return a placeholder response for future feature routes
 const createPlaceholder = (moduleName) => (req, res) => {
   return res.status(501).json({
@@ -29,7 +33,6 @@ const createPlaceholder = (moduleName) => (req, res) => {
     message: `${moduleName} module is not implemented yet. Foundation is ready.`
   });
 };
-router.all('/maintenance*', createPlaceholder('Maintenance'));
 router.all('/fuel*', createPlaceholder('Fuel'));
 router.all('/expenses*', createPlaceholder('Expenses'));
 
