@@ -5,6 +5,8 @@ import vehicleRouter from './vehicle.routes.js';
 import driverRouter from './driver.routes.js';
 import tripRouter from './trip.routes.js';
 import maintenanceRouter from './maintenance.routes.js';
+import fuelRouter from './fuel.routes.js';
+import expenseRouter from './expense.routes.js';
 
 const router = Router();
 
@@ -26,14 +28,10 @@ router.use('/trips', tripRouter);
 // 6. Maintenance routes
 router.use('/maintenance', maintenanceRouter);
 
-// Helper helper to return a placeholder response for future feature routes
-const createPlaceholder = (moduleName) => (req, res) => {
-  return res.status(501).json({
-    success: false,
-    message: `${moduleName} module is not implemented yet. Foundation is ready.`
-  });
-};
-router.all('/fuel*', createPlaceholder('Fuel'));
-router.all('/expenses*', createPlaceholder('Expenses'));
+// 7. Fuel routes
+router.use('/fuel', fuelRouter);
+
+// 8. Expenses routes
+router.use('/expenses', expenseRouter);
 
 export default router;

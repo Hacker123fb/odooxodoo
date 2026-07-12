@@ -42,12 +42,20 @@ export const maintenanceService = {
 
 export const fuelService = {
   getAll: (params) => axiosInstance.get('/fuel', { params }),
-  create: (data) => axiosInstance.post('/fuel', data)
+  getById: (id) => axiosInstance.get(`/fuel/${id}`),
+  create: (data) => axiosInstance.post('/fuel', data),
+  update: (id, data) => axiosInstance.put(`/fuel/${id}`, data),
+  delete: (id) => axiosInstance.delete(`/fuel/${id}`),
+  getOptions: () => axiosInstance.get('/fuel/meta/options')
 };
 
 export const expenseService = {
   getAll: (params) => axiosInstance.get('/expenses', { params }),
-  create: (data) => axiosInstance.post('/expenses', data)
+  getById: (id) => axiosInstance.get(`/expenses/${id}`),
+  create: (data) => axiosInstance.post('/expenses', data),
+  update: (id, data) => axiosInstance.put(`/expenses/${id}`, data),
+  delete: (id) => axiosInstance.delete(`/expenses/${id}`),
+  getOptions: () => axiosInstance.get('/expenses/meta/options')
 };
 
 export const healthService = {
