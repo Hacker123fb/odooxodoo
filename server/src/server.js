@@ -1,6 +1,7 @@
 import app from './app.js';
 import { env } from './config/env.js';
 import { testConnection } from './config/db.js';
+import { dbInit } from './config/dbInit.js';
 
 /**
  * Boots the TransitOps backend server
@@ -12,6 +13,9 @@ const startServer = async () => {
   const isDbConnected = await testConnection();
   if (!isDbConnected) {
     console.warn('[BOOT] [WARNING] Proceeding without verified database connectivity. Make sure MySQL is running.');
+  } else {
+    // Run database seeding/initialization sequence
+    await dbInit();
   }
 
   // Start HTTP listener

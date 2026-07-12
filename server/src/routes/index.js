@@ -1,10 +1,14 @@
 import { Router } from 'express';
 import healthRouter from './health.js';
+import authRouter from './auth.js';
 
 const router = Router();
 
 // 1. Health check routes
 router.use('/', healthRouter);
+
+// 2. Authentication routes
+router.use('/auth', authRouter);
 
 // Helper helper to return a placeholder response for future feature routes
 const createPlaceholder = (moduleName) => (req, res) => {
@@ -13,9 +17,6 @@ const createPlaceholder = (moduleName) => (req, res) => {
     message: `${moduleName} module is not implemented yet. Foundation is ready.`
   });
 };
-
-// 2. Feature module routing placeholders
-router.all('/auth*', createPlaceholder('Authentication'));
 router.all('/vehicles*', createPlaceholder('Vehicles'));
 router.all('/drivers*', createPlaceholder('Drivers'));
 router.all('/trips*', createPlaceholder('Trips'));

@@ -2,7 +2,8 @@ import axiosInstance from './axiosInstance.js';
 
 export const authService = {
   login: (credentials) => axiosInstance.post('/auth/login', credentials),
-  register: (data) => axiosInstance.post('/auth/register', data)
+  register: (data) => axiosInstance.post('/auth/register', data),
+  getMe: () => axiosInstance.get('/auth/me')
 };
 
 export const vehicleService = {

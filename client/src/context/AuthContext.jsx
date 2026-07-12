@@ -1,52 +1,71 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../api/apiService.js';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-  const [token, setToken] = useState(() => {
-    return localStorage.getItem('token') || null;
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Validate active JWT session on reload
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const activeToken = localStorage.getItem('token');
+      if (activeToken) {
+        try {
+          const res = await authService.getMe();
+          if (res.success && res.data?.user) {
+            setUser(res.data.user);
+          } else {
+            logout();
+          }
+        } catch (err) {
+          console.warn('Session restoration failed:', err.message);
+          logout();
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initializeAuth();
+  }, []);
 
   /**
-   * Mock login implementation for foundation
+   * Log into the system with credentials
    */
   const login = async (email, password) => {
     setIsLoading(true);
     try {
-      // Simulate API lag
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const res = await authService.login({ email, password });
       
-      const mockUser = {
-        id: 1,
-        name: 'Pavan Kumar',
-        email,
-        role: 'Admin'
-      };
-      const mockToken = 'mock-jwt-token-string-xyz';
-
-      setUser(mockUser);
-      setToken(mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      localStorage.setItem('token', mockToken);
-      
-      return { success: true };
+      if (res.success && res.data) {
+        const { token: userToken, user: userProfile } = res.data;
+        
+        setUser(userProfile);
+        setToken(userToken);
+        localStorage.setItem('token', userToken);
+        localStorage.setItem('user', JSON.stringify(userProfile));
+        
+        return { success: true };
+      } else {
+        return { success: false, error: res.message || 'Login failed.' };
+      }
     } catch (err) {
-      return { success: false, error: err.message || 'Login failed' };
+      return { success: false, error: err.message || 'Network exception. Please try again.' };
     } finally {
       setIsLoading(false);
     }
   };
 
+  /**
+   * Log out of the system and purge session tokens
+   */
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
   };
 
   return (
