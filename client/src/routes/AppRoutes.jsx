@@ -12,7 +12,9 @@ import VehicleDetails from '../pages/vehicles/VehicleDetails.jsx';
 import DriverList from '../pages/drivers/DriverList.jsx';
 import DriverForm from '../pages/drivers/DriverForm.jsx';
 import DriverDetails from '../pages/drivers/DriverDetails.jsx';
-import Trips from '../pages/Trips.jsx';
+import TripList from '../pages/trips/TripList.jsx';
+import TripForm from '../pages/trips/TripForm.jsx';
+import TripDetails from '../pages/trips/TripDetails.jsx';
 import Maintenance from '../pages/Maintenance.jsx';
 import Fuel from '../pages/Fuel.jsx';
 import Expenses from '../pages/Expenses.jsx';
@@ -41,7 +43,10 @@ export const AppRoutes = () => {
         <Route path="/drivers/new" element={<DriverForm />} />
         <Route path="/drivers/edit/:id" element={<DriverForm />} />
         <Route path="/drivers/:id" element={<DriverDetails />} />
-        <Route path="/trips" element={<Trips />} />
+        <Route path="/trips" element={<TripList />} />
+        <Route path="/trips/new" element={<TripForm />} />
+        <Route path="/trips/edit/:id" element={<TripForm />} />
+        <Route path="/trips/:id" element={<TripDetails />} />
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/fuel" element={<Fuel />} />
         <Route path="/expenses" element={<Expenses />} />
