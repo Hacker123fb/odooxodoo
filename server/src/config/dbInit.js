@@ -29,6 +29,20 @@ export const dbInit = async () => {
       COMMENT='System notifications and action items ledger'
     `);
 
+    // Ensure registration_otp table exists
+    console.log('[DATABASE] Ensuring registration_otp table exists...');
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS registration_otp (
+        id                INT AUTO_INCREMENT PRIMARY KEY,
+        email             VARCHAR(150) NOT NULL UNIQUE,
+        otp_hash          VARCHAR(255) NOT NULL,
+        expires_at        DATETIME NOT NULL,
+        attempts          INT NOT NULL DEFAULT 0,
+        registration_data TEXT NOT NULL,
+        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 1. Idempotently check and ensure unique constraints exist on the drivers table
     const [indexes] = await connection.query(
       `SELECT DISTINCT INDEX_NAME, COLUMN_NAME 

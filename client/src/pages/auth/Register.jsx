@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiLock, FiPhone, FiSliders } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiPhone, FiSliders, FiHash } from 'react-icons/fi';
 import { authService } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import Input from '../../components/common/Input.jsx';
@@ -9,7 +9,7 @@ import Button from '../../components/common/Button.jsx';
 import FormWrapper from '../../components/common/FormWrapper.jsx';
 
 /**
- * Professional registration portal page for TransitOps
+ * Modern staff registration portal page for TransitOps with OTP flow
  */
 export const Register = () => {
   const { showToast } = useToast();
@@ -20,26 +20,41 @@ export const Register = () => {
   const {
     register,
     handleSubmit,
+    watch,
     setError,
     formState: { errors }
   } = useForm({
     defaultValues: {
       fullName: '',
+      employeeCode: '',
       email: '',
-      password: '',
       phone: '',
+      password: '',
+      confirmPassword: '',
       roleName: ''
     }
   });
+
+  const passwordVal = watch('password');
 
   const onSubmit = async (data) => {
     setIsSaving(true);
     setFormError(null);
     try {
-      const res = await authService.register(data);
+      // 1. Submit registration details to send OTP
+      const res = await authService.register({
+        fullName: data.fullName,
+        employeeCode: data.employeeCode,
+        email: data.email,
+        phone: data.phone,
+        password: data.password,
+        roleName: data.roleName
+      });
+
       if (res?.success) {
-        showToast('Registration successful! Please log in.', 'success');
-        navigate('/login');
+        showToast('OTP sent successfully. Please check your registered email inbox.', 'success');
+        // Redirect to OTP verification page with state context
+        navigate('/verify-otp', { state: { email: data.email } });
       } else {
         setFormError(res?.message || 'Registration failed.');
         showToast(res?.message || 'Registration failed.', 'error');
@@ -47,12 +62,21 @@ export const Register = () => {
     } catch (err) {
       if (err.errors && Array.isArray(err.errors)) {
         err.errors.forEach(e => {
-          setError(e.field, { type: 'server', message: e.message });
+          let fieldName = e.field;
+          if (fieldName === 'fullName') fieldName = 'fullName';
+          if (fieldName === 'employeeCode') fieldName = 'employeeCode';
+          if (fieldName === 'email') fieldName = 'email';
+          if (fieldName === 'phone') fieldName = 'phone';
+          if (fieldName === 'password') fieldName = 'password';
+          if (fieldName === 'roleName') fieldName = 'roleName';
+
+          setError(fieldName, { type: 'server', message: e.message });
         });
+        setFormError('Validation failed. Please correct the highlighted fields below.');
         showToast('Please correct the highlighted fields.', 'error');
       } else {
         setFormError(err.message || 'An unexpected error occurred.');
-        showToast(err.message || 'Network error.', 'error');
+        showToast(err.message || 'Registration failed.', 'error');
       }
     } finally {
       setIsSaving(false);
@@ -68,7 +92,7 @@ export const Register = () => {
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-800 p-8 rounded-2xl shadow-xl w-full">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-2xl shadow-xl w-full">
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 font-sans tracking-wide">
           Create Account
@@ -91,6 +115,21 @@ export const Register = () => {
           })}
         />
 
+        {/* Employee Code */}
+        <Input
+          label="Employee Code *"
+          placeholder="e.g. EMP123"
+          icon={FiHash}
+          error={errors.employeeCode}
+          {...register('employeeCode', {
+            required: 'Employee Code is required',
+            pattern: {
+              value: /^[A-Z0-9]+$/i,
+              message: 'Employee Code must be alphanumeric'
+            }
+          })}
+        />
+
         {/* Email */}
         <Input
           label="Email Address *"
@@ -107,29 +146,52 @@ export const Register = () => {
           })}
         />
 
+        {/* Phone / Mobile Number */}
+        <Input
+          label="Mobile Number *"
+          placeholder="e.g. 9876543210"
+          icon={FiPhone}
+          error={errors.phone}
+          {...register('phone', {
+            required: 'Mobile number is required',
+            pattern: {
+              value: /^\d{10,15}$/,
+              message: 'Mobile number must be between 10 and 15 digits'
+            }
+          })}
+        />
+
         {/* Password */}
         <Input
           label="Password *"
           type="password"
-          placeholder="Min 6 characters"
+          placeholder="Min 8 chars, 1 Upper, 1 Lower, 1 Num, 1 Spec"
           icon={FiLock}
           error={errors.password}
           {...register('password', {
             required: 'Password is required',
             minLength: {
-              value: 6,
-              message: 'Password must be at least 6 characters'
+              value: 8,
+              message: 'Password must be at least 8 characters'
+            },
+            pattern: {
+              value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+=\-[\]{}|;:',.<>/?]).{8,}$/,
+              message: 'Password must contain uppercase, lowercase, number, and special character'
             }
           })}
         />
 
-        {/* Phone */}
+        {/* Confirm Password */}
         <Input
-          label="Phone Number"
-          placeholder="e.g. +919876543210"
-          icon={FiPhone}
-          error={errors.phone}
-          {...register('phone')}
+          label="Confirm Password *"
+          type="password"
+          placeholder="Re-enter password"
+          icon={FiLock}
+          error={errors.confirmPassword}
+          {...register('confirmPassword', {
+            required: 'Please confirm your password',
+            validate: val => val === passwordVal || 'Passwords do not match'
+          })}
         />
 
         {/* Role Name Selection */}
@@ -164,7 +226,7 @@ export const Register = () => {
           className="w-full mt-4"
           isLoading={isSaving}
         >
-          Register Roster User
+          Send Verification OTP
         </Button>
 
         <div className="text-center mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">

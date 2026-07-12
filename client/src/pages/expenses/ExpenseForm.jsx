@@ -140,10 +140,12 @@ export const ExpenseForm = () => {
         err.errors.forEach(e => {
           setError(e.field, { type: 'server', message: e.message });
         });
+        setApiError('Validation failed. Please correct the highlighted fields below.');
         showToast('Please correct the highlighted fields.', 'error');
       } else {
-        setApiError(err.message);
-        showToast(err.message || 'Saving expense failed.', 'error');
+        const msg = err.message === 'Validation failed.' ? 'Validation failed. Please check form inputs.' : err.message;
+        setApiError(msg);
+        showToast(msg || 'Saving expense failed.', 'error');
       }
     } finally {
       setIsSaving(false);

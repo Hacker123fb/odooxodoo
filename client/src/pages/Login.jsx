@@ -9,7 +9,7 @@ import Button from '../components/common/Button.jsx';
 import FormWrapper from '../components/common/FormWrapper.jsx';
 
 /**
- * Modern login dashboard portal
+ * Centered, Glassmorphic Login portal for TransitOps
  */
 export const Login = () => {
   const { login, isLoading } = useAuth();
@@ -39,9 +39,9 @@ export const Login = () => {
     } else {
       if (result.errors && Array.isArray(result.errors)) {
         result.errors.forEach(err => {
-          // Map to email or password
           setError(err.field, { type: 'server', message: err.message });
         });
+        setFormError('Validation failed. Please review input parameters.');
         showToast('Please correct the highlighted fields.', 'error');
       } else {
         setFormError(result.error);
@@ -50,19 +50,39 @@ export const Login = () => {
     }
   };
 
+  const onInvalid = (errs) => {
+    const firstField = Object.keys(errs)[0];
+    if (firstField) {
+      const element = document.getElementsByName(firstField)[0] || document.getElementById(firstField);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
+    }
+  };
+
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-2xl shadow-xl w-full">
-      <div className="mb-6 text-center">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 font-sans tracking-wide">
-          Welcome back
-        </h2>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-          Access the fleet intelligence dashboard
+    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 p-8 md:p-10 rounded-2xl shadow-xl w-full max-w-[450px]">
+      
+      {/* Brand Header */}
+      <div className="mb-8 text-center">
+        <div className="inline-flex items-center gap-2 mb-2">
+          <div className="h-9 w-9 bg-primary-600 rounded-lg flex items-center justify-center font-bold text-white text-base shadow-md">
+            TO
+          </div>
+          <span className="font-extrabold text-2xl text-slate-850 dark:text-slate-100 tracking-wide font-sans">
+            Transit<span className="text-primary-600">Ops</span>
+          </span>
+        </div>
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          Smart Transport Operations Platform
         </p>
       </div>
 
-      <FormWrapper onSubmit={handleSubmit(onSubmit)} error={formError}>
+      <FormWrapper onSubmit={handleSubmit(onSubmit, onInvalid)} error={formError}>
+        {/* Email Field */}
         <Input
+          id="email"
           label="Email Address *"
           type="email"
           placeholder="name@transitops.com"
@@ -77,7 +97,9 @@ export const Login = () => {
           })}
         />
 
+        {/* Password Field */}
         <Input
+          id="password"
           label="Password *"
           type="password"
           placeholder="••••••••"
@@ -92,36 +114,46 @@ export const Login = () => {
           })}
         />
 
-        <div className="flex items-center justify-between mt-1">
+        {/* Remember me & Forgot password row */}
+        <div className="flex items-center justify-between text-xs mt-1">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
               className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-primary-600 focus:ring-primary-500/20"
             />
-            <span className="text-xs text-slate-500 dark:text-slate-400">Remember session</span>
+            <span className="text-slate-500 dark:text-slate-400">Remember Me</span>
           </label>
+          <a
+            href="#forgot"
+            onClick={(e) => {
+              e.preventDefault();
+              showToast('Password recovery is managed by your system administrator.', 'info');
+            }}
+            className="text-primary-600 hover:text-primary-750 font-semibold hover:underline"
+          >
+            Forgot Password?
+          </a>
         </div>
 
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-full mt-2"
-          isLoading={isLoading}
-        >
-          Sign In
-        </Button>
-
-        <div className="text-center mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Don't have an account?{' '}
-            <button
-              type="button"
-              onClick={() => navigate('/register')}
-              className="text-primary-600 hover:text-primary-750 font-bold underline focus:outline-none"
-            >
-              Register here
-            </button>
-          </p>
+        {/* Stacked equal-width buttons */}
+        <div className="flex flex-col gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-6">
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+            isLoading={isLoading}
+          >
+            Login
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => navigate('/register')}
+            disabled={isLoading}
+          >
+            Register
+          </Button>
         </div>
       </FormWrapper>
     </div>

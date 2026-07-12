@@ -4,6 +4,9 @@ import { env } from '../config/env.js';
 import { userModel } from '../models/userModel.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
+import { otpService } from '../services/otp.service.js';
+import { emailService } from '../services/email.service.js';
+import pool from '../config/db.js';
 
 /**
  * Generate JWT Token
@@ -22,66 +25,134 @@ const signToken = (userId, roleName) => {
 };
 
 /**
- * Authentication Controller
+ * Authentication Controller with OTP Verification Flow
  */
 export const authController = {
   /**
-   * Register User
+   * Register User (Phase 1: Validate details and send OTP)
    */
   register: async (req, res, next) => {
     try {
-      const { email, password, fullName, phone, roleName } = req.body;
+      const { email, password, fullName, phone, roleName, employeeCode } = req.body;
 
-      // Check existing user
+      // 1. Verify email uniqueness
       const userExists = await userModel.findByEmail(email);
-
       if (userExists) {
-        return next(
-          new AppError(
-            'This email is already registered.',
-            HttpStatusCodes.CONFLICT
-          )
-        );
+        throw new AppError('Email already registered.', HttpStatusCodes.CONFLICT);
       }
 
-      // Validate role
+      // 2. Verify mobile number uniqueness
+      const [userPhoneExists] = await pool.query('SELECT id FROM users WHERE phone = ?', [phone]);
+      const [driverPhoneExists] = await pool.query('SELECT id FROM drivers WHERE phone = ?', [phone]);
+      if (userPhoneExists.length > 0 || driverPhoneExists.length > 0) {
+        throw new AppError('Mobile number already registered.', HttpStatusCodes.CONFLICT);
+      }
+
+      // 3. Verify employee ID/code uniqueness
+      const [employeeCodeExists] = await pool.query('SELECT id FROM drivers WHERE employee_id = ?', [employeeCode]);
+      if (employeeCodeExists.length > 0) {
+        throw new AppError('Employee Code already exists.', HttpStatusCodes.CONFLICT);
+      }
+
+      // 4. Validate system role
       const roleRecord = await userModel.getRoleByName(roleName);
-
       if (!roleRecord) {
-        return next(
-          new AppError(
-            `The role '${roleName}' is invalid.`,
-            HttpStatusCodes.BAD_REQUEST
-          )
-        );
+        throw new AppError(`The role '${roleName}' is invalid.`, HttpStatusCodes.BAD_REQUEST);
       }
 
-      // Hash password
+      // 5. Hash password before temporarily storing it in the OTP session
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
-      const userId = await userModel.create({
-        roleId: roleRecord.id,
+      // 6. Generate and save secure OTP record
+      const otp = await otpService.generateOtp(email, {
         fullName,
+        employeeCode,
         email,
-        passwordHash: hashedPassword,
-        phone
+        phone,
+        password: hashedPassword,
+        roleName
       });
 
-      // Generate token
-      const token = signToken(userId, roleName);
+      // 7. Dispatch OTP code to user email
+      await emailService.sendOtpEmail(email, otp);
 
-      return res.created(
+      return res.ok(
+        null,
+        'OTP sent successfully. Please check your registered email inbox.'
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Verify OTP (Phase 2: Create user record on success)
+   */
+  verifyOtp: async (req, res, next) => {
+    try {
+      const { email, otp } = req.body;
+
+      // 1. Verify OTP code and retrieve registration details
+      const regData = await otpService.verifyOtp(email, otp);
+
+      // 2. Double-check email/phone/employee code uniqueness once more at verification time (anti-concurrency)
+      const userExists = await userModel.findByEmail(email);
+      if (userExists) {
+        throw new AppError('Email already registered.', HttpStatusCodes.CONFLICT);
+      }
+
+      const [userPhoneExists] = await pool.query('SELECT id FROM users WHERE phone = ?', [regData.phone]);
+      if (userPhoneExists.length > 0) {
+        throw new AppError('Mobile number already registered.', HttpStatusCodes.CONFLICT);
+      }
+
+      // 3. Fetch validated role
+      const roleRecord = await userModel.getRoleByName(regData.roleName);
+      if (!roleRecord) {
+        throw new AppError('Invalid role specified.', HttpStatusCodes.BAD_REQUEST);
+      }
+
+      // 4. Provision active user account in database
+      const userId = await userModel.create({
+        roleId: roleRecord.id,
+        fullName: regData.fullName,
+        email: regData.email,
+        passwordHash: regData.password, // already hashed
+        phone: regData.phone
+      });
+
+      return res.ok(
         {
-          token,
           user: {
             id: userId,
-            name: fullName,
-            email,
-            role: roleName
+            name: regData.fullName,
+            email: regData.email,
+            role: regData.roleName
           }
         },
-        'Account registered successfully.'
+        'Registration completed successfully.'
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Resend Registration OTP
+   */
+  resendOtp: async (req, res, next) => {
+    try {
+      const { email } = req.body;
+
+      // Generate a new OTP using the existing registration payload
+      const otp = await otpService.generateOtp(email, null, true);
+
+      // Send the new OTP to email
+      await emailService.sendOtpEmail(email, otp);
+
+      return res.ok(
+        null,
+        'OTP sent successfully. Please check your registered email inbox.'
       );
     } catch (error) {
       next(error);
