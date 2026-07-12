@@ -20,6 +20,7 @@ export const Login = () => {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors }
   } = useForm({
     defaultValues: {
@@ -36,8 +37,16 @@ export const Login = () => {
       showToast('Welcome back to TransitOps!', 'success');
       navigate('/dashboard');
     } else {
-      setFormError(result.error);
-      showToast(result.error, 'error');
+      if (result.errors && Array.isArray(result.errors)) {
+        result.errors.forEach(err => {
+          // Map to email or password
+          setError(err.field, { type: 'server', message: err.message });
+        });
+        showToast('Please correct the highlighted fields.', 'error');
+      } else {
+        setFormError(result.error);
+        showToast(result.error, 'error');
+      }
     }
   };
 

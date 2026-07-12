@@ -1,71 +1,84 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../api/apiService.js';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { authService } from "../api/apiService.js";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+
+  const [token, setToken] = useState(() => localStorage.getItem("token") || null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Validate active JWT session on reload
   useEffect(() => {
     const initializeAuth = async () => {
-      const activeToken = localStorage.getItem('token');
-      if (activeToken) {
-        try {
-          const res = await authService.getMe();
-          if (res.success && res.data?.user) {
-            setUser(res.data.user);
-          } else {
-            logout();
-          }
-        } catch (err) {
-          console.warn('Session restoration failed:', err.message);
-          logout();
-        }
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+
+      try {
+        const res = await authService.getMe();
+
+        if (res?.success && res?.data?.user) {
+          setUser(res.data.user);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+        }
+      } catch (error) {
+        console.warn("Session validation failed:", error.message);
+        logout();
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     initializeAuth();
   }, []);
 
-  /**
-   * Log into the system with credentials
-   */
   const login = async (email, password) => {
     setIsLoading(true);
+
     try {
       const res = await authService.login({ email, password });
-      
-      if (res.success && res.data) {
-        const { token: userToken, user: userProfile } = res.data;
-        
-        setUser(userProfile);
+
+      if (res?.success && res?.data) {
+        const userToken = res.data.token;
+        const userProfile = res.data.user ?? {};
+
         setToken(userToken);
-        localStorage.setItem('token', userToken);
-        localStorage.setItem('user', JSON.stringify(userProfile));
-        
-        return { success: true };
-      } else {
-        return { success: false, error: res.message || 'Login failed.' };
+        setUser(userProfile);
+
+        localStorage.setItem("token", userToken);
+        localStorage.setItem("user", JSON.stringify(userProfile));
+
+        return {
+          success: true,
+        };
       }
-    } catch (err) {
-      return { success: false, error: err.message || 'Network exception. Please try again.' };
+
+      return {
+        success: false,
+        error: res?.message || "Login failed.",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message || "Network error.",
+        errors: error.errors
+      };
     } finally {
       setIsLoading(false);
     }
   };
 
-  /**
-   * Log out of the system and purge session tokens
-   */
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
   };
 
   return (
@@ -73,10 +86,10 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         token,
+        isLoading,
         isAuthenticated: !!token,
         login,
         logout,
-        isLoading
       }}
     >
       {children}
@@ -86,8 +99,10 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
+
   return context;
 };

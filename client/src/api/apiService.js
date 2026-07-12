@@ -11,7 +11,8 @@ export const vehicleService = {
   getById: (id) => axiosInstance.get(`/vehicles/${id}`),
   create: (data) => axiosInstance.post('/vehicles', data),
   update: (id, data) => axiosInstance.put(`/vehicles/${id}`, data),
-  delete: (id) => axiosInstance.delete(`/vehicles/${id}`)
+  delete: (id) => axiosInstance.delete(`/vehicles/${id}`),
+  getOptions: () => axiosInstance.get('/vehicles/meta/options')
 };
 
 export const driverService = {

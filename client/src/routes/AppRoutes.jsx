@@ -6,8 +6,12 @@ import ProtectedLayout from '../components/ProtectedLayout.jsx';
 // Import Page component stubs
 import Login from '../pages/Login.jsx';
 import Dashboard from '../pages/Dashboard.jsx';
-import Vehicles from '../pages/Vehicles.jsx';
-import Drivers from '../pages/Drivers.jsx';
+import VehicleList from '../pages/vehicles/VehicleList.jsx';
+import VehicleForm from '../pages/vehicles/VehicleForm.jsx';
+import VehicleDetails from '../pages/vehicles/VehicleDetails.jsx';
+import DriverList from '../pages/drivers/DriverList.jsx';
+import DriverForm from '../pages/drivers/DriverForm.jsx';
+import DriverDetails from '../pages/drivers/DriverDetails.jsx';
 import Trips from '../pages/Trips.jsx';
 import Maintenance from '../pages/Maintenance.jsx';
 import Fuel from '../pages/Fuel.jsx';
@@ -29,8 +33,14 @@ export const AppRoutes = () => {
       {/* Authenticated Dashboard routes wrapper */}
       <Route element={<ProtectedLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/vehicles" element={<Vehicles />} />
-        <Route path="/drivers" element={<Drivers />} />
+        <Route path="/vehicles" element={<VehicleList />} />
+        <Route path="/vehicles/new" element={<VehicleForm />} />
+        <Route path="/vehicles/edit/:id" element={<VehicleForm />} />
+        <Route path="/vehicles/:id" element={<VehicleDetails />} />
+        <Route path="/drivers" element={<DriverList />} />
+        <Route path="/drivers/new" element={<DriverForm />} />
+        <Route path="/drivers/edit/:id" element={<DriverForm />} />
+        <Route path="/drivers/:id" element={<DriverDetails />} />
         <Route path="/trips" element={<Trips />} />
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/fuel" element={<Fuel />} />
