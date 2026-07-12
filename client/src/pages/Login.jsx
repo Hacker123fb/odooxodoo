@@ -24,8 +24,8 @@ export const Login = () => {
     formState: { errors }
   } = useForm({
     defaultValues: {
-      email: 'admin@transitops.com',
-      password: 'password123'
+      email: '',
+      password: ''
     }
   });
 
@@ -63,7 +63,7 @@ export const Login = () => {
 
       <FormWrapper onSubmit={handleSubmit(onSubmit)} error={formError}>
         <Input
-          label="Email Address"
+          label="Email Address *"
           type="email"
           placeholder="name@transitops.com"
           icon={FiMail}
@@ -78,7 +78,7 @@ export const Login = () => {
         />
 
         <Input
-          label="Password"
+          label="Password *"
           type="password"
           placeholder="••••••••"
           icon={FiLock}
@@ -110,6 +110,19 @@ export const Login = () => {
         >
           Sign In
         </Button>
+
+        <div className="text-center mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Don't have an account?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="text-primary-600 hover:text-primary-750 font-bold underline focus:outline-none"
+            >
+              Register here
+            </button>
+          </p>
+        </div>
       </FormWrapper>
     </div>
   );

@@ -2,9 +2,11 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout.jsx';
 import ProtectedLayout from '../components/ProtectedLayout.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 // Import Page component stubs
 import Login from '../pages/Login.jsx';
+import Register from '../pages/auth/Register.jsx';
 import Dashboard from '../pages/Dashboard.jsx';
 import VehicleList from '../pages/vehicles/VehicleList.jsx';
 import VehicleForm from '../pages/vehicles/VehicleForm.jsx';
@@ -28,6 +30,32 @@ import Reports from '../pages/Reports.jsx';
 import NotFound from '../pages/NotFound.jsx';
 
 /**
+ * Higher-order Route wrapper component to restrict pages by roles
+ */
+const RoleRoute = ({ allowedRoles, children }) => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary-600" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Redirect to dashboard if role is unauthorized
+  if (user && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+/**
  * Global Routing Table for TransitOps
  */
 export const AppRoutes = () => {
@@ -36,42 +64,57 @@ export const AppRoutes = () => {
       {/* Auth/Public routes wrapper */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
       </Route>
 
       {/* Authenticated Dashboard routes wrapper */}
       <Route element={<ProtectedLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/vehicles" element={<VehicleList />} />
-        <Route path="/vehicles/new" element={<VehicleForm />} />
-        <Route path="/vehicles/edit/:id" element={<VehicleForm />} />
-        <Route path="/vehicles/:id" element={<VehicleDetails />} />
-        <Route path="/drivers" element={<DriverList />} />
-        <Route path="/drivers/new" element={<DriverForm />} />
-        <Route path="/drivers/edit/:id" element={<DriverForm />} />
-        <Route path="/drivers/:id" element={<DriverDetails />} />
-        <Route path="/trips" element={<TripList />} />
-        <Route path="/trips/new" element={<TripForm />} />
-        <Route path="/trips/edit/:id" element={<TripForm />} />
-        <Route path="/trips/:id" element={<TripDetails />} />
-        <Route path="/maintenance" element={<MaintenanceList />} />
-        <Route path="/maintenance/new" element={<MaintenanceForm />} />
-        <Route path="/maintenance/edit/:id" element={<MaintenanceForm />} />
-        <Route path="/maintenance/:id" element={<MaintenanceDetails />} />
-        <Route path="/fuel" element={<FuelLogList />} />
-        <Route path="/fuel/new" element={<FuelLogForm />} />
-        <Route path="/fuel/edit/:id" element={<FuelLogForm />} />
-        <Route path="/fuel/:id" element={<FuelLogDetails />} />
-        <Route path="/expenses" element={<ExpenseList />} />
-        <Route path="/expenses/new" element={<ExpenseForm />} />
-        <Route path="/expenses/edit/:id" element={<ExpenseForm />} />
-        <Route path="/expenses/:id" element={<ExpenseDetails />} />
-        <Route path="/reports" element={<Reports />} />
+        
+        {/* Vehicles */}
+        <Route path="/vehicles" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><VehicleList /></RoleRoute>} />
+        <Route path="/vehicles/new" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><VehicleForm /></RoleRoute>} />
+        <Route path="/vehicles/edit/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><VehicleForm /></RoleRoute>} />
+        <Route path="/vehicles/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><VehicleDetails /></RoleRoute>} />
+        
+        {/* Drivers */}
+        <Route path="/drivers" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'SAFETY_OFFICER']}><DriverList /></RoleRoute>} />
+        <Route path="/drivers/new" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><DriverForm /></RoleRoute>} />
+        <Route path="/drivers/edit/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><DriverForm /></RoleRoute>} />
+        <Route path="/drivers/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'SAFETY_OFFICER']}><DriverDetails /></RoleRoute>} />
+        
+        {/* Trips */}
+        <Route path="/trips" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER']}><TripList /></RoleRoute>} />
+        <Route path="/trips/new" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER']}><TripForm /></RoleRoute>} />
+        <Route path="/trips/edit/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER']}><TripForm /></RoleRoute>} />
+        <Route path="/trips/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER']}><TripDetails /></RoleRoute>} />
+        
+        {/* Maintenance */}
+        <Route path="/maintenance" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><MaintenanceList /></RoleRoute>} />
+        <Route path="/maintenance/new" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><MaintenanceForm /></RoleRoute>} />
+        <Route path="/maintenance/edit/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><MaintenanceForm /></RoleRoute>} />
+        <Route path="/maintenance/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER']}><MaintenanceDetails /></RoleRoute>} />
+        
+        {/* Fuel */}
+        <Route path="/fuel" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST']}><FuelLogList /></RoleRoute>} />
+        <Route path="/fuel/new" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST']}><FuelLogForm /></RoleRoute>} />
+        <Route path="/fuel/edit/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST']}><FuelLogForm /></RoleRoute>} />
+        <Route path="/fuel/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST']}><FuelLogDetails /></RoleRoute>} />
+        
+        {/* Expenses */}
+        <Route path="/expenses" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST']}><ExpenseList /></RoleRoute>} />
+        <Route path="/expenses/new" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST', 'FLEET_MANAGER']}><ExpenseForm /></RoleRoute>} />
+        <Route path="/expenses/edit/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST', 'FLEET_MANAGER']}><ExpenseForm /></RoleRoute>} />
+        <Route path="/expenses/:id" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST', 'FLEET_MANAGER']}><ExpenseDetails /></RoleRoute>} />
+        
+        {/* Reports */}
+        <Route path="/reports" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST']}><Reports /></RoleRoute>} />
       </Route>
 
-      {/* Root path automatic redirect */}
+      {/* Root path redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* Unmatched routes catch-all */}
+      {/* Unmatched fallback */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

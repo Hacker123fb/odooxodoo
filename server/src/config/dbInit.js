@@ -11,6 +11,24 @@ export const dbInit = async () => {
   try {
     connection = await pool.getConnection();
 
+    // 0. Idempotently create notifications table
+    console.log('[DATABASE] Ensuring notifications table exists...');
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+        user_id     INT UNSIGNED  NULL,
+        type        VARCHAR(50)   NOT NULL,
+        title       VARCHAR(100)  NOT NULL,
+        message     TEXT          NOT NULL,
+        is_read     TINYINT(1)    NOT NULL DEFAULT 0,
+        created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_notifications_user_id (user_id),
+        KEY idx_notifications_is_read (is_read)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      COMMENT='System notifications and action items ledger'
+    `);
+
     // 1. Idempotently check and ensure unique constraints exist on the drivers table
     const [indexes] = await connection.query(
       `SELECT DISTINCT INDEX_NAME, COLUMN_NAME 
@@ -110,11 +128,13 @@ export const dbInit = async () => {
       await connection.query(
         `INSERT INTO users (role_id, full_name, email, password_hash, status) 
          VALUES (?, ?, ?, ?, ?)`,
-        [superAdminRoleId, 'Default Super Admin', defaultAdminEmail, hashedPassword, 'ACTIVE']
+        [superAdminRoleId, 'Admin', defaultAdminEmail, hashedPassword, 'ACTIVE']
       );
-      console.log(`[DATABASE] Default Super Admin user seeded: ${defaultAdminEmail} / password123`);
+      console.log(`[DATABASE] Admin user seeded: ${defaultAdminEmail} / password123`);
     } else {
-      console.log(`[DATABASE] Default Super Admin user already exists.`);
+      // Rename Default Super Admin to Admin automatically if it exists
+      await connection.query("UPDATE users SET full_name = 'Admin' WHERE full_name = 'Default Super Admin'");
+      console.log(`[DATABASE] Admin user already exists.`);
     }
 
   } catch (err) {

@@ -1,110 +1,204 @@
-import React from 'react';
-import { FiTruck, FiUsers, FiNavigation, FiTool, FiActivity } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
+import { dashboardService } from '../api/apiService.js';
+
+// Import child components
+import { DashboardCards } from './dashboard/DashboardCards.jsx';
+import { TripsPerMonthChart } from './dashboard/Charts/TripsPerMonthChart.jsx';
+import { FuelCostTrendChart } from './dashboard/Charts/FuelCostTrendChart.jsx';
+import { ExpenseCategoryChart } from './dashboard/Charts/ExpenseCategoryChart.jsx';
+import { StatusDistributionChart } from './dashboard/Charts/StatusDistributionChart.jsx';
+import { ActivityTimeline } from './dashboard/ActivityTimeline.jsx';
 
 /**
- * Logistics Operations Dashboard Page
+ * Main Operations Dashboard View
  */
 export const Dashboard = () => {
-  const stats = [
-    { name: 'Active Vehicles', value: '42 / 50', icon: FiTruck, change: '+2 added today' },
-    { name: 'Active Drivers', value: '38 / 45', icon: FiUsers, change: '3 on duty break' },
-    { name: 'Trips Dispatched', value: '18', icon: FiNavigation, change: '+5 completed today' },
-    { name: 'Active Maintenance', value: '4', icon: FiTool, change: '-1 resolved' }
-  ];
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  // Fetch API callback
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    else setRefreshing(true);
+    
+    setError(null);
+
+    try {
+      const response = await dashboardService.getDashboard();
+      if (response && response.success) {
+        setData(response.data);
+        setLastUpdated(new Date());
+      } else {
+        setError(response?.message || 'Failed to retrieve dashboard information.');
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard statistics:', err);
+      setError(err.message || 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Initial Fetch & Auto Refresh setup
+  useEffect(() => {
+    fetchDashboardData();
+
+    // Refresh every 60 seconds as required
+    const intervalId = setInterval(() => {
+      fetchDashboardData(true);
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchDashboardData]);
+
+  const handleManualRefresh = () => {
+    fetchDashboardData(true);
+  };
+
+  // Skeleton Loader for Chart Cards
+  const renderChartSkeleton = () => (
+    <div className="h-64 w-full bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 rounded-2xl animate-pulse flex items-center justify-center">
+      <div className="flex flex-col items-center gap-2">
+        <div className="h-8 w-8 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
+        <div className="h-3 w-28 bg-slate-200 dark:bg-slate-800 rounded"></div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Welcome banner */}
-      <div className="bg-gradient-to-r from-primary-850 to-primary-600 rounded-2xl p-6 text-white shadow-md">
-        <h3 className="text-lg font-bold font-sans">Welcome back, Dispatcher!</h3>
-        <p className="text-xs text-primary-200 mt-1 max-w-md">
-          The fleet operations status is currently normal. System load remains low. All scheduled morning trips have been successfully dispatched.
-        </p>
-      </div>
-
-      {/* Stats row grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.name}
-              className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex items-center justify-between"
-            >
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-sans">
-                  {stat.name}
-                </span>
-                <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 leading-none">
-                  {stat.value}
-                </span>
-                <span className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">
-                  {stat.change}
-                </span>
-              </div>
-              <div className="p-3 bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 rounded-xl">
-                <Icon className="w-5 h-5" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Detailed mock status row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* System activity logs */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm lg:col-span-2">
-          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide uppercase">
-              Operations Log Feed
-            </h4>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-450">
-              <FiActivity className="w-3 h-3 animate-pulse" /> Running
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {[
-              { time: '11:15 AM', log: 'Trip #TX-489 marked completed. Vehicle #VEH-102 availability restored.', type: 'success' },
-              { time: '10:42 AM', log: 'Driver Jack Sparrow submitted fuel receipt of $345.50.', type: 'info' },
-              { time: '09:20 AM', log: 'Scheduled maintenance service logged for Vehicle #VEH-054.', type: 'warn' },
-              { time: '08:05 AM', log: 'Morning logs audit completed. 0 critical integrity exceptions found.', type: 'info' }
-            ].map((item, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-xs"
-              >
-                <span className="text-slate-400 font-semibold select-none shrink-0">{item.time}</span>
-                <span className="text-slate-650 dark:text-slate-350">{item.log}</span>
-              </div>
-            ))}
-          </div>
+      {/* Top Banner and Refresh Controllers */}
+      <div className="bg-gradient-to-r from-primary-850 to-primary-600 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold font-sans">Fleet Operations Control</h3>
+          <p className="text-xs text-primary-200 mt-1 max-w-lg">
+            Real-time operations tracking panel. View live diagnostics, active transport schedules, financial expenditure trends, and driver statuses.
+          </p>
         </div>
 
-        {/* Quick actions widgets */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          {lastUpdated && (
+            <span className="text-[10px] text-primary-200 bg-primary-950/20 px-3 py-1.5 rounded-lg border border-primary-800/40 select-none font-medium">
+              Updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+
+          <button
+            onClick={handleManualRefresh}
+            disabled={loading || refreshing}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-slate-850 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 text-[11px] font-bold font-sans rounded-lg shadow-sm transition-all duration-150 shrink-0"
+          >
+            <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {/* Global Error Banner */}
+      {error && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl flex items-start gap-3">
+          <FiAlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide uppercase mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
-              Fleet Shortcuts
+            <h4 className="text-xs font-bold text-rose-800 dark:text-rose-450 uppercase tracking-wide">
+              Failed to connect to Operations API
             </h4>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Register Rigs', desc: 'Add new vehicle' },
-                { label: 'Add Driver', desc: 'License upload' },
-                { label: 'Dispatch Trip', desc: 'Create active schedule' },
-                { label: 'Log Expense', desc: 'Upload receipt stub' }
-              ].map((item, idx) => (
-                <button
-                  key={idx}
-                  className="p-3 text-left border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                >
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.label}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{item.desc}</p>
-                </button>
-              ))}
+            <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{error}</p>
+            <button
+              onClick={() => fetchDashboardData()}
+              className="text-[10px] font-bold text-rose-700 dark:text-rose-450 underline mt-2 hover:text-rose-900 dark:hover:text-rose-350"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* KPI Cards Grid */}
+      <DashboardCards data={data} loading={loading} />
+
+      {/* Main Charts & Timeline Layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        
+        {/* Core Charts Section */}
+        <div className="xl:col-span-2 space-y-6">
+          
+          {/* Monthly Trips & Fuel Costs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+              <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+                Trips per Month
+              </h4>
+              {loading ? renderChartSkeleton() : <TripsPerMonthChart data={data?.charts?.tripsPerMonth} />}
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+              <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+                Fuel Cost Trend
+              </h4>
+              {loading ? renderChartSkeleton() : <FuelCostTrendChart data={data?.charts?.fuelCostTrend} />}
             </div>
           </div>
+
+          {/* Categorical Status Distributions */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+            <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+              Status Distributions
+            </h4>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {renderChartSkeleton()}
+                {renderChartSkeleton()}
+                {renderChartSkeleton()}
+              </div>
+            ) : (
+              <StatusDistributionChart 
+                charts={{
+                  vehicleStatusDistribution: data?.charts?.vehicleStatusDistribution,
+                  tripStatusDistribution: data?.charts?.tripStatusDistribution,
+                  maintenanceStatusDistribution: data?.charts?.maintenanceStatusDistribution
+                }} 
+              />
+            )}
+          </div>
+
+        </div>
+
+        {/* Expenses & Activity Feed Column */}
+        <div className="space-y-6">
+          
+          {/* Expense Category Distribution */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+            <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+              Expense Distribution by Category
+            </h4>
+            {loading ? renderChartSkeleton() : <ExpenseCategoryChart data={data?.charts?.expenseCategoryDistribution} />}
+          </div>
+
+          {/* Activity Timeline */}
+          {loading ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm animate-pulse space-y-4">
+              <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="flex gap-3">
+                    <div className="h-6 w-6 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-1/3 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-2.5 w-5/6 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ActivityTimeline data={data?.recentActivities} />
+          )}
+
         </div>
 
       </div>

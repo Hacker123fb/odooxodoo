@@ -16,7 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 
 /**
- * Responsive Sidebar Navigation
+ * Responsive Sidebar Navigation with RBAC filtering
  */
 export const Sidebar = ({
   isOpen,
@@ -36,6 +36,35 @@ export const Sidebar = ({
     { name: 'Expenses', path: '/expenses', icon: FiDollarSign },
     { name: 'Reports', path: '/reports', icon: FiBarChart2 }
   ];
+
+  // Hide unauthorized menu items based on roles
+  const getFilteredMenuItems = () => {
+    const role = user?.role;
+    if (role === 'SUPER_ADMIN') {
+      return menuItems;
+    }
+    if (role === 'FLEET_MANAGER') {
+      return menuItems.filter(item => ['Dashboard', 'Vehicles', 'Drivers', 'Maintenance'].includes(item.name));
+    }
+    if (role === 'DISPATCHER') {
+      return menuItems.filter(item => ['Dashboard', 'Trips'].includes(item.name));
+    }
+    if (role === 'SAFETY_OFFICER') {
+      return menuItems.filter(item => ['Dashboard', 'Drivers'].includes(item.name));
+    }
+    if (role === 'FINANCIAL_ANALYST') {
+      return menuItems.filter(item => ['Dashboard', 'Fuel Logs', 'Expenses', 'Reports'].includes(item.name));
+    }
+    // Default fallback
+    return [{ name: 'Dashboard', path: '/dashboard', icon: FiGrid }];
+  };
+
+  const filteredMenuItems = getFilteredMenuItems();
+  
+  // Format User name - replace "Default Super Admin" with "Admin"
+  const rawName = user?.name || user?.full_name || user?.username || 'User';
+  const displayName = rawName === 'Default Super Admin' ? 'Admin' : rawName;
+  const displayRole = user?.role || user?.role_name || 'No Role';
 
   return (
     <aside
@@ -73,7 +102,7 @@ export const Sidebar = ({
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const Icon = item.icon;
 
           return (
@@ -107,18 +136,16 @@ export const Sidebar = ({
         {!isCollapsed && (
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-950/40 flex items-center justify-center font-bold text-primary-600 text-sm border border-primary-200 dark:border-primary-900/50">
-              {(user?.name || user?.full_name || user?.username || "U")
-                .charAt(0)
-                .toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </div>
 
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate leading-none mb-1">
-                {user?.name || user?.full_name || user?.username || "User"}
+                {displayName}
               </p>
 
               <p className="text-xs text-slate-400 truncate leading-none">
-                {user?.role || user?.role_name || "No Role"}
+                {displayRole}
               </p>
             </div>
           </div>

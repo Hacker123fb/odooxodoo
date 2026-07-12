@@ -17,7 +17,13 @@ export const Input = forwardRef(({
     <div className={`w-full flex flex-col gap-1 ${className}`}>
       {label && (
         <label htmlFor={name} className="text-xs font-semibold text-slate-600 dark:text-slate-400 tracking-wide">
-          {label}
+          {label.endsWith('*') ? (
+            <>
+              {label.slice(0, -1).trim()} <span className="text-rose-500 font-bold">*</span>
+            </>
+          ) : (
+            label
+          )}
         </label>
       )}
       

@@ -7,6 +7,9 @@ import tripRouter from './trip.routes.js';
 import maintenanceRouter from './maintenance.routes.js';
 import fuelRouter from './fuel.routes.js';
 import expenseRouter from './expense.routes.js';
+import dashboardRouter from './dashboard.routes.js';
+import reportRouter from './report.routes.js';
+import notificationRouter from './notification.routes.js';
 
 const router = Router();
 
@@ -33,5 +36,14 @@ router.use('/fuel', fuelRouter);
 
 // 8. Expenses routes
 router.use('/expenses', expenseRouter);
+
+// 9. Dashboard routes
+router.use('/dashboard', dashboardRouter);
+
+// 10. Reports routes
+router.use('/reports', reportRouter);
+
+// 11. Notifications routes
+router.use('/notifications', notificationRouter);
 
 export default router;

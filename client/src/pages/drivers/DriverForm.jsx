@@ -77,6 +77,17 @@ export const DriverForm = () => {
     fetchDriver();
   }, [id, isEdit, setValue]);
 
+  const onInvalid = (errs) => {
+    const firstErrorField = Object.keys(errs)[0];
+    if (firstErrorField) {
+      const element = document.getElementsByName(firstErrorField)[0] || document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
+    }
+  };
+
   const onSubmit = async (data) => {
     setIsSaving(true);
     setApiError(null);
@@ -110,10 +121,12 @@ export const DriverForm = () => {
 
           setError(fieldName, { type: 'server', message: e.message });
         });
+        setApiError('Validation failed. Please correct the highlighted fields below.');
         showToast('Please correct the highlighted fields.', 'error');
       } else {
-        setApiError(err.message);
-        showToast(err.message || 'Saving profile failed.', 'error');
+        const msg = err.message === 'Validation failed.' ? 'Validation failed. Please check form inputs.' : err.message;
+        setApiError(msg);
+        showToast(msg || 'Saving profile failed.', 'error');
       }
     } finally {
       setIsSaving(false);
@@ -139,7 +152,7 @@ export const DriverForm = () => {
         </p>
       </div>
 
-      <FormWrapper onSubmit={handleSubmit(onSubmit)} error={apiError}>
+      <FormWrapper onSubmit={handleSubmit(onSubmit, onInvalid)} error={apiError}>
         
         {/* Full Name */}
         <Input

@@ -58,6 +58,20 @@ export const expenseService = {
   getOptions: () => axiosInstance.get('/expenses/meta/options')
 };
 
+export const dashboardService = {
+  getDashboard: () => axiosInstance.get('/dashboard')
+};
+
+export const reportService = {
+  getReport: (params) => axiosInstance.get('/reports', { params })
+};
+
+export const notificationService = {
+  getAll: () => axiosInstance.get('/notifications'),
+  markAsRead: (id) => axiosInstance.put(`/notifications/${id}/read`),
+  markAllAsRead: () => axiosInstance.put('/notifications/read-all')
+};
+
 export const healthService = {
   check: () => axiosInstance.get('/health')
 };
