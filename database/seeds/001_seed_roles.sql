@@ -1,0 +1,2 @@
+-- DEPRECATED — superseded by database/seed.sql
+-- This file is no longer used. See database/seed.sql for the current seed data.
