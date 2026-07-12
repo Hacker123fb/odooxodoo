@@ -93,14 +93,14 @@ export const Sidebar = ({ isOpen, toggleSidebar, isCollapsed, toggleCollapse }) 
         {!isCollapsed && user && (
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-950/40 flex items-center justify-center font-bold text-primary-600 text-sm border border-primary-200 dark:border-primary-900/50">
-              {user.name.charAt(0)}
+              {{user?.name?.charAt(0) || "U"}}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate leading-none mb-1">
-                {user.name}
+                {{user?.name || "User"}}
               </p>
               <p className="text-xs text-slate-400 truncate leading-none">
-                {user.role}
+                {{user?.role || "No Role"}}
               </p>
             </div>
           </div>

@@ -1,6 +1,5 @@
 import pool from './db.js';
 import bcrypt from 'bcryptjs';
-
 /**
  * Ensures required roles exist and creates a default Super Admin user
  */
