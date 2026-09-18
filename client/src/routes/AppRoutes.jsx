@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import Login from '../pages/Login.jsx';
 import Register from '../pages/auth/Register.jsx';
 import VerifyOTP from '../pages/auth/VerifyOTP.jsx';
+import ForgotPassword from '../pages/auth/ForgotPassword.jsx';
 import Dashboard from '../pages/Dashboard.jsx';
 import VehicleList from '../pages/vehicles/VehicleList.jsx';
 import VehicleForm from '../pages/vehicles/VehicleForm.jsx';
@@ -67,6 +68,7 @@ export const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-otp" element={<VerifyOTP />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
       </Route>
 
       {/* Authenticated Dashboard routes wrapper */}

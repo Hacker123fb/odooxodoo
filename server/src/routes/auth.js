@@ -4,7 +4,9 @@ import {
   validateRegister, 
   validateVerifyOtp, 
   validateResendOtp, 
-  validateLogin 
+  validateLogin,
+  validateForgotPassword,
+  validateResetPassword
 } from '../validators/authValidators.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -28,6 +30,18 @@ router.post('/verify-otp', validateVerifyOtp, asyncHandler(authController.verify
  * @desc Invalidate previous OTP and dispatch a new one
  */
 router.post('/resend-otp', validateResendOtp, asyncHandler(authController.resendOtp));
+
+/**
+ * @route POST /api/v1/auth/forgot-password
+ * @desc Dispatch 6-digit OTP code to email for password recovery
+ */
+router.post('/forgot-password', validateForgotPassword, asyncHandler(authController.forgotPassword));
+
+/**
+ * @route POST /api/v1/auth/reset-password
+ * @desc Verify OTP and update user password
+ */
+router.post('/reset-password', validateResetPassword, asyncHandler(authController.resetPassword));
 
 /**
  * @route POST /api/v1/auth/login

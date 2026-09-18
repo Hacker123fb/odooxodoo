@@ -6,6 +6,7 @@ import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import { otpService } from '../services/otp.service.js';
 import { emailService } from '../services/email.service.js';
+import { passwordResetOtpModel } from '../models/passwordResetOtp.model.js';
 import pool from '../config/db.js';
 
 /**
@@ -250,6 +251,103 @@ export const authController = {
           }
         },
         'Active user session retrieved.'
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Forgot Password - Step 1: Send OTP code to email
+   */
+  forgotPassword: async (req, res, next) => {
+    try {
+      const { email } = req.body;
+
+      const user = await userModel.findByEmail(email);
+      if (!user) {
+        throw new AppError('No account found with this email address.', HttpStatusCodes.NOT_FOUND);
+      }
+
+      if (user.status !== 'ACTIVE') {
+        throw new AppError(`This account is currently ${user.status}. Please contact support.`, HttpStatusCodes.FORBIDDEN);
+      }
+
+      const existing = await passwordResetOtpModel.findByEmail(email);
+      if (existing) {
+        const elapsed = (new Date().getTime() - new Date(existing.created_at).getTime()) / 1000;
+        if (elapsed < 60) {
+          throw new AppError(
+            `Please wait ${Math.ceil(60 - elapsed)} seconds before requesting another code.`,
+            HttpStatusCodes.TOO_MANY_REQUESTS
+          );
+        }
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpHash = await bcrypt.hash(otp, 10);
+      const expiresAt = new Date(new Date().getTime() + 10 * 60 * 1000);
+
+      await passwordResetOtpModel.saveOtp({
+        email,
+        otpHash,
+        expiresAt
+      });
+
+      await emailService.sendPasswordResetEmail(email, otp);
+
+      return res.ok(
+        null,
+        'A 6-digit password reset verification code has been sent to your email.'
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Reset Password - Step 2: Verify OTP and set new password
+   */
+  resetPassword: async (req, res, next) => {
+    try {
+      const { email, otp, newPassword } = req.body;
+
+      const user = await userModel.findByEmail(email);
+      if (!user) {
+        throw new AppError('No account found with this email address.', HttpStatusCodes.NOT_FOUND);
+      }
+
+      const record = await passwordResetOtpModel.findByEmail(email);
+      if (!record) {
+        throw new AppError('Password reset code has expired or was not found. Please request a new code.', HttpStatusCodes.BAD_REQUEST);
+      }
+
+      if (record.attempts >= 5) {
+        throw new AppError('Maximum verification attempts exceeded. Please request a new reset code.', HttpStatusCodes.FORBIDDEN);
+      }
+
+      const isMatch = await bcrypt.compare(otp, record.otp_hash);
+      if (!isMatch) {
+        await passwordResetOtpModel.incrementAttempts(email);
+        const remaining = 5 - (record.attempts + 1);
+        if (remaining <= 0) {
+          throw new AppError('Maximum attempts exceeded. This code is locked. Please request a new code.', HttpStatusCodes.FORBIDDEN);
+        }
+        throw new AppError(`Invalid verification code. ${remaining} attempts remaining.`, HttpStatusCodes.BAD_REQUEST);
+      }
+
+      if (new Date(record.expires_at) < new Date()) {
+        await passwordResetOtpModel.delete(email);
+        throw new AppError('Verification code has expired. Please request a new reset code.', HttpStatusCodes.BAD_REQUEST);
+      }
+
+      const newHash = await bcrypt.hash(newPassword, 10);
+      await userModel.updatePassword(email, newHash);
+      await passwordResetOtpModel.delete(email);
+
+      return res.ok(
+        null,
+        'Your password has been successfully reset. You may now log in with your new password.'
       );
     } catch (error) {
       next(error);

@@ -43,6 +43,19 @@ export const dbInit = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // Ensure password_reset_otp table exists
+    console.log('[DATABASE] Ensuring password_reset_otp table exists...');
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_otp (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        email       VARCHAR(150) NOT NULL UNIQUE,
+        otp_hash    VARCHAR(255) NOT NULL,
+        expires_at  DATETIME NOT NULL,
+        attempts    INT NOT NULL DEFAULT 0,
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 1. Idempotently check and ensure unique constraints exist on the drivers table
     const [indexes] = await connection.query(
       `SELECT DISTINCT INDEX_NAME, COLUMN_NAME 

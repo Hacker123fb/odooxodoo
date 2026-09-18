@@ -110,4 +110,57 @@ export const validateLogin = [
   validate
 ];
 
-export default { validateRegister, validateVerifyOtp, validateResendOtp, validateLogin };
+/**
+ * Validates request parameters for forgot password OTP dispatch
+ */
+export const validateForgotPassword = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email address is required.')
+    .isEmail()
+    .withMessage('Please enter a valid email address.')
+    .normalizeEmail(),
+
+  validate
+];
+
+/**
+ * Validates request parameters for resetting password with OTP
+ */
+export const validateResetPassword = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email address is required.')
+    .isEmail()
+    .withMessage('Please enter a valid email address.')
+    .normalizeEmail(),
+
+  body('otp')
+    .trim()
+    .notEmpty()
+    .withMessage('OTP code is required.')
+    .matches(/^\d{6}$/)
+    .withMessage('OTP must be exactly 6 numeric digits.'),
+
+  body('newPassword')
+    .trim()
+    .notEmpty()
+    .withMessage('New password is required.')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long.')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+=\-[\]{}|;:',.<>/?]).{8,}$/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.'),
+
+  validate
+];
+
+export default { 
+  validateRegister, 
+  validateVerifyOtp, 
+  validateResendOtp, 
+  validateLogin,
+  validateForgotPassword,
+  validateResetPassword
+};

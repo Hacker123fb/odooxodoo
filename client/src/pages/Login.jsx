@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { FiMail, FiLock } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
@@ -123,16 +123,12 @@ export const Login = () => {
             />
             <span className="text-slate-500 dark:text-slate-400">Remember Me</span>
           </label>
-          <a
-            href="#forgot"
-            onClick={(e) => {
-              e.preventDefault();
-              showToast('Password recovery is managed by your system administrator.', 'info');
-            }}
-            className="text-primary-600 hover:text-primary-750 font-semibold hover:underline"
+          <Link
+            to="/forgot-password"
+            className="text-primary-600 hover:text-primary-750 dark:text-primary-400 font-semibold hover:underline"
           >
             Forgot Password?
-          </a>
+          </Link>
         </div>
 
         {/* Stacked equal-width buttons */}

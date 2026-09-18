@@ -59,6 +59,15 @@ export const userModel = {
   async updateLastLogin(id) {
     const sql = 'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?';
     await pool.query(sql, [id]);
+  },
+
+  /**
+   * Update user's password hash by email
+   */
+  async updatePassword(email, passwordHash) {
+    const sql = 'UPDATE users SET password_hash = ? WHERE email = ?';
+    const [result] = await pool.query(sql, [passwordHash, email]);
+    return result.affectedRows > 0;
   }
 };
 

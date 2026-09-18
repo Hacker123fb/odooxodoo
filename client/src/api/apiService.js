@@ -5,6 +5,8 @@ export const authService = {
   register: (data) => axiosInstance.post('/auth/register', data),
   verifyOtp: (data) => axiosInstance.post('/auth/verify-otp', data),
   resendOtp: (data) => axiosInstance.post('/auth/resend-otp', data),
+  forgotPassword: (data) => axiosInstance.post('/auth/forgot-password', data),
+  resetPassword: (data) => axiosInstance.post('/auth/reset-password', data),
   getMe: () => axiosInstance.get('/auth/me')
 };
 
