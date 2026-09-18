@@ -16,8 +16,8 @@ export const validateRegister = [
     .trim()
     .notEmpty()
     .withMessage('Employee Code is required.')
-    .isAlphanumeric()
-    .withMessage('Employee Code must contain letters and numbers only.'),
+    .matches(/^[A-Za-z0-9#\-_ ]+$/)
+    .withMessage('Employee Code can contain letters, numbers, spaces, and #-_.'),
 
   body('email')
     .trim()
