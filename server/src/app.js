@@ -9,7 +9,7 @@ import errorHandler from './middleware/errorHandler.js';
 const app = express();
 
 // 1. Standard third-party middleware
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -17,8 +17,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 app.use(responseFormatter);
 
-// 3. Central routes registration versioned under /api/v1
+// 3. Central routes registration versioned under /api/v1 and root fallback
 app.use('/api/v1', apiRouter);
+app.use('/', apiRouter);
 
 // 4. Default root route
 app.get('/', (req, res) => {
