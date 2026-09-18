@@ -9,7 +9,8 @@ const pool = mysql.createPool({
   database: env.db.database,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: env.db.host !== 'localhost' && env.db.host !== '127.0.0.1' ? { rejectUnauthorized: false } : undefined
 });
 
 export const testConnection = async () => {
