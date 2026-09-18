@@ -265,6 +265,51 @@ export const emailService = {
         console.error('[EMAIL] Failed to write backup OTP debug file:', fsErr.message);
       }
     }
+  },
+
+  /**
+   * Diagnostic method to test SMTP connectivity and credentials
+   */
+  async verifySmtp() {
+    await autoConfigureSmtp();
+    const host = process.env.SMTP_HOST;
+    if (!host || host === 'localhost') {
+      return { ok: false, error: 'SMTP_HOST is not configured in environment variables.' };
+    }
+    try {
+      const transporter = getTransporter();
+      await Promise.race([
+        transporter.verify(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP verify timed out after 6s')), 6000))
+      ]);
+      return { ok: true, message: 'SMTP credentials verified successfully.' };
+    } catch (err) {
+      return { ok: false, error: err.message, code: err.code };
+    }
+  },
+
+  /**
+   * Diagnostic method to test actual email delivery
+   */
+  async sendTestEmail(toEmail) {
+    await autoConfigureSmtp();
+    const host = process.env.SMTP_HOST;
+    if (!host || host === 'localhost') {
+      return { ok: false, error: 'SMTP_HOST is not configured in environment variables.' };
+    }
+    const transporter = getTransporter();
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@transitops.com';
+    try {
+      const info = await sendWithTimeout(transporter, {
+        from: `"TransitOps Test" <${fromAddress}>`,
+        to: toEmail,
+        subject: 'TransitOps - SMTP Test Diagnostic',
+        text: 'Hello! This is a test email from TransitOps to verify that SMTP delivery is functional.'
+      }, 8000);
+      return { ok: true, message: 'Test email successfully sent!', messageId: info.messageId };
+    } catch (err) {
+      return { ok: false, error: err.message, code: err.code };
+    }
   }
 };
 
