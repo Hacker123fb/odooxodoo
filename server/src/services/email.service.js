@@ -98,13 +98,22 @@ const getTransporter = () => {
       user: user,
       pass: pass || ''
     } : undefined,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    connectionTimeout: 4000,
+    greetingTimeout: 4000,
+    socketTimeout: 5000,
     tls: {
       rejectUnauthorized: false
     }
   });
+};
+
+const sendWithTimeout = (transporter, mailOptions, timeoutMs = 5000) => {
+  return Promise.race([
+    transporter.sendMail(mailOptions),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`SMTP connection timed out after ${timeoutMs / 1000}s`)), timeoutMs)
+    )
+  ]);
 };
 
 export const emailService = {
@@ -114,11 +123,25 @@ export const emailService = {
   async sendOtpEmail(email, otp) {
     await autoConfigureSmtp();
 
+    const host = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER;
+
+    // If no valid SMTP host is configured, avoid hanging on localhost and record to debug directly
+    if (!host || host === 'localhost') {
+      console.log(`[EMAIL] No external SMTP host configured. OTP for ${email}: ${otp}`);
+      try {
+        const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
+        const content = `Timestamp: ${new Date().toISOString()}\nType: REGISTRATION\nEmail: ${email}\nOTP: ${otp}\n`;
+        fs.appendFileSync(otpPath, content, 'utf8');
+      } catch (e) {}
+      return;
+    }
+
     try {
       const transporter = getTransporter();
       const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@transitops.com';
 
-      const info = await transporter.sendMail({
+      const info = await sendWithTimeout(transporter, {
         from: `"TransitOps Notifications" <${fromAddress}>`,
         to: email,
         subject: 'TransitOps - User Registration Verification Code',
@@ -149,7 +172,7 @@ export const emailService = {
             </div>
           </div>
         `
-      });
+      }, 5000);
 
       console.log(`[EMAIL] Registration OTP successfully dispatched to ${email}`);
       const previewUrl = nodemailer.getTestMessageUrl(info);
@@ -175,11 +198,25 @@ export const emailService = {
   async sendPasswordResetEmail(email, otp) {
     await autoConfigureSmtp();
 
+    const host = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER;
+
+    // If no valid SMTP host is configured, avoid hanging on localhost and record to debug directly
+    if (!host || host === 'localhost') {
+      console.log(`[EMAIL] No external SMTP host configured. Password Reset OTP for ${email}: ${otp}`);
+      try {
+        const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
+        const content = `Timestamp: ${new Date().toISOString()}\nType: PASSWORD_RESET\nEmail: ${email}\nOTP: ${otp}\n`;
+        fs.appendFileSync(otpPath, content, 'utf8');
+      } catch (e) {}
+      return;
+    }
+
     try {
       const transporter = getTransporter();
       const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@transitops.com';
 
-      const info = await transporter.sendMail({
+      const info = await sendWithTimeout(transporter, {
         from: `"TransitOps Security" <${fromAddress}>`,
         to: email,
         subject: 'TransitOps - Password Reset Request Code',
@@ -210,7 +247,7 @@ export const emailService = {
             </div>
           </div>
         `
-      });
+      }, 5000);
 
       console.log(`[EMAIL] Password reset OTP successfully dispatched to ${email}`);
       const previewUrl = nodemailer.getTestMessageUrl(info);

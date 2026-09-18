@@ -124,8 +124,8 @@ export const Register = () => {
           {...register('employeeCode', {
             required: 'Employee Code is required',
             pattern: {
-              value: /^[A-Z0-9]+$/i,
-              message: 'Employee Code must be alphanumeric'
+              value: /^[A-Z0-9\s#\-_]+$/i,
+              message: 'Employee Code can contain letters, numbers, spaces, and #-_'
             }
           })}
         />

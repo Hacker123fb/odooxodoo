@@ -1,8 +1,15 @@
 import axios from 'axios';
 
 const formatBaseUrl = () => {
-  let url = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').trim();
-  url = url.replace(/\/+$/, '');
+  const isLocal = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  let url = import.meta.env.VITE_API_URL;
+  if (!url) {
+    url = isLocal ? 'http://localhost:5000/api/v1' : 'https://transitops-backend-nkkb.onrender.com/api/v1';
+  }
+
+  url = url.trim().replace(/\/+$/, '');
   if (!url.endsWith('/api/v1')) {
     url += '/api/v1';
   }
@@ -39,10 +46,18 @@ axiosInstance.interceptors.response.use(
   },
   (err) => {
     const customError = {
-      message: err.response?.data?.message || 'A network error occurred. Please try again.',
+      message: err.response?.data?.message || (err.code === 'ECONNABORTED' ? 'Request timed out. Please try again.' : 'A network error occurred. Please try again.'),
       status: err.response?.status || 500,
       errors: err.response?.data?.errors || null
     };
+
+    console.error('[API Error Details]:', {
+      url: err.config?.url,
+      baseURL: err.config?.baseURL,
+      status: err.response?.status,
+      message: err.message,
+      data: err.response?.data
+    });
 
     // Auto-clean credentials on token expiration status codes
     if (customError.status === 401) {

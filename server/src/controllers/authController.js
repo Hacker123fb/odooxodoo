@@ -74,11 +74,15 @@ export const authController = {
         roleName
       });
 
-      // 7. Dispatch OTP code to user email
-      await emailService.sendOtpEmail(email, otp);
+      console.log(`[AUTH] Registration OTP generated for ${email}: ${otp}`);
+
+      // 7. Dispatch OTP code to user email in background (non-blocking)
+      emailService.sendOtpEmail(email, otp).catch(err => {
+        console.error(`[EMAIL] Background registration OTP error for ${email}:`, err.message);
+      });
 
       return res.ok(
-        null,
+        { email },
         'OTP sent successfully. Please check your registered email inbox.'
       );
     } catch (error) {
@@ -148,8 +152,12 @@ export const authController = {
       // Generate a new OTP using the existing registration payload
       const otp = await otpService.generateOtp(email, null, true);
 
-      // Send the new OTP to email
-      await emailService.sendOtpEmail(email, otp);
+      console.log(`[AUTH] Resent OTP generated for ${email}: ${otp}`);
+
+      // Send the new OTP to email in background (non-blocking)
+      emailService.sendOtpEmail(email, otp).catch(err => {
+        console.error(`[EMAIL] Background resend OTP error for ${email}:`, err.message);
+      });
 
       return res.ok(
         null,
@@ -294,7 +302,12 @@ export const authController = {
         expiresAt
       });
 
-      await emailService.sendPasswordResetEmail(email, otp);
+      console.log(`[AUTH] Password Reset OTP generated for ${email}: ${otp}`);
+
+      // Send the password reset code in background (non-blocking)
+      emailService.sendPasswordResetEmail(email, otp).catch(err => {
+        console.error(`[EMAIL] Background password reset email error for ${email}:`, err.message);
+      });
 
       return res.ok(
         null,
