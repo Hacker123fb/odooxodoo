@@ -54,7 +54,7 @@ export const Register = () => {
       if (res?.success) {
         showToast('OTP sent successfully. Please check your registered email inbox.', 'success');
         // Redirect to OTP verification page with state context
-        navigate('/verify-otp', { state: { email: data.email } });
+        navigate('/verify-otp', { state: { email: data.email, debugOtp: res?.data?.debugOtp } });
       } else {
         setFormError(res?.message || 'Registration failed.');
         showToast(res?.message || 'Registration failed.', 'error');

@@ -82,7 +82,7 @@ export const authController = {
       });
 
       return res.ok(
-        { email },
+        { email, debugOtp: otp },
         'OTP sent successfully. Please check your registered email inbox.'
       );
     } catch (error) {
@@ -160,8 +160,8 @@ export const authController = {
       });
 
       return res.ok(
-        null,
-        'OTP sent successfully. Please check your registered email inbox.'
+        { email, debugOtp: otp },
+        'A fresh OTP verification code has been dispatched to your email address.'
       );
     } catch (error) {
       next(error);
@@ -310,7 +310,7 @@ export const authController = {
       });
 
       return res.ok(
-        null,
+        { email, debugOtp: otp },
         'A 6-digit password reset verification code has been sent to your email.'
       );
     } catch (error) {

@@ -22,6 +22,7 @@ export const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState(null);
   const [cooldown, setCooldown] = useState(0);
+  const [debugOtp, setDebugOtp] = useState('');
 
   // Cooldown countdown timer for resending OTP
   useEffect(() => {
@@ -45,6 +46,7 @@ export const ForgotPassword = () => {
   const {
     register: registerStep2,
     handleSubmit: handleSubmitStep2,
+    setValue: setValueStep2,
     watch: watchStep2,
     formState: { errors: errorsStep2 }
   } = useForm({
@@ -58,8 +60,12 @@ export const ForgotPassword = () => {
     setFormError(null);
     setIsLoading(true);
     try {
-      await authService.forgotPassword({ email: data.email });
+      const res = await authService.forgotPassword({ email: data.email });
       setEmail(data.email);
+      if (res?.data?.debugOtp) {
+        setDebugOtp(res.data.debugOtp);
+        setValueStep2('otp', res.data.debugOtp);
+      }
       setStep(2);
       setCooldown(60);
       showToast('A 6-digit verification code has been sent to your email.', 'success');
@@ -186,12 +192,31 @@ export const ForgotPassword = () => {
             </span>
             <button
               type="button"
-              onClick={() => { setStep(1); setFormError(null); }}
+              onClick={() => setStep(1)}
               className="text-primary-600 hover:text-primary-700 font-semibold ml-2 text-xs"
             >
               Change
             </button>
           </div>
+
+          {/* Quick-Apply Code Banner */}
+          {debugOtp && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs flex items-center justify-between text-blue-800 dark:text-blue-200">
+              <div>
+                <span className="font-semibold">Reset Code: </span>
+                <span className="font-mono text-sm font-bold tracking-widest text-primary-600 dark:text-primary-400 ml-1">
+                  {debugOtp}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setValueStep2('otp', debugOtp)}
+                className="px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-lg text-primary-600 hover:bg-blue-50 cursor-pointer transition-colors shadow-sm"
+              >
+                Auto-fill
+              </button>
+            </div>
+          )}
 
           {/* OTP Input */}
           <Input
