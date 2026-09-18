@@ -74,7 +74,7 @@ export const authController = {
         roleName
       });
 
-      console.log(`[AUTH] Registration OTP generated for ${email}: ${otp}`);
+      console.log(`[AUTH] Registration OTP generated and dispatched for ${email}`);
 
       // 7. Dispatch OTP code to user email in background (non-blocking)
       emailService.sendOtpEmail(email, otp).catch(err => {
@@ -82,7 +82,7 @@ export const authController = {
       });
 
       return res.ok(
-        { email, debugOtp: otp },
+        { email },
         'OTP sent successfully. Please check your registered email inbox.'
       );
     } catch (error) {
@@ -152,7 +152,7 @@ export const authController = {
       // Generate a new OTP using the existing registration payload
       const otp = await otpService.generateOtp(email, null, true);
 
-      console.log(`[AUTH] Resent OTP generated for ${email}: ${otp}`);
+      console.log(`[AUTH] Resent OTP generated and dispatched for ${email}`);
 
       // Send the new OTP to email in background (non-blocking)
       emailService.sendOtpEmail(email, otp).catch(err => {
@@ -160,7 +160,7 @@ export const authController = {
       });
 
       return res.ok(
-        { email, debugOtp: otp },
+        null,
         'A fresh OTP verification code has been dispatched to your email address.'
       );
     } catch (error) {
@@ -302,7 +302,7 @@ export const authController = {
         expiresAt
       });
 
-      console.log(`[AUTH] Password Reset OTP generated for ${email}: ${otp}`);
+      console.log(`[AUTH] Password Reset OTP generated and dispatched for ${email}`);
 
       // Send the password reset code in background (non-blocking)
       emailService.sendPasswordResetEmail(email, otp).catch(err => {
@@ -310,7 +310,7 @@ export const authController = {
       });
 
       return res.ok(
-        { email, debugOtp: otp },
+        null,
         'A 6-digit password reset verification code has been sent to your email.'
       );
     } catch (error) {

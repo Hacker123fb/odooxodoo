@@ -23,17 +23,15 @@ export const VerifyOTP = () => {
   const [isResending, setIsResending] = useState(false);
   const [formError, setFormError] = useState(null);
   const [countdown, setCountdown] = useState(60);
-  const [debugOtp, setDebugOtp] = useState(location.state?.debugOtp || '');
 
   const {
     register,
     handleSubmit,
-    setValue,
     setError,
     formState: { errors }
   } = useForm({
     defaultValues: {
-      otp: location.state?.debugOtp || ''
+      otp: ''
     }
   });
 
@@ -90,10 +88,6 @@ export const VerifyOTP = () => {
     try {
       const res = await authService.resendOtp({ email });
       if (res?.success) {
-        if (res?.data?.debugOtp) {
-          setDebugOtp(res.data.debugOtp);
-          setValue('otp', res.data.debugOtp);
-        }
         showToast('OTP sent successfully. Please check your email.', 'success');
         setCountdown(60); // Reset timer
       } else {
@@ -128,25 +122,6 @@ export const VerifyOTP = () => {
           icon={FiMail}
           className="bg-slate-50 dark:bg-slate-800 opacity-70 cursor-not-allowed"
         />
-
-        {/* Verification Code Quick-Apply Banner */}
-        {debugOtp && (
-          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs flex items-center justify-between text-blue-800 dark:text-blue-200">
-            <div>
-              <span className="font-semibold">Security Code: </span>
-              <span className="font-mono text-sm font-bold tracking-widest text-primary-600 dark:text-primary-400 ml-1">
-                {debugOtp}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setValue('otp', debugOtp)}
-              className="px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-lg text-primary-600 hover:bg-blue-50 cursor-pointer transition-colors shadow-sm"
-            >
-              Auto-fill
-            </button>
-          </div>
-        )}
 
         {/* OTP Input - Exactly 6 digits */}
         <Input
