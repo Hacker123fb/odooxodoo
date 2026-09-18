@@ -98,6 +98,9 @@ const getTransporter = () => {
       user: user,
       pass: pass || ''
     } : undefined,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     tls: {
       rejectUnauthorized: false
     }
