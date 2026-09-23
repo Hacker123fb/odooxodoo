@@ -15,8 +15,8 @@ export const ProtectedLayout = () => {
   // loading spinner during auth checks
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-55 dark:bg-slate-950">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary-600 border-slate-200 dark:border-slate-800" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-100/70 dark:bg-[#0B0F17]">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 dark:border-slate-700 border-t-slate-900 dark:border-t-white" />
       </div>
     );
   }
@@ -30,7 +30,7 @@ export const ProtectedLayout = () => {
   const toggleCollapse = () => setIsCollapsed(prev => !prev);
 
   return (
-    <div className="min-h-screen w-full flex bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen w-full flex bg-slate-100/70 dark:bg-[#0B0F17]">
       
       {/* Mobile Drawer Overlay Backdrop */}
       {sidebarOpen && (

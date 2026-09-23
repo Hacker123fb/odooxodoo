@@ -4,45 +4,49 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200;
+    @apply bg-slate-100/70 text-slate-900 dark:bg-[#0B0F17] dark:text-slate-100 antialiased font-sans transition-colors duration-200;
   }
 }
 
-/* Modern styling enhancements */
+/* Enterprise Styling System */
 
-/* Custom Scrollbars */
+/* Minimalist Precision Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 dark:bg-slate-700 rounded-full hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors;
+  @apply bg-slate-300 dark:bg-slate-800 rounded hover:bg-slate-400 dark:hover:bg-slate-700 transition-colors;
 }
 
-/* Smooth active state transitions */
-.nav-transition {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+/* Enterprise Card Structure (Solid, Crisp, 1px Hairline Border, Zero Blur) */
+.enterprise-card {
+  @apply bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 rounded-xl shadow-[0_1px_3px_0_rgba(0,0,0,0.04)] transition-all;
 }
 
-/* Glassmorphism panel styling */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+.enterprise-card-elevated {
+  @apply bg-white dark:bg-[#161F30] border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm;
 }
 
-.dark .glass-panel {
-  background: rgba(30, 41, 59, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-/* Custom Input shadows */
+/* Sharp focus ring without glowing halos */
 .input-focus {
-  @apply focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500;
+  @apply focus:ring-1 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-slate-400 dark:focus:border-slate-400;
+}
+
+/* Subtle architectural grid background for auth pages (Subtle slate dots/lines, NO purple glow) */
+.auth-grid-bg {
+  background-color: #0b0f17;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.auth-grid-bg-light {
+  background-color: #f8fafc;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
 }

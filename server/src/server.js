@@ -5,22 +5,33 @@ import { dbInit } from './config/dbInit.js';
 
 /**
  * Keep-alive self-ping worker
- * Pings the health endpoint every 14 minutes to prevent Render free-tier idle spin-down.
+ * Pings the lightweight health endpoint every 5 minutes to keep the backend permanently awake.
  */
 const startKeepAlive = () => {
-  const targetUrl = process.env.PING_URL || 
-    (process.env.RENDER_EXTERNAL_URL ? `${process.env.RENDER_EXTERNAL_URL}/api/v1/health` : 'https://transitops-backend-nkkb.onrender.com/api/v1/health');
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://transitops-backend-nkkb.onrender.com';
+  const targetUrl = process.env.PING_URL || `${baseUrl}/api/v1/health/ping`;
   
-  const INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
+  const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-  console.log(`[KEEPALIVE] Keep-alive worker registered. Target: ${targetUrl} (every 14m)`);
+  console.log(`[KEEPALIVE] Keep-alive self-ping worker active. Target: ${targetUrl} (every 5m)`);
 
+  // Execute initial ping after 15 seconds to prime the route
+  setTimeout(async () => {
+    try {
+      const res = await fetch(targetUrl);
+      console.log(`[KEEPALIVE] Initial keep-alive ping: HTTP ${res.status}`);
+    } catch (err) {
+      console.warn(`[KEEPALIVE] Initial keep-alive ping note: ${err.message}`);
+    }
+  }, 15000);
+
+  // Recurring 5-minute ping interval
   setInterval(async () => {
     try {
       const res = await fetch(targetUrl);
-      console.log(`[KEEPALIVE] Keep-alive ping sent to ${targetUrl} - HTTP ${res.status}`);
+      console.log(`[KEEPALIVE] 5-minute keep-alive ping to ${targetUrl} - HTTP ${res.status}`);
     } catch (err) {
-      console.warn(`[KEEPALIVE] Keep-alive ping warning: ${err.message}`);
+      console.warn(`[KEEPALIVE] 5-minute keep-alive ping warning: ${err.message}`);
     }
   }, INTERVAL_MS);
 };

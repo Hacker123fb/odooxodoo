@@ -8,6 +8,7 @@ import { otpService } from '../services/otp.service.js';
 import { emailService } from '../services/email.service.js';
 import { passwordResetOtpModel } from '../models/passwordResetOtp.model.js';
 import pool from '../config/db.js';
+import { recordFailedLogin, recordSuccessfulLogin } from '../middleware/ipBlocker.js';
 
 /**
  * Generate JWT Token
@@ -179,6 +180,7 @@ export const authController = {
       const user = await userModel.findByEmail(email);
 
       if (!user) {
+        recordFailedLogin(req.ip);
         return next(
           new AppError(
             'Invalid email or password.',
@@ -204,6 +206,7 @@ export const authController = {
       );
 
       if (!passwordMatched) {
+        recordFailedLogin(req.ip);
         return next(
           new AppError(
             'Invalid email or password.',
@@ -217,6 +220,9 @@ export const authController = {
 
       // Generate JWT
       const token = signToken(user.id, user.role_name);
+
+      // Clear any previous failed attempts on success
+      recordSuccessfulLogin(req.ip);
 
       return res.ok(
         {

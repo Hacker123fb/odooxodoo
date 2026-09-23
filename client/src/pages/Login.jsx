@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiMail, FiLock } from 'react-icons/fi';
+import { FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import Input from '../components/common/Input.jsx';
@@ -9,7 +9,8 @@ import Button from '../components/common/Button.jsx';
 import FormWrapper from '../components/common/FormWrapper.jsx';
 
 /**
- * Centered, Glassmorphic Login portal for TransitOps
+ * Executive Corporate Login Portal for TransitOps
+ * Professional, clean enterprise aesthetics (No blue/purple AI gradients)
  */
 export const Login = () => {
   const { login, isLoading } = useAuth();
@@ -34,18 +35,18 @@ export const Login = () => {
     const result = await login(data.email, data.password);
     
     if (result.success) {
-      showToast('Welcome back to TransitOps!', 'success');
+      showToast('Authentication verified. Welcome to TransitOps.', 'success');
       navigate('/dashboard');
     } else {
       if (result.errors && Array.isArray(result.errors)) {
         result.errors.forEach(err => {
           setError(err.field, { type: 'server', message: err.message });
         });
-        setFormError('Validation failed. Please review input parameters.');
-        showToast('Please correct the highlighted fields.', 'error');
+        setFormError('Validation failed. Please review the highlighted fields.');
       } else {
-        setFormError(result.error);
-        showToast(result.error, 'error');
+        const errorMsg = result.error || 'Authentication failed. Please verify your credentials.';
+        setFormError(errorMsg);
+        showToast(errorMsg, 'error');
       }
     }
   };
@@ -62,42 +63,45 @@ export const Login = () => {
   };
 
   return (
-    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 p-8 md:p-10 rounded-2xl shadow-xl w-full max-w-[450px]">
+    <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full transition-all">
       
-      {/* Brand Header */}
-      <div className="mb-8 text-center">
-        <div className="inline-flex items-center gap-2 mb-2">
-          <div className="h-9 w-9 bg-primary-600 rounded-lg flex items-center justify-center font-bold text-white text-base shadow-md">
-            TO
-          </div>
-          <span className="font-extrabold text-2xl text-slate-850 dark:text-slate-100 tracking-wide font-sans">
-            Transit<span className="text-primary-600">Ops</span>
+      {/* Executive Portal Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Operations Console
+          </span>
+          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+            v2.4 Production
           </span>
         </div>
-        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-          Smart Transport Operations Platform
+        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-sans">
+          Sign In
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Enter your authorized staff credentials to continue
         </p>
       </div>
 
       <FormWrapper onSubmit={handleSubmit(onSubmit, onInvalid)} error={formError}>
-        {/* Email Field */}
+        {/* Email Address */}
         <Input
           id="email"
           label="Email Address *"
           type="email"
-          placeholder="name@transitops.com"
+          placeholder="officer@transitops.com"
           icon={FiMail}
           error={errors.email}
           {...register('email', {
             required: 'Email address is required',
             pattern: {
               value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-              message: 'Invalid email address'
+              message: 'Invalid email address format'
             }
           })}
         />
 
-        {/* Password Field */}
+        {/* Password */}
         <Input
           id="password"
           label="Password *"
@@ -109,46 +113,47 @@ export const Login = () => {
             required: 'Password is required',
             minLength: {
               value: 6,
-              message: 'Password must be at least 6 characters'
+              message: 'Password must contain at least 6 characters'
             }
           })}
         />
 
-        {/* Remember me & Forgot password row */}
-        <div className="flex items-center justify-between text-xs mt-1">
+        {/* Remember me & Forgot Password */}
+        <div className="flex items-center justify-between text-xs pt-1">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
-              className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-primary-600 focus:ring-primary-500/20"
+              className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-1 focus:ring-slate-900"
             />
-            <span className="text-slate-500 dark:text-slate-400">Remember Me</span>
+            <span className="text-slate-600 dark:text-slate-400 font-medium">Keep me signed in</span>
           </label>
           <Link
             to="/forgot-password"
-            className="text-primary-600 hover:text-primary-750 dark:text-primary-400 font-semibold hover:underline"
+            className="text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white font-semibold underline underline-offset-2 transition-colors"
           >
-            Forgot Password?
+            Forgot password?
           </Link>
         </div>
 
-        {/* Stacked equal-width buttons */}
-        <div className="flex flex-col gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-6">
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80 mt-5">
           <Button
             type="submit"
             variant="primary"
             className="w-full"
             isLoading={isLoading}
           >
-            Login
+            Sign In to Dashboard
           </Button>
+
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             className="w-full"
             onClick={() => navigate('/register')}
             disabled={isLoading}
           >
-            Register
+            Register Staff Account
           </Button>
         </div>
       </FormWrapper>

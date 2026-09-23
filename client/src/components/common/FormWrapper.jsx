@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiAlertCircle } from 'react-icons/fi';
 
 /**
  * Reusable Form Layout Wrapper that includes headers and error banners
@@ -29,8 +30,9 @@ export const FormWrapper = ({
       )}
 
       {error && (
-        <div className="p-3 text-xs font-semibold bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-450 border border-rose-100 dark:border-rose-900/40 rounded-lg">
-          {error}
+        <div className="flex items-start gap-2.5 p-3.5 text-xs font-medium bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 rounded-lg">
+          <FiAlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 mt-0.5 shrink-0" />
+          <div className="flex-1 leading-relaxed">{error}</div>
         </div>
       )}
 

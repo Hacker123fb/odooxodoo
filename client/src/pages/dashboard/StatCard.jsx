@@ -21,37 +21,36 @@ export const StatCard = ({
   changeText,
   isPositive = true,
   progress,
-  progressColor = 'bg-primary-600',
-  cardColor = 'border-slate-200 dark:border-slate-800',
+  progressColor = 'bg-slate-900 dark:bg-white',
+  cardColor = 'border-slate-200/90 dark:border-slate-800',
   loading = false
 }) => {
   if (loading) {
     return (
-      <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm animate-pulse flex flex-col gap-3">
+      <div className="p-4 bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 rounded-xl shadow-xs animate-pulse flex flex-col gap-3">
         <div className="flex justify-between items-center">
-          <div className="h-3 w-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
-          <div className="h-8 w-8 bg-slate-200 dark:bg-slate-800 rounded-lg"></div>
+          <div className="h-3 w-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
+          <div className="h-7 w-7 bg-slate-200 dark:bg-slate-800 rounded-md"></div>
         </div>
-        <div className="h-6 w-16 bg-slate-200 dark:bg-slate-800 rounded"></div>
-        <div className="h-2 w-full bg-slate-100 dark:bg-slate-850 rounded"></div>
+        <div className="h-5 w-14 bg-slate-200 dark:bg-slate-800 rounded"></div>
       </div>
     );
   }
 
   return (
-    <div className={`p-5 bg-white dark:bg-slate-900 border ${cardColor} rounded-2xl shadow-sm hover:shadow-md transition-all duration-205 flex flex-col justify-between relative overflow-hidden group`}>
+    <div className={`p-4 sm:p-5 bg-white dark:bg-[#111827] border ${cardColor} rounded-xl shadow-xs hover:border-slate-400 dark:hover:border-slate-700 transition-all flex flex-col justify-between relative overflow-hidden group`}>
       <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1 z-10">
-          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-sans">
+        <div className="flex flex-col gap-0.5 z-10">
+          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-sans">
             {title}
           </span>
-          <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 leading-none mt-1">
+          <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-none mt-1">
             {value}
           </span>
         </div>
         {Icon && (
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 text-slate-650 dark:text-slate-350 rounded-xl group-hover:bg-primary-50 dark:group-hover:bg-primary-950/20 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors shrink-0">
-            <Icon className="w-5 h-5" />
+          <div className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-colors shrink-0">
+            <Icon className="w-4 h-4" />
           </div>
         )}
       </div>

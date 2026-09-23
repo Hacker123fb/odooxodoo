@@ -40,12 +40,12 @@ export const Input = forwardRef(({
           type={type}
           ref={ref}
           placeholder={placeholder}
-          className={`w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border rounded-lg outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 ${
+          className={`w-full py-2 px-3 text-sm bg-white dark:bg-[#0E1422] border rounded-lg outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 ${
             Icon ? 'pl-10' : ''
           } ${
             error
-              ? 'border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-              : 'border-slate-300 dark:border-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20'
+              ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+              : 'border-slate-300 dark:border-slate-700 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 dark:focus:border-slate-300 dark:focus:ring-slate-300'
           }`}
           {...props}
         />

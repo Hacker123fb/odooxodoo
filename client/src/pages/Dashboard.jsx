@@ -72,29 +72,37 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner and Refresh Controllers */}
-      <div className="bg-gradient-to-r from-primary-850 to-primary-600 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Executive Fleet Operations Command Bar */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 rounded-xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold font-sans">Fleet Operations Control</h3>
-          <p className="text-xs text-primary-200 mt-1 max-w-lg">
-            Real-time operations tracking panel. View live diagnostics, active transport schedules, financial expenditure trends, and driver statuses.
+          <div className="flex items-center gap-2.5 mb-1">
+            <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white font-sans">
+              Fleet Operations Command
+            </h3>
+            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Telematics
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
+            Real-time fleet monitoring console. Track vehicle allocations, dispatch schedules, operational expenditure, and driver safety compliance.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
           {lastUpdated && (
-            <span className="text-[10px] text-primary-200 bg-primary-950/20 px-3 py-1.5 rounded-lg border border-primary-800/40 select-none font-medium">
-              Updated: {lastUpdated.toLocaleTimeString()}
+            <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 select-none">
+              Sync: {lastUpdated.toLocaleTimeString()}
             </span>
           )}
 
           <button
             onClick={handleManualRefresh}
             disabled={loading || refreshing}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-slate-850 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 text-[11px] font-bold font-sans rounded-lg shadow-sm transition-all duration-150 shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-950 font-semibold text-xs rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
           >
             <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
+            {refreshing ? 'Syncing...' : 'Refresh'}
           </button>
         </div>
       </div>

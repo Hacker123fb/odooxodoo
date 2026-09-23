@@ -39,8 +39,8 @@ const RoleRoute = ({ allowedRoles, children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary-600" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-100/70 dark:bg-[#0B0F17]">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 dark:border-slate-700 border-t-slate-900 dark:border-t-white" />
       </div>
     );
   }

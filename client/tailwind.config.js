@@ -8,26 +8,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        // High-premium logistics color theme (Deep blues and Slate tones)
+        // Executive Corporate Fleet Palette (Professional Slate & Steel Navy)
         primary: {
-          50: '#f0f5ff',
-          100: '#e5edff',
-          200: '#cddbff',
-          300: '#a4bdff',
-          400: '#7395ff',
-          500: '#3b66ff',
-          600: '#2544eb',
-          700: '#1d32d7',
-          800: '#1828ae',
-          900: '#1a2789',
-          950: '#101653',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          850: '#172033',
+          900: '#0f172a',
+          950: '#090e1a',
         },
-        darkBg: '#0f172a', // Slate 900
-        darkCard: '#1e293b', // Slate 800
-        darkBorder: '#334155' // Slate 700
+        brand: {
+          50: '#f0f7ff',
+          100: '#e0effe',
+          200: '#bae0fd',
+          500: '#0284c7',
+          600: '#0369a1',
+          700: '#075985',
+          800: '#0c4a6e',
+          900: '#082f49',
+        },
+        darkBg: '#0b0f17',     // Solid matte obsidian
+        darkCard: '#111827',   // Slate-charcoal container
+        darkBorder: '#1f2937', // 1px hairline border
+        darkElevated: '#1a2333'
       },
       fontFamily: {
-        sans: ['Inter', 'Outfit', 'sans-serif']
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
       }
     }
   },

@@ -114,24 +114,19 @@ export const ForgotPassword = () => {
   };
 
   return (
-    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 p-8 md:p-10 rounded-2xl shadow-xl w-full max-w-[460px]">
-      {/* Brand Header */}
-      <div className="mb-6 text-center">
-        <div className="inline-flex items-center gap-2 mb-2">
-          <div className="h-9 w-9 bg-primary-600 rounded-lg flex items-center justify-center font-bold text-white text-base shadow-md">
-            TO
-          </div>
-          <span className="font-extrabold text-2xl text-slate-850 dark:text-slate-100 tracking-wide font-sans">
-            Transit<span className="text-primary-600">Ops</span>
-          </span>
-        </div>
-        <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-          {step === 1 ? 'Forgot Password?' : 'Reset Your Password'}
+    <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full max-w-[460px]">
+      {/* Portal Header */}
+      <div className="mb-6">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Account Security
+        </span>
+        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-sans mt-0.5">
+          {step === 1 ? 'Reset Password' : 'Set New Password'}
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           {step === 1
-            ? 'Enter your registered email address to receive a 6-digit verification code.'
-            : `Enter the verification code sent to ${email}`}
+            ? 'Enter your registered email address to receive a secure recovery code'
+            : `Enter the 6-digit recovery code dispatched to ${email}`}
         </p>
       </div>
 
@@ -165,7 +160,7 @@ export const ForgotPassword = () => {
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               className="w-full"
               onClick={() => navigate('/login')}
               disabled={isLoading}
@@ -254,10 +249,10 @@ export const ForgotPassword = () => {
               type="button"
               onClick={handleResendCode}
               disabled={cooldown > 0 || isLoading}
-              className={`font-semibold ${
+              className={`font-semibold underline underline-offset-2 ${
                 cooldown > 0
                   ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed'
-                  : 'text-primary-600 hover:text-primary-700 hover:underline'
+                  : 'text-slate-900 hover:text-black dark:text-white dark:hover:text-slate-200'
               }`}
             >
               {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Code'}
@@ -276,7 +271,7 @@ export const ForgotPassword = () => {
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               className="w-full"
               onClick={() => navigate('/login')}
               disabled={isLoading}

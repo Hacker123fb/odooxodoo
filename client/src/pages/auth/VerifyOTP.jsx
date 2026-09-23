@@ -101,13 +101,16 @@ export const VerifyOTP = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-2xl shadow-xl w-full">
-      <div className="mb-6 text-center">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 font-sans tracking-wide">
-          Verify Email
+    <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full">
+      <div className="mb-6">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Account Activation
+        </span>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-sans mt-0.5">
+          Verify Security Code
         </h2>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-          Provide the verification code sent to your email
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Enter the 6-digit verification code sent to your registered email
         </p>
       </div>
 
@@ -120,7 +123,7 @@ export const VerifyOTP = () => {
           value={email}
           disabled={true}
           icon={FiMail}
-          className="bg-slate-50 dark:bg-slate-800 opacity-70 cursor-not-allowed"
+          className="opacity-80"
         />
 
         {/* OTP Input - Exactly 6 digits */}
@@ -141,13 +144,13 @@ export const VerifyOTP = () => {
         />
 
         {/* Verification and Timer row */}
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-450 mt-1 mb-2">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-1 mb-2">
           <div className="flex items-center gap-1.5 font-medium">
             <FiClock className="w-3.5 h-3.5 text-slate-400" />
             {countdown > 0 ? (
-              <span>Resend available in <strong className="text-primary-600 font-bold">{countdown}s</strong></span>
+              <span>Resend available in <strong className="text-slate-900 dark:text-white font-bold">{countdown}s</strong></span>
             ) : (
-              <span className="text-emerald-600 font-semibold">Resend available now</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Resend available now</span>
             )}
           </div>
 
@@ -155,10 +158,10 @@ export const VerifyOTP = () => {
             type="button"
             disabled={countdown > 0 || isResending}
             onClick={handleResend}
-            className={`font-extrabold underline focus:outline-none transition-colors ${
+            className={`font-semibold underline underline-offset-2 focus:outline-none transition-colors ${
               countdown > 0
-                ? 'text-slate-350 cursor-not-allowed dark:text-slate-600'
-                : 'text-primary-600 hover:text-primary-750 hover:underline cursor-pointer'
+                ? 'text-slate-400 cursor-not-allowed dark:text-slate-600'
+                : 'text-slate-900 hover:text-black dark:text-white dark:hover:text-slate-200 cursor-pointer'
             }`}
           >
             {isResending ? 'Resending...' : 'Resend OTP'}
@@ -171,16 +174,16 @@ export const VerifyOTP = () => {
           className="w-full"
           isLoading={isVerifying}
         >
-          Verify &amp; Create Account
+          Verify &amp; Activate Account
         </Button>
 
         <div className="text-center mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
           <button
             type="button"
             onClick={() => navigate('/register')}
-            className="text-xs text-slate-500 hover:text-slate-700 underline focus:outline-none"
+            className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white underline underline-offset-2 focus:outline-none"
           >
-            Back to registration
+            Return to registration
           </button>
         </div>
 

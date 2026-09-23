@@ -156,17 +156,17 @@ export const Navbar = ({ toggleSidebar }) => {
 
           {/* Notifications Dropdown Panel */}
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden py-1 max-h-[420px] flex flex-col">
+            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 rounded-xl shadow-lg z-50 overflow-hidden py-1 max-h-[420px] flex flex-col">
               
               {/* Header */}
-              <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-850 flex items-center justify-between">
-                <span className="text-xs font-black text-slate-800 dark:text-slate-200 tracking-wide uppercase">
+              <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-900 dark:text-slate-100 tracking-wider uppercase">
                   Alerts &amp; Reminders
                 </span>
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-[9px] font-bold text-primary-500 hover:text-primary-700 underline font-sans"
+                    className="text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:underline font-sans cursor-pointer"
                   >
                     Mark all as read
                   </button>

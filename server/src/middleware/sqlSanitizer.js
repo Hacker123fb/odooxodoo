@@ -1,5 +1,6 @@
 import { ApiResponse } from '../utils/apiResponse.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
+import { recordAttackStrike } from './ipBlocker.js';
 
 /**
  * Common SQL Injection payload signatures
@@ -72,6 +73,7 @@ export const sqlSanitizer = (req, res, next) => {
   for (const { name, data } of sources) {
     if (data && containsSqlInjection(data)) {
       console.warn(`[SECURITY] SQL Injection attempt detected and blocked in request ${name}:`, req.ip);
+      recordAttackStrike(req.ip, `SQL_INJECTION_${name.toUpperCase()}`);
       return ApiResponse.error(
         res,
         'Malicious input detected. Your request was blocked for security reasons.',

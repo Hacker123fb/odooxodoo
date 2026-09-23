@@ -5,6 +5,26 @@ import { emailService } from '../services/email.service.js';
 
 const router = Router();
 
+let pingCount = 0;
+const serverStartTime = Date.now();
+
+/**
+ * @route GET /api/v1/health/ping
+ * @desc Ultra-lightweight keep-alive ping endpoint (responds in <1ms without DB latency)
+ */
+router.get(['/health/ping', '/ping'], (req, res) => {
+  pingCount += 1;
+  return res.status(200).json({
+    success: true,
+    status: 'alive',
+    message: 'TransitOps Backend Active',
+    uptimeSeconds: Math.floor(process.uptime()),
+    pingCount,
+    serverStartTime: new Date(serverStartTime).toISOString(),
+    timestamp: new Date().toISOString()
+  });
+});
+
 /**
  * @route GET /api/v1/health
  * @desc Get application health status and SMTP configuration diagnostic
