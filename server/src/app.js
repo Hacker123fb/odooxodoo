@@ -5,15 +5,24 @@ import responseFormatter from './middleware/responseFormatter.js';
 import apiRouter from './routes/index.js';
 import notFoundHandler from './middleware/notFoundHandler.js';
 import errorHandler from './middleware/errorHandler.js';
+import { globalLimiter } from './middleware/rateLimiter.js';
+import { sqlSanitizer } from './middleware/sqlSanitizer.js';
 
 const app = express();
+
+// Trust reverse proxy (Render, Cloudflare, etc.) for correct client IP detection in rate limiting
+app.set('trust proxy', 1);
 
 // 1. Standard third-party middleware
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 2. Custom core middleware
+// 2. Security & Rate Limiting middleware
+app.use(globalLimiter);
+app.use(sqlSanitizer);
+
+// 3. Custom core middleware
 app.use(requestLogger);
 app.use(responseFormatter);
 

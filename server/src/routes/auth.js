@@ -10,44 +10,49 @@ import {
 } from '../validators/authValidators.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { 
+  loginLimiter, 
+  otpRequestLimiter, 
+  otpVerifyLimiter 
+} from '../middleware/rateLimiter.js';
 
 const router = Router();
 
 /**
  * @route POST /api/v1/auth/register
- * @desc Validate user fields and send OTP to mail
+ * @desc Validate user fields and send OTP to mail (Rate limited: 3 / 5m)
  */
-router.post('/register', validateRegister, asyncHandler(authController.register));
+router.post('/register', otpRequestLimiter, validateRegister, asyncHandler(authController.register));
 
 /**
  * @route POST /api/v1/auth/verify-otp
- * @desc Verify OTP code and provision the user account
+ * @desc Verify OTP code and provision the user account (Rate limited: 5 / 10m)
  */
-router.post('/verify-otp', validateVerifyOtp, asyncHandler(authController.verifyOtp));
+router.post('/verify-otp', otpVerifyLimiter, validateVerifyOtp, asyncHandler(authController.verifyOtp));
 
 /**
  * @route POST /api/v1/auth/resend-otp
- * @desc Invalidate previous OTP and dispatch a new one
+ * @desc Invalidate previous OTP and dispatch a new one (Rate limited: 3 / 5m)
  */
-router.post('/resend-otp', validateResendOtp, asyncHandler(authController.resendOtp));
+router.post('/resend-otp', otpRequestLimiter, validateResendOtp, asyncHandler(authController.resendOtp));
 
 /**
  * @route POST /api/v1/auth/forgot-password
- * @desc Dispatch 6-digit OTP code to email for password recovery
+ * @desc Dispatch 6-digit OTP code to email for password recovery (Rate limited: 3 / 5m)
  */
-router.post('/forgot-password', validateForgotPassword, asyncHandler(authController.forgotPassword));
+router.post('/forgot-password', otpRequestLimiter, validateForgotPassword, asyncHandler(authController.forgotPassword));
 
 /**
  * @route POST /api/v1/auth/reset-password
- * @desc Verify OTP and update user password
+ * @desc Verify OTP and update user password (Rate limited: 5 / 10m)
  */
-router.post('/reset-password', validateResetPassword, asyncHandler(authController.resetPassword));
+router.post('/reset-password', otpVerifyLimiter, validateResetPassword, asyncHandler(authController.resetPassword));
 
 /**
  * @route POST /api/v1/auth/login
- * @desc Log into the portal and issue a JWT
+ * @desc Log into the portal and issue a JWT (Rate limited: 5 failed attempts / 15m)
  */
-router.post('/login', validateLogin, asyncHandler(authController.login));
+router.post('/login', loginLimiter, validateLogin, asyncHandler(authController.login));
 
 /**
  * @route GET /api/v1/auth/me

@@ -32,15 +32,27 @@ export const errorHandler = (err, req, res, next) => {
     return ApiResponse.error(res, err.message, err.errors, err.statusCode);
   }
 
-  // 2. MySQL specific driver errors
+  // 2. MySQL connection and network errors
+  const isDbNetworkError = ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'HANDSHAKE_SSL_ERROR'].includes(err.code);
+  if (isDbNetworkError) {
+    console.error(`[DATABASE] Service unreachable (${err.code}):`, err.message);
+    return ApiResponse.error(
+      res,
+      'Database service is currently unreachable. Please check that your MySQL database is powered on and accessible in Aiven.',
+      null,
+      HttpStatusCodes.SERVICE_UNAVAILABLE
+    );
+  }
+
+  // 3. MySQL specific driver errors
   if (err.code && err.code.startsWith('ER_')) {
     return ApiResponse.error(res, 'Database operation failed', null, HttpStatusCodes.BAD_REQUEST);
   }
 
-  // 3. Generic unhandled error fallback
+  // 4. Generic unhandled error fallback
   return ApiResponse.error(
     res,
-    Constants.MESSAGES.SERVER_ERROR,
+    err.message || Constants.MESSAGES.SERVER_ERROR,
     null,
     HttpStatusCodes.INTERNAL_SERVER_ERROR
   );
