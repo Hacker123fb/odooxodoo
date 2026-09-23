@@ -64,6 +64,10 @@ export const ForgotPassword = () => {
       setCooldown(60);
       showToast('A 6-digit verification code has been sent to your email.', 'success');
     } catch (err) {
+      if (err.status === 429 || err.status === 403) {
+        navigate('/blocked');
+        return;
+      }
       const msg = err.message || 'Failed to send reset code. Please check the email and try again.';
       setFormError(msg);
       showToast(msg, 'error');
@@ -87,6 +91,10 @@ export const ForgotPassword = () => {
         navigate('/login');
       }, 1500);
     } catch (err) {
+      if (err.status === 429 || err.status === 403) {
+        navigate('/blocked');
+        return;
+      }
       const msg = err.message || 'Failed to reset password. Please check your OTP code.';
       setFormError(msg);
       showToast(msg, 'error');

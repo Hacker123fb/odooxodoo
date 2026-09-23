@@ -38,6 +38,11 @@ export const Login = () => {
       showToast('Authentication verified. Welcome to TransitOps.', 'success');
       navigate('/dashboard');
     } else {
+      if (result.status === 429 || result.status === 403) {
+        navigate('/blocked');
+        return;
+      }
+
       if (result.errors && Array.isArray(result.errors)) {
         result.errors.forEach(err => {
           setError(err.field, { type: 'server', message: err.message });

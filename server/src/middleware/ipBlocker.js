@@ -102,6 +102,29 @@ export const recordFailedLogin = (ip) => {
 };
 
 /**
+ * Record a failed OTP verification attempt
+ */
+export const recordFailedOtp = (ip) => {
+  if (!ip) return;
+  const now = Date.now();
+  const entry = failedLoginsMap.get(ip) || { count: 0, windowStart: now };
+
+  if (now - entry.windowStart > CONFIG.FAILED_WINDOW_MS) {
+    entry.count = 1;
+    entry.windowStart = now;
+  } else {
+    entry.count += 1;
+  }
+
+  failedLoginsMap.set(ip, entry);
+  console.warn(`[SECURITY] Failed OTP attempt recorded for IP ${ip} (${entry.count}/${CONFIG.MAX_FAILED_LOGINS})`);
+
+  if (entry.count >= CONFIG.MAX_FAILED_LOGINS) {
+    blockIp(ip, 'BRUTE_FORCE_FAILED_OTP', CONFIG.LOGIN_BLOCK_MS);
+  }
+};
+
+/**
  * Record an exploit strike (e.g. SQL injection payload)
  */
 export const recordAttackStrike = (ip, reason = 'EXPLOIT_PAYLOAD') => {

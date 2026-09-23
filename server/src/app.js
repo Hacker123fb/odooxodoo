@@ -11,8 +11,20 @@ import { ipBlocker } from './middleware/ipBlocker.js';
 
 const app = express();
 
+// Disable Express server fingerprinting
+app.disable('x-powered-by');
+
 // Trust reverse proxy (Render, Cloudflare, etc.) for correct client IP detection in rate limiting
 app.set('trust proxy', 1);
+
+// Strict HTTP security headers (Anti-Clickjacking, Anti-MIME sniffing, XSS Defense)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // 1. IP Blocker & Defense (inspects before any route execution)
 app.use(ipBlocker);

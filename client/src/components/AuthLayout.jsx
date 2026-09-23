@@ -67,8 +67,6 @@ export const AuthLayout = () => {
             AES-256 Encrypted Session
           </span>
           <span className="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
-          <span>Brute Force Threat Protected</span>
-          <span className="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
           <span>© 2026 TransitOps Platform. All rights reserved.</span>
         </div>
       </footer>

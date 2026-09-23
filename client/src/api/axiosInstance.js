@@ -68,6 +68,22 @@ axiosInstance.interceptors.response.use(
       }
     }
 
+    // Auto-redirect to custom /blocked page on rate limit (429) or IP lockout (403)
+    if (customError.status === 429 || (customError.status === 403 && err.response?.data?.code === 'IP_BLOCKED')) {
+      const lockoutData = {
+        message: err.response?.data?.message || 'You have tried too many times. Please try again after some time.',
+        remainingMinutes: err.response?.data?.remainingMinutes || 15,
+        reason: err.response?.data?.reason || 'TOO_MANY_REQUESTS',
+        timestamp: Date.now()
+      };
+      try {
+        sessionStorage.setItem('lockout_info', JSON.stringify(lockoutData));
+      } catch (e) {}
+      if (typeof window !== 'undefined' && window.location.pathname !== '/blocked') {
+        window.location.href = '/blocked';
+      }
+    }
+
     return Promise.reject(customError);
   }
 );

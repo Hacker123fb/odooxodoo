@@ -66,6 +66,11 @@ export const VerifyOTP = () => {
         showToast(res?.message || 'Verification failed.', 'error');
       }
     } catch (err) {
+      if (err.status === 429 || err.status === 403) {
+        navigate('/blocked');
+        return;
+      }
+
       if (err.errors && Array.isArray(err.errors)) {
         err.errors.forEach(e => {
           setError(e.field, { type: 'server', message: e.message });

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
@@ -8,7 +9,7 @@ import { otpService } from '../services/otp.service.js';
 import { emailService } from '../services/email.service.js';
 import { passwordResetOtpModel } from '../models/passwordResetOtp.model.js';
 import pool from '../config/db.js';
-import { recordFailedLogin, recordSuccessfulLogin } from '../middleware/ipBlocker.js';
+import { recordFailedLogin, recordSuccessfulLogin, recordFailedOtp } from '../middleware/ipBlocker.js';
 
 /**
  * Generate JWT Token
@@ -139,6 +140,9 @@ export const authController = {
         'Registration completed successfully.'
       );
     } catch (error) {
+      if (error.statusCode === HttpStatusCodes.BAD_REQUEST || error.statusCode === HttpStatusCodes.FORBIDDEN) {
+        recordFailedOtp(req.ip);
+      }
       next(error);
     }
   },
@@ -183,7 +187,7 @@ export const authController = {
         recordFailedLogin(req.ip);
         return next(
           new AppError(
-            'Invalid email or password.',
+            'No account found with this email address.',
             HttpStatusCodes.UNAUTHORIZED
           )
         );
@@ -209,7 +213,7 @@ export const authController = {
         recordFailedLogin(req.ip);
         return next(
           new AppError(
-            'Invalid email or password.',
+            'Wrong password. Please check your password and try again.',
             HttpStatusCodes.UNAUTHORIZED
           )
         );
@@ -298,7 +302,7 @@ export const authController = {
         }
       }
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = crypto.randomInt(100000, 1000000).toString();
       const otpHash = await bcrypt.hash(otp, 10);
       const expiresAt = new Date(new Date().getTime() + 10 * 60 * 1000);
 
@@ -347,6 +351,7 @@ export const authController = {
 
       const isMatch = await bcrypt.compare(otp, record.otp_hash);
       if (!isMatch) {
+        recordFailedOtp(req.ip);
         await passwordResetOtpModel.incrementAttempts(email);
         const remaining = 5 - (record.attempts + 1);
         if (remaining <= 0) {

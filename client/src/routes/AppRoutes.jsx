@@ -9,6 +9,7 @@ import Login from '../pages/Login.jsx';
 import Register from '../pages/auth/Register.jsx';
 import VerifyOTP from '../pages/auth/VerifyOTP.jsx';
 import ForgotPassword from '../pages/auth/ForgotPassword.jsx';
+import Blocked from '../pages/Blocked.jsx';
 import Dashboard from '../pages/Dashboard.jsx';
 import VehicleList from '../pages/vehicles/VehicleList.jsx';
 import VehicleForm from '../pages/vehicles/VehicleForm.jsx';
@@ -63,6 +64,9 @@ const RoleRoute = ({ allowedRoles, children }) => {
 export const AppRoutes = () => {
   return (
     <Routes>
+      {/* Security Cooldown / Blocked page */}
+      <Route path="/blocked" element={<Blocked />} />
+
       {/* Auth/Public routes wrapper */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />

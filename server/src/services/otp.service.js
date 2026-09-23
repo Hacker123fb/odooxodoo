@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { otpModel } from '../models/otp.model.js';
 import { AppError } from '../utils/customError.js';
@@ -20,8 +21,8 @@ export const otpService = {
       }
     }
 
-    // Generate secure 6-digit OTP (100000 - 999999)
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate cryptographically secure 6-digit OTP (100000 - 999999)
+    const otp = crypto.randomInt(100000, 1000000).toString();
     const otpHash = await bcrypt.hash(otp, 10);
     
     // Set 3 minutes expiry
