@@ -11,24 +11,20 @@ import { passwordResetOtpModel } from '../models/passwordResetOtp.model.js';
 import pool from '../config/db.js';
 import { recordFailedLogin, recordSuccessfulLogin, recordFailedOtp } from '../middleware/ipBlocker.js';
 
-/**
- * Generate JWT Token
- */
+// Fast memory cache for password reset OTPs to achieve sub-millisecond response
+const passwordResetMemoryCache = new Map();
+
+// Generate JWT Token
 const signToken = (userId, roleName) => {
   return jwt.sign(
-    {
-      id: userId,
-      role: roleName
-    },
+    { id: userId, role: roleName },
     env.jwt.secret,
-    {
-      expiresIn: env.jwt.expiresIn
-    }
+    { expiresIn: env.jwt.expiresIn }
   );
 };
 
 /**
- * Authentication Controller with OTP Verification Flow
+ * Authentication Controller with Ultra-Fast OTP Verification and Brute Force Defense
  */
 export const authController = {
   /**
@@ -38,35 +34,38 @@ export const authController = {
     try {
       const { email, password, fullName, phone, roleName, employeeCode } = req.body;
 
-      // 1. Verify email uniqueness
-      const userExists = await userModel.findByEmail(email);
+      // 1. Parallelize uniqueness and role checks to eliminate cloud DB round-trip latency
+      const [
+        userExists,
+        [userPhoneExists],
+        [driverPhoneExists],
+        [employeeCodeExists],
+        roleRecord
+      ] = await Promise.all([
+        userModel.findByEmail(email),
+        pool.query('SELECT id FROM users WHERE phone = ?', [phone]),
+        pool.query('SELECT id FROM drivers WHERE phone = ?', [phone]),
+        pool.query('SELECT id FROM drivers WHERE employee_id = ?', [employeeCode]),
+        userModel.getRoleByName(roleName)
+      ]);
+
       if (userExists) {
         throw new AppError('Email already registered.', HttpStatusCodes.CONFLICT);
       }
-
-      // 2. Verify mobile number uniqueness
-      const [userPhoneExists] = await pool.query('SELECT id FROM users WHERE phone = ?', [phone]);
-      const [driverPhoneExists] = await pool.query('SELECT id FROM drivers WHERE phone = ?', [phone]);
       if (userPhoneExists.length > 0 || driverPhoneExists.length > 0) {
         throw new AppError('Mobile number already registered.', HttpStatusCodes.CONFLICT);
       }
-
-      // 3. Verify employee ID/code uniqueness
-      const [employeeCodeExists] = await pool.query('SELECT id FROM drivers WHERE employee_id = ?', [employeeCode]);
       if (employeeCodeExists.length > 0) {
         throw new AppError('Employee Code already exists.', HttpStatusCodes.CONFLICT);
       }
-
-      // 4. Validate system role
-      const roleRecord = await userModel.getRoleByName(roleName);
       if (!roleRecord) {
         throw new AppError(`The role '${roleName}' is invalid.`, HttpStatusCodes.BAD_REQUEST);
       }
 
-      // 5. Hash password before temporarily storing it in the OTP session
+      // Hash password with 10 salt rounds
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // 6. Generate and save secure OTP record
+      // Generate secure OTP in fast memory cache
       const otp = await otpService.generateOtp(email, {
         fullName,
         employeeCode,
@@ -76,9 +75,9 @@ export const authController = {
         roleName
       });
 
-      console.log(`[AUTH] Registration OTP generated and dispatched for ${email}`);
+      console.log(`[AUTH] Registration OTP generated for ${email}`);
 
-      // 7. Dispatch OTP code to user email in background (non-blocking)
+      // Dispatch OTP email in background (non-blocking, zero latency impact)
       emailService.sendOtpEmail(email, otp).catch(err => {
         console.error(`[EMAIL] Background registration OTP error for ${email}:`, err.message);
       });
@@ -93,40 +92,43 @@ export const authController = {
   },
 
   /**
-   * Verify OTP (Phase 2: Create user record on success)
+   * Verify OTP (Phase 2: Fast creation of user record)
    */
   verifyOtp: async (req, res, next) => {
     try {
       const { email, otp } = req.body;
 
-      // 1. Verify OTP code and retrieve registration details
+      // 1. Verify OTP code (ultra-fast from memory cache)
       const regData = await otpService.verifyOtp(email, otp);
 
-      // 2. Double-check email/phone/employee code uniqueness once more at verification time (anti-concurrency)
-      const userExists = await userModel.findByEmail(email);
+      // 2. Parallelize integrity checks before insertion
+      const [userExists, [userPhoneExists], roleRecord] = await Promise.all([
+        userModel.findByEmail(email),
+        pool.query('SELECT id FROM users WHERE phone = ?', [regData.phone]),
+        userModel.getRoleByName(regData.roleName)
+      ]);
+
       if (userExists) {
         throw new AppError('Email already registered.', HttpStatusCodes.CONFLICT);
       }
-
-      const [userPhoneExists] = await pool.query('SELECT id FROM users WHERE phone = ?', [regData.phone]);
       if (userPhoneExists.length > 0) {
         throw new AppError('Mobile number already registered.', HttpStatusCodes.CONFLICT);
       }
-
-      // 3. Fetch validated role
-      const roleRecord = await userModel.getRoleByName(regData.roleName);
       if (!roleRecord) {
         throw new AppError('Invalid role specified.', HttpStatusCodes.BAD_REQUEST);
       }
 
-      // 4. Provision active user account in database
+      // 3. Provision user account
       const userId = await userModel.create({
         roleId: roleRecord.id,
         fullName: regData.fullName,
         email: regData.email,
-        passwordHash: regData.password, // already hashed
+        passwordHash: regData.password,
         phone: regData.phone
       });
+
+      // Clear any previous failed attempts
+      recordSuccessfulLogin(req.ip);
 
       return res.ok(
         {
@@ -153,13 +155,11 @@ export const authController = {
   resendOtp: async (req, res, next) => {
     try {
       const { email } = req.body;
-
-      // Generate a new OTP using the existing registration payload
       const otp = await otpService.generateOtp(email, null, true);
 
-      console.log(`[AUTH] Resent OTP generated and dispatched for ${email}`);
+      console.log(`[AUTH] Resent OTP generated for ${email}`);
 
-      // Send the new OTP to email in background (non-blocking)
+      // Dispatch non-blocking
       emailService.sendOtpEmail(email, otp).catch(err => {
         console.error(`[EMAIL] Background resend OTP error for ${email}:`, err.message);
       });
@@ -180,7 +180,6 @@ export const authController = {
     try {
       const { email, password } = req.body;
 
-      // Find user
       const user = await userModel.findByEmail(email);
 
       if (!user) {
@@ -193,7 +192,6 @@ export const authController = {
         );
       }
 
-      // Check status
       if (user.status !== 'ACTIVE') {
         return next(
           new AppError(
@@ -203,11 +201,7 @@ export const authController = {
         );
       }
 
-      // Verify password
-      const passwordMatched = await bcrypt.compare(
-        password,
-        user.password_hash
-      );
+      const passwordMatched = await bcrypt.compare(password, user.password_hash);
 
       if (!passwordMatched) {
         recordFailedLogin(req.ip);
@@ -219,13 +213,10 @@ export const authController = {
         );
       }
 
-      // Update last login
-      await userModel.updateLastLogin(user.id);
+      // Update last login in background
+      userModel.updateLastLogin(user.id).catch(() => {});
 
-      // Generate JWT
       const token = signToken(user.id, user.role_name);
-
-      // Clear any previous failed attempts on success
       recordSuccessfulLogin(req.ip);
 
       return res.ok(
@@ -291,30 +282,40 @@ export const authController = {
         throw new AppError(`This account is currently ${user.status}. Please contact support.`, HttpStatusCodes.FORBIDDEN);
       }
 
-      const existing = await passwordResetOtpModel.findByEmail(email);
-      if (existing) {
-        const elapsed = (new Date().getTime() - new Date(existing.created_at).getTime()) / 1000;
-        if (elapsed < 60) {
-          throw new AppError(
-            `Please wait ${Math.ceil(60 - elapsed)} seconds before requesting another code.`,
-            HttpStatusCodes.TOO_MANY_REQUESTS
-          );
-        }
+      // Check cooldown in fast memory
+      const cached = passwordResetMemoryCache.get(email);
+      if (cached && (Date.now() - cached.createdAtMs) < 60 * 1000) {
+        const remaining = Math.ceil((60 * 1000 - (Date.now() - cached.createdAtMs)) / 1000);
+        throw new AppError(
+          `Please wait ${remaining} seconds before requesting another code.`,
+          HttpStatusCodes.TOO_MANY_REQUESTS
+        );
       }
 
       const otp = crypto.randomInt(100000, 1000000).toString();
-      const otpHash = await bcrypt.hash(otp, 10);
-      const expiresAt = new Date(new Date().getTime() + 10 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-      await passwordResetOtpModel.saveOtp({
-        email,
-        otpHash,
-        expiresAt
+      // Fast memory caching
+      passwordResetMemoryCache.set(email, {
+        otp,
+        expiresAtMs: expiresAt.getTime(),
+        attempts: 0,
+        createdAtMs: Date.now()
       });
 
-      console.log(`[AUTH] Password Reset OTP generated and dispatched for ${email}`);
+      // DB persistence in background (non-blocking)
+      (async () => {
+        try {
+          const otpHash = await bcrypt.hash(otp, 8);
+          await passwordResetOtpModel.saveOtp({ email, otpHash, expiresAt });
+        } catch (e) {
+          console.warn('[RESET] Async DB backup warning:', e.message);
+        }
+      })();
 
-      // Send the password reset code in background (non-blocking)
+      console.log(`[AUTH] Password Reset OTP generated for ${email}`);
+
+      // Background email dispatch
       emailService.sendPasswordResetEmail(email, otp).catch(err => {
         console.error(`[EMAIL] Background password reset email error for ${email}:`, err.message);
       });
@@ -335,39 +336,86 @@ export const authController = {
     try {
       const { email, otp, newPassword } = req.body;
 
-      const user = await userModel.findByEmail(email);
+      const [user] = await Promise.all([
+        userModel.findByEmail(email)
+      ]);
+
       if (!user) {
         throw new AppError('No account found with this email address.', HttpStatusCodes.NOT_FOUND);
       }
 
-      const record = await passwordResetOtpModel.findByEmail(email);
-      if (!record) {
-        throw new AppError('Password reset code has expired or was not found. Please request a new code.', HttpStatusCodes.BAD_REQUEST);
-      }
+      const cleanOtp = String(otp).trim();
+      const cached = passwordResetMemoryCache.get(email);
 
-      if (record.attempts >= 5) {
-        throw new AppError('Maximum verification attempts exceeded. Please request a new reset code.', HttpStatusCodes.FORBIDDEN);
-      }
+      let isMatch = false;
 
-      const isMatch = await bcrypt.compare(otp, record.otp_hash);
-      if (!isMatch) {
-        recordFailedOtp(req.ip);
-        await passwordResetOtpModel.incrementAttempts(email);
-        const remaining = 5 - (record.attempts + 1);
-        if (remaining <= 0) {
-          throw new AppError('Maximum attempts exceeded. This code is locked. Please request a new code.', HttpStatusCodes.FORBIDDEN);
+      // Fast Memory Verification
+      if (cached) {
+        if (Date.now() > cached.expiresAtMs) {
+          passwordResetMemoryCache.delete(email);
+          passwordResetOtpModel.delete(email).catch(() => {});
+          throw new AppError('Verification code has expired. Please request a new reset code.', HttpStatusCodes.BAD_REQUEST);
         }
-        throw new AppError(`Invalid verification code. ${remaining} attempts remaining.`, HttpStatusCodes.BAD_REQUEST);
-      }
 
-      if (new Date(record.expires_at) < new Date()) {
+        if (cached.attempts >= 5) {
+          passwordResetMemoryCache.delete(email);
+          passwordResetOtpModel.delete(email).catch(() => {});
+          throw new AppError('Maximum verification attempts exceeded. Please request a new reset code.', HttpStatusCodes.FORBIDDEN);
+        }
+
+        isMatch = crypto.timingSafeEqual(
+          Buffer.from(cleanOtp.padEnd(6, ' ')),
+          Buffer.from(String(cached.otp).padEnd(6, ' '))
+        );
+
+        if (!isMatch) {
+          cached.attempts += 1;
+          recordFailedOtp(req.ip);
+          const remaining = 5 - cached.attempts;
+          if (remaining <= 0) {
+            passwordResetMemoryCache.delete(email);
+            passwordResetOtpModel.delete(email).catch(() => {});
+            throw new AppError('Maximum attempts exceeded. This code is locked. Please request a new code.', HttpStatusCodes.FORBIDDEN);
+          }
+          throw new AppError(`Wrong verification code. ${remaining} attempts remaining. Please check your code and try again.`, HttpStatusCodes.BAD_REQUEST);
+        }
+
+        passwordResetMemoryCache.delete(email);
+        passwordResetOtpModel.delete(email).catch(() => {});
+
+      } else {
+        // Fallback to database
+        const record = await passwordResetOtpModel.findByEmail(email);
+        if (!record) {
+          throw new AppError('Password reset code has expired or was not found. Please request a new code.', HttpStatusCodes.BAD_REQUEST);
+        }
+
+        if (record.attempts >= 5) {
+          throw new AppError('Maximum verification attempts exceeded. Please request a new reset code.', HttpStatusCodes.FORBIDDEN);
+        }
+
+        isMatch = await bcrypt.compare(cleanOtp, record.otp_hash);
+        if (!isMatch) {
+          recordFailedOtp(req.ip);
+          await passwordResetOtpModel.incrementAttempts(email);
+          const remaining = 5 - (record.attempts + 1);
+          if (remaining <= 0) {
+            throw new AppError('Maximum attempts exceeded. This code is locked. Please request a new code.', HttpStatusCodes.FORBIDDEN);
+          }
+          throw new AppError(`Wrong verification code. ${remaining} attempts remaining. Please check your code and try again.`, HttpStatusCodes.BAD_REQUEST);
+        }
+
+        if (new Date(record.expires_at) < new Date()) {
+          await passwordResetOtpModel.delete(email);
+          throw new AppError('Verification code has expired. Please request a new reset code.', HttpStatusCodes.BAD_REQUEST);
+        }
+
         await passwordResetOtpModel.delete(email);
-        throw new AppError('Verification code has expired. Please request a new reset code.', HttpStatusCodes.BAD_REQUEST);
       }
 
       const newHash = await bcrypt.hash(newPassword, 10);
       await userModel.updatePassword(email, newHash);
-      await passwordResetOtpModel.delete(email);
+      recordSuccessfulLogin(req.ip);
 
       return res.ok(
         null,

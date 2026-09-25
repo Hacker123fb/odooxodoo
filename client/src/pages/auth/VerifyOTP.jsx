@@ -59,6 +59,7 @@ export const VerifyOTP = () => {
       });
 
       if (res?.success) {
+        sessionStorage.removeItem('otp_failed_strikes');
         showToast('Registration completed successfully.', 'success');
         navigate('/login');
       } else {
@@ -66,7 +67,16 @@ export const VerifyOTP = () => {
         showToast(res?.message || 'Verification failed.', 'error');
       }
     } catch (err) {
-      if (err.status === 429 || err.status === 403) {
+      const currentStrikes = parseInt(sessionStorage.getItem('otp_failed_strikes') || '0', 10) + 1;
+      sessionStorage.setItem('otp_failed_strikes', currentStrikes.toString());
+
+      if (currentStrikes >= 5 || err.status === 429 || err.status === 403 || err.code === 'IP_BLOCKED') {
+        sessionStorage.setItem('lockout_info', JSON.stringify({
+          message: 'You have tried too many times. Please try again after some time.',
+          remainingMinutes: 60,
+          reason: 'TOO_MANY_FAILED_OTP_ATTEMPTS',
+          timestamp: Date.now()
+        }));
         navigate('/blocked');
         return;
       }
@@ -78,8 +88,12 @@ export const VerifyOTP = () => {
         setFormError('Validation failed. Please correct the highlighted fields below.');
         showToast('Please correct the highlighted fields.', 'error');
       } else {
-        setFormError(err.message || 'Verification failed.');
-        showToast(err.message || 'Verification failed.', 'error');
+        let msg = err.message || 'Wrong OTP. Please check your code and try again.';
+        if (msg.toLowerCase().includes('invalid otp')) {
+          msg = 'Wrong OTP. Please check your code and try again.';
+        }
+        setFormError(msg);
+        showToast(msg, 'error');
       }
     } finally {
       setIsVerifying(false);

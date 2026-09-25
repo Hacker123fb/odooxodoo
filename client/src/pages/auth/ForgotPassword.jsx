@@ -64,7 +64,7 @@ export const ForgotPassword = () => {
       setCooldown(60);
       showToast('A 6-digit verification code has been sent to your email.', 'success');
     } catch (err) {
-      if (err.status === 429 || err.status === 403) {
+      if (err.status === 429 || err.status === 403 || err.code === 'IP_BLOCKED') {
         navigate('/blocked');
         return;
       }
@@ -86,16 +86,30 @@ export const ForgotPassword = () => {
         otp: data.otp,
         newPassword: data.newPassword
       });
+      sessionStorage.removeItem('reset_otp_failed_strikes');
       showToast('Password reset successfully! Redirecting to login...', 'success');
       setTimeout(() => {
         navigate('/login');
       }, 1500);
     } catch (err) {
-      if (err.status === 429 || err.status === 403) {
+      const currentStrikes = parseInt(sessionStorage.getItem('reset_otp_failed_strikes') || '0', 10) + 1;
+      sessionStorage.setItem('reset_otp_failed_strikes', currentStrikes.toString());
+
+      if (currentStrikes >= 5 || err.status === 429 || err.status === 403 || err.code === 'IP_BLOCKED') {
+        sessionStorage.setItem('lockout_info', JSON.stringify({
+          message: 'You have tried too many times. Please try again after some time.',
+          remainingMinutes: 60,
+          reason: 'TOO_MANY_FAILED_RESET_ATTEMPTS',
+          timestamp: Date.now()
+        }));
         navigate('/blocked');
         return;
       }
-      const msg = err.message || 'Failed to reset password. Please check your OTP code.';
+
+      let msg = err.message || 'Wrong verification code. Please check your code and try again.';
+      if (msg.toLowerCase().includes('invalid verification code')) {
+        msg = 'Wrong verification code. Please check your code and try again.';
+      }
       setFormError(msg);
       showToast(msg, 'error');
     } finally {

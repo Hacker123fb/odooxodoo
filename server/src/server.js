@@ -1,7 +1,8 @@
 import app from './app.js';
 import { env } from './config/env.js';
-import { testConnection } from './config/db.js';
+import pool, { testConnection } from './config/db.js';
 import { dbInit } from './config/dbInit.js';
+import { pgDbInit } from './config/pgDbInit.js';
 
 /**
  * Keep-alive self-ping worker
@@ -42,13 +43,17 @@ const startKeepAlive = () => {
 const startServer = async () => {
   console.log('[BOOT] Starting TransitOps Backend Server...');
 
-  // Test connection to the MySQL database
+  // Test connection to the database (PostgreSQL or MySQL)
   const isDbConnected = await testConnection();
   if (!isDbConnected) {
-    console.warn('[BOOT] [WARNING] Proceeding without verified database connectivity. Make sure MySQL is running.');
+    console.warn('[BOOT] [WARNING] Proceeding without verified database connectivity. Make sure DB is running.');
   } else {
     // Run database seeding/initialization sequence
-    await dbInit();
+    if (pool.isPostgres) {
+      await pgDbInit();
+    } else {
+      await dbInit();
+    }
   }
 
   // Start HTTP listener

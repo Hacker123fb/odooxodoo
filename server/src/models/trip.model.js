@@ -95,6 +95,75 @@ export const tripModel = {
   },
 
   /**
+   * Find driver by ID with licensing details
+   */
+  async findDriverById(id) {
+    const sql = `
+      SELECT id, full_name, employee_id, license_number, license_class, license_expiry, status
+      FROM drivers
+      WHERE id = ?
+    `;
+    const [rows] = await pool.query(sql, [id]);
+    return rows[0] || null;
+  },
+
+  /**
+   * Find vehicle by ID with status
+   */
+  async findVehicleById(id) {
+    const sql = `
+      SELECT v.id, v.registration_number, v.status, vm.name AS model_name
+      FROM vehicles v
+      JOIN vehicle_models vm ON v.model_id = vm.id
+      WHERE v.id = ?
+    `;
+    const [rows] = await pool.query(sql, [id]);
+    return rows[0] || null;
+  },
+
+  /**
+   * Check if driver has an overlapping active or scheduled trip
+   */
+  async findOverlappingDriverTrip(driverId, departure, arrival, excludeTripId = null) {
+    let sql = `
+      SELECT id, trip_number, scheduled_departure, scheduled_arrival, status
+      FROM trips
+      WHERE driver_id = ?
+        AND status IN ('SCHEDULED', 'IN_PROGRESS', 'DELAYED')
+        AND scheduled_departure < ?
+        AND scheduled_arrival > ?
+    `;
+    const params = [driverId, arrival, departure];
+    if (excludeTripId !== null) {
+      sql += ' AND id != ?';
+      params.push(excludeTripId);
+    }
+    const [rows] = await pool.query(sql, params);
+    return rows[0] || null;
+  },
+
+  /**
+   * Check if vehicle has an overlapping active or scheduled trip
+   */
+  async findOverlappingVehicleTrip(vehicleId, departure, arrival, excludeTripId = null) {
+    let sql = `
+      SELECT id, trip_number, scheduled_departure, scheduled_arrival, status
+      FROM trips
+      WHERE vehicle_id = ?
+        AND status IN ('SCHEDULED', 'IN_PROGRESS', 'DELAYED')
+        AND scheduled_departure < ?
+        AND scheduled_arrival > ?
+    `;
+    const params = [vehicleId, arrival, departure];
+    if (excludeTripId !== null) {
+      sql += ' AND id != ?';
+      params.push(excludeTripId);
+    }
+    const [rows] = await pool.query(sql, params);
+    return rows[0] || null;
+  },
+
+  /**
    * Insert new trip record
    */
   async create({ tripNumber, vehicleId, driverId, sourceLocation, destinationLocation, scheduledDeparture, scheduledArrival, distanceKm, status, notes, createdBy }) {
@@ -184,19 +253,28 @@ export const tripModel = {
   /**
    * Retrieve available drivers (no active trips and license not expired)
    */
-  async getAvailableDrivers(excludeTripId = null) {
+  async getAvailableDrivers(excludeTripId = null, targetArrival = null) {
     let sql = `
       SELECT d.id, d.full_name, d.employee_id, d.license_number, d.license_class, d.license_expiry
       FROM drivers d
       WHERE d.status = 'AVAILABLE'
-        AND d.license_expiry > CURRENT_DATE
+    `;
+    
+    const params = [];
+    if (targetArrival) {
+      sql += ' AND d.license_expiry > ?';
+      params.push(targetArrival);
+    } else {
+      sql += ' AND d.license_expiry > CURRENT_DATE';
+    }
+
+    sql += `
         AND NOT EXISTS (
           SELECT 1 FROM trips t 
           WHERE t.driver_id = d.id 
             AND t.status IN ('SCHEDULED', 'IN_PROGRESS', 'DELAYED')
     `;
     
-    const params = [];
     if (excludeTripId !== null) {
       sql += ' AND t.id != ?';
       params.push(excludeTripId);

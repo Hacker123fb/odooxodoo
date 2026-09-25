@@ -41,44 +41,56 @@ axiosInstance.interceptors.request.use(
 // Response Interceptor: Flatten results and translate standard error responses
 axiosInstance.interceptors.response.use(
   (response) => {
-    // Return standard response data envelope directly
     return response.data;
   },
   (err) => {
+    const status = err.response?.status || (err.code === 'ECONNABORTED' ? 408 : 0);
+    const serverMessage = err.response?.data?.message;
+
+    // Handle Network Error or Timeout
+    let defaultMsg = 'Unable to reach the server. Please check your connection.';
+    if (err.code === 'ECONNABORTED') {
+      defaultMsg = 'Request timed out. Please try again.';
+    } else if (serverMessage) {
+      defaultMsg = serverMessage;
+    }
+
     const customError = {
-      message: err.response?.data?.message || (err.code === 'ECONNABORTED' ? 'Request timed out. Please try again.' : 'A network error occurred. Please try again.'),
-      status: err.response?.status || 500,
-      errors: err.response?.data?.errors || null
+      message: defaultMsg,
+      status: status,
+      errors: err.response?.data?.errors || null,
+      code: err.response?.data?.code || null
     };
 
     console.error('[API Error Details]:', {
       url: err.config?.url,
       baseURL: err.config?.baseURL,
-      status: err.response?.status,
+      status: status,
       message: err.message,
       data: err.response?.data
     });
 
     // Auto-clean credentials on token expiration status codes
     if (customError.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
       if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }
 
     // Auto-redirect to custom /blocked page on rate limit (429) or IP lockout (403)
-    if (customError.status === 429 || (customError.status === 403 && err.response?.data?.code === 'IP_BLOCKED')) {
+    if (customError.status === 429 || customError.status === 403 || err.response?.data?.code === 'IP_BLOCKED') {
       const lockoutData = {
         message: err.response?.data?.message || 'You have tried too many times. Please try again after some time.',
-        remainingMinutes: err.response?.data?.remainingMinutes || 15,
-        reason: err.response?.data?.reason || 'TOO_MANY_REQUESTS',
+        remainingMinutes: err.response?.data?.remainingMinutes || 60,
+        reason: err.response?.data?.reason || 'TOO_MANY_FAILED_ATTEMPTS',
         timestamp: Date.now()
       };
       try {
         sessionStorage.setItem('lockout_info', JSON.stringify(lockoutData));
       } catch (e) {}
+      
       if (typeof window !== 'undefined' && window.location.pathname !== '/blocked') {
         window.location.href = '/blocked';
       }

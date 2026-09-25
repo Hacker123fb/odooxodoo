@@ -35,10 +35,22 @@ export const Login = () => {
     const result = await login(data.email, data.password);
     
     if (result.success) {
+      sessionStorage.removeItem('login_failed_strikes');
       showToast('Authentication verified. Welcome to TransitOps.', 'success');
       navigate('/dashboard');
     } else {
-      if (result.status === 429 || result.status === 403) {
+      // Track consecutive failed logins
+      const currentStrikes = parseInt(sessionStorage.getItem('login_failed_strikes') || '0', 10) + 1;
+      sessionStorage.setItem('login_failed_strikes', currentStrikes.toString());
+
+      // On 5 consecutive wrong passwords or 403/429 lockout, redirect to custom blocked page
+      if (currentStrikes >= 5 || result.status === 429 || result.status === 403 || result.error?.includes('tried too many times') || result.code === 'IP_BLOCKED') {
+        sessionStorage.setItem('lockout_info', JSON.stringify({
+          message: 'You have tried too many times. Please try again after some time.',
+          remainingMinutes: 60,
+          reason: 'TOO_MANY_FAILED_ATTEMPTS',
+          timestamp: Date.now()
+        }));
         navigate('/blocked');
         return;
       }
@@ -49,7 +61,10 @@ export const Login = () => {
         });
         setFormError('Validation failed. Please review the highlighted fields.');
       } else {
-        const errorMsg = result.error || 'Authentication failed. Please verify your credentials.';
+        let errorMsg = result.error || 'Wrong password. Please check your password and try again.';
+        if (errorMsg.toLowerCase().includes('invalid password')) {
+          errorMsg = 'Wrong password. Please check your password and try again.';
+        }
         setFormError(errorMsg);
         showToast(errorMsg, 'error');
       }

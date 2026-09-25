@@ -37,6 +37,95 @@ const updateDriverStatus = async (connection, driverId, status) => {
   await connection.query('UPDATE drivers SET status = ? WHERE id = ?', [status, driverId]);
 };
 
+// Validates driver licensing and overlapping trip edge cases
+const validateDriverAndVehicleScheduling = async ({ driverId, vehicleId, scheduledDeparture, scheduledArrival, excludeTripId = null }) => {
+  const depDate = new Date(scheduledDeparture);
+  const arrDate = new Date(scheduledArrival);
+  const now = new Date();
+
+  if (arrDate <= depDate) {
+    throw new AppError('Trip arrival time must be strictly after the departure time.', HttpStatusCodes.BAD_REQUEST, [
+      { field: 'expectedArrivalDate', message: 'Estimated arrival time must be later than departure time.' }
+    ]);
+  }
+
+  // 1. Fetch Driver Details
+  const driver = await tripModel.findDriverById(driverId);
+  if (!driver) {
+    throw new AppError('The selected driver does not exist in the system.', HttpStatusCodes.NOT_FOUND, [
+      { field: 'driverId', message: 'Driver not found.' }
+    ]);
+  }
+
+  // Edge Case 1: Driver license is already expired
+  const licenseExpiry = new Date(driver.license_expiry);
+  // Normalize date without time for day comparison
+  const licenseExpiryDay = new Date(licenseExpiry.getFullYear(), licenseExpiry.getMonth(), licenseExpiry.getDate(), 23, 59, 59);
+
+  if (licenseExpiryDay < now) {
+    const expiryStr = licenseExpiry.toISOString().split('T')[0];
+    throw new AppError(
+      `Compliance Violation: Driver ${driver.full_name}'s license expired on ${expiryStr}. Drivers with expired licenses are legally prohibited from driving.`,
+      HttpStatusCodes.BAD_REQUEST,
+      [{ field: 'driverId', message: `License expired on ${expiryStr}. Expired drivers cannot be assigned to trips.` }]
+    );
+  }
+
+  // Edge Case 2: Driver license will expire before trip scheduled departure
+  if (licenseExpiryDay < depDate) {
+    const expiryStr = licenseExpiry.toISOString().split('T')[0];
+    throw new AppError(
+      `Scheduling Conflict: Driver ${driver.full_name}'s license will be expired by departure date (expires: ${expiryStr}, departure: ${scheduledDeparture}).`,
+      HttpStatusCodes.BAD_REQUEST,
+      [{ field: 'driverId', message: `License will be expired before scheduled trip departure (${expiryStr}).` }]
+    );
+  }
+
+  // Edge Case 3: Driver license expires IN BETWEEN the scheduled trip!
+  if (licenseExpiryDay <= arrDate) {
+    const expiryStr = licenseExpiry.toISOString().split('T')[0];
+    throw new AppError(
+      `Critical Compliance Alert: Driver ${driver.full_name}'s license expires on ${expiryStr}, which occurs in between the scheduled trip window (completion: ${scheduledArrival}). Drivers are strictly prohibited from driving during or after license expiration.`,
+      HttpStatusCodes.BAD_REQUEST,
+      [{ field: 'driverId', message: `License expires on ${expiryStr} before trip completes (${scheduledArrival}). Drivers cannot drive with expiring license in-transit.` }]
+    );
+  }
+
+  // 2. Fetch Vehicle Details
+  const vehicle = await tripModel.findVehicleById(vehicleId);
+  if (!vehicle) {
+    throw new AppError('The selected vehicle does not exist.', HttpStatusCodes.NOT_FOUND, [
+      { field: 'vehicleId', message: 'Vehicle not found.' }
+    ]);
+  }
+
+  if (vehicle.status !== 'ACTIVE') {
+    throw new AppError(`Vehicle ${vehicle.registration_number} is currently ${vehicle.status} and cannot be assigned.`, HttpStatusCodes.BAD_REQUEST, [
+      { field: 'vehicleId', message: `Vehicle status is ${vehicle.status}. Only ACTIVE vehicles can be dispatched.` }
+    ]);
+  }
+
+  // Edge Case 4: Overlapping Trip Schedule for Driver
+  const overlappingDriverTrip = await tripModel.findOverlappingDriverTrip(driverId, scheduledDeparture, scheduledArrival, excludeTripId);
+  if (overlappingDriverTrip) {
+    throw new AppError(
+      `Scheduling Conflict: Driver ${driver.full_name} is already assigned to trip ${overlappingDriverTrip.trip_number} (${overlappingDriverTrip.status}) during this overlapping time window.`,
+      HttpStatusCodes.BAD_REQUEST,
+      [{ field: 'driverId', message: `Driver already booked on ${overlappingDriverTrip.trip_number} during this window.` }]
+    );
+  }
+
+  // Edge Case 5: Overlapping Trip Schedule for Vehicle
+  const overlappingVehicleTrip = await tripModel.findOverlappingVehicleTrip(vehicleId, scheduledDeparture, scheduledArrival, excludeTripId);
+  if (overlappingVehicleTrip) {
+    throw new AppError(
+      `Scheduling Conflict: Vehicle ${vehicle.registration_number} is already assigned to trip ${overlappingVehicleTrip.trip_number} (${overlappingVehicleTrip.status}) during this overlapping time window.`,
+      HttpStatusCodes.BAD_REQUEST,
+      [{ field: 'vehicleId', message: `Vehicle already booked on ${overlappingVehicleTrip.trip_number} during this window.` }]
+    );
+  }
+};
+
 export const tripService = {
   /**
    * Fetches lists of trips and deserializes notes to camelCase
@@ -99,30 +188,24 @@ export const tripService = {
    * Schedules a new trip with camelCase properties
    */
   async createTrip(data, creatorId) {
-    // 1. Verify vehicle is available
-    const availableVehicles = await tripModel.getAvailableVehicles();
-    const vehicleIsAvailable = availableVehicles.some(v => v.id === parseInt(data.vehicleId, 10));
-    if (!vehicleIsAvailable) {
-      throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
-        { field: 'vehicleId', message: 'The selected vehicle is currently not available for trip assignment.' }
-      ]);
-    }
+    const scheduledDeparture = `${data.departureDate} ${data.departureTime}:00`;
+    const scheduledArrival = `${data.expectedArrivalDate} ${data.expectedArrivalTime}:00`;
 
-    // 2. Verify driver is available
-    const availableDrivers = await tripModel.getAvailableDrivers();
-    const driverIsAvailable = availableDrivers.some(d => d.id === parseInt(data.driverId, 10));
-    if (!driverIsAvailable) {
-      throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
-        { field: 'driverId', message: 'The selected driver is currently not available or holds an expired license.' }
-      ]);
-    }
+    // 1. Strict validation of driver licensing, in-transit expiration, and schedule overlap
+    await validateDriverAndVehicleScheduling({
+      driverId: data.driverId,
+      vehicleId: data.vehicleId,
+      scheduledDeparture,
+      scheduledArrival,
+      excludeTripId: null
+    });
 
-    // 3. Generate unique Trip Number (TRP-YYYYMMDD-RAND)
+    // 2. Generate unique Trip Number (TRP-YYYYMMDD-RAND)
     const yyyymmdd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const rand = Math.floor(1000 + Math.random() * 9000);
     const tripNumber = `TRP-${yyyymmdd}-${rand}`;
 
-    // 4. Serialize estimated fuel and details inside notes
+    // 3. Serialize estimated fuel and details inside notes
     const serializedNotes = serializeNotes(
       data.estimatedFuel,
       data.cargoPassengerDesc,
@@ -140,18 +223,17 @@ export const tripService = {
         driverId: data.driverId,
         sourceLocation: data.sourceLocation,
         destinationLocation: data.destinationLocation,
-        scheduledDeparture: `${data.departureDate} ${data.departureTime}:00`,
-        scheduledArrival: `${data.expectedArrivalDate} ${data.expectedArrivalTime}:00`,
+        scheduledDeparture,
+        scheduledArrival,
         distanceKm: data.distanceKm,
         status: data.status || 'SCHEDULED',
         notes: serializedNotes,
         createdBy: creatorId
       });
 
-      // 5. Automatic status transition updates: If starts in progress immediately
+      // 4. Automatic status transition updates: If starts in progress immediately
       if (data.status === 'IN_PROGRESS') {
         await updateDriverStatus(connection, data.driverId, 'ON_TRIP');
-        // Update departure logs
         await connection.query('UPDATE trips SET actual_departure = CURRENT_TIMESTAMP WHERE id = ?', [tripId]);
       }
 
@@ -175,7 +257,7 @@ export const tripService = {
       throw new AppError('Trip not found.', HttpStatusCodes.NOT_FOUND);
     }
 
-    // 1. Business Rule: "Completed or Cancelled trips cannot be edited except status updates if required."
+    // 1. Business Rule: Completed or Cancelled trips cannot be edited except status updates
     if (trip.status === 'COMPLETED' || trip.status === 'CANCELLED') {
       const departureDateDb = new Date(trip.scheduled_departure).toISOString().split('T')[0];
       const departureTimeDb = new Date(trip.scheduled_departure).toTimeString().slice(0, 5);
@@ -202,23 +284,17 @@ export const tripService = {
       }
     }
 
-    // 2. Verify vehicle availability (excluding this current trip!)
-    const availableVehicles = await tripModel.getAvailableVehicles(id);
-    const vehicleIsAvailable = availableVehicles.some(v => v.id === parseInt(data.vehicleId, 10)) || trip.vehicle_id === parseInt(data.vehicleId, 10);
-    if (!vehicleIsAvailable) {
-      throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
-        { field: 'vehicleId', message: 'The selected vehicle is currently not available for trip assignment.' }
-      ]);
-    }
+    const scheduledDeparture = `${data.departureDate} ${data.departureTime}:00`;
+    const scheduledArrival = `${data.expectedArrivalDate} ${data.expectedArrivalTime}:00`;
 
-    // 3. Verify driver availability (excluding this current trip!)
-    const availableDrivers = await tripModel.getAvailableDrivers(id);
-    const driverIsAvailable = availableDrivers.some(d => d.id === parseInt(data.driverId, 10)) || trip.driver_id === parseInt(data.driverId, 10);
-    if (!driverIsAvailable) {
-      throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
-        { field: 'driverId', message: 'The selected driver is currently not available or holds an expired license.' }
-      ]);
-    }
+    // 2. Strict validation of driver licensing and overlapping assignments (excluding this current trip!)
+    await validateDriverAndVehicleScheduling({
+      driverId: data.driverId,
+      vehicleId: data.vehicleId,
+      scheduledDeparture,
+      scheduledArrival,
+      excludeTripId: id
+    });
 
     const serializedNotes = serializeNotes(
       data.estimatedFuel,
@@ -235,30 +311,26 @@ export const tripService = {
       let actualArrival = trip.actual_arrival;
       let cancellationReason = trip.cancellation_reason;
 
-      // 4. State updates transitions
+      // 3. State updates transitions
       const currentStatus = trip.status;
       const targetStatus = data.status;
 
       if (currentStatus !== targetStatus) {
-        // Transition: Starting Trip (Scheduled -> In Progress)
         if (targetStatus === 'IN_PROGRESS') {
           await updateDriverStatus(connection, data.driverId, 'ON_TRIP');
           if (!actualDeparture) actualDeparture = new Date();
         }
         
-        // Transition: Completing Trip (In Progress -> Completed)
         if (targetStatus === 'COMPLETED') {
           await updateDriverStatus(connection, data.driverId, 'AVAILABLE');
           if (!actualArrival) actualArrival = new Date();
         }
 
-        // Transition: Cancelling Trip (Scheduled/In Progress -> Cancelled)
         if (targetStatus === 'CANCELLED') {
           await updateDriverStatus(connection, data.driverId, 'AVAILABLE');
           cancellationReason = data.cancellation_reason || 'Cancelled by dispatcher.';
         }
 
-        // Transition: Reverting completed/cancelled back to active/scheduled
         if ((currentStatus === 'COMPLETED' || currentStatus === 'CANCELLED') && (targetStatus === 'SCHEDULED' || targetStatus === 'IN_PROGRESS')) {
           const isDriverCurrentlyAssigned = await connection.query(
             `SELECT 1 FROM trips WHERE driver_id = ? AND status = 'IN_PROGRESS' AND id != ?`,
@@ -280,8 +352,8 @@ export const tripService = {
         driverId: data.driverId,
         sourceLocation: data.sourceLocation,
         destinationLocation: data.destinationLocation,
-        scheduledDeparture: `${data.departureDate} ${data.departureTime}:00`,
-        scheduledArrival: `${data.expectedArrivalDate} ${data.expectedArrivalTime}:00`,
+        scheduledDeparture,
+        scheduledArrival,
         distanceKm: data.distanceKm,
         status: targetStatus,
         notes: serializedNotes,
@@ -320,7 +392,6 @@ export const tripService = {
       await connection.beginTransaction();
 
       await updateDriverStatus(connection, trip.driver_id, 'AVAILABLE');
-
       await tripModel.delete(id);
 
       await connection.commit();
@@ -337,9 +408,9 @@ export const tripService = {
   /**
    * Retrieves dropdown options lists for vehicles, drivers, and locations
    */
-  async getMetadataOptions(excludeTripId = null) {
+  async getMetadataOptions(excludeTripId = null, targetArrival = null) {
     const vehicles = await tripModel.getAvailableVehicles(excludeTripId);
-    const drivers = await tripModel.getAvailableDrivers(excludeTripId);
+    const drivers = await tripModel.getAvailableDrivers(excludeTripId, targetArrival);
     const locations = await tripModel.getLocations();
 
     return { vehicles, drivers, locations };

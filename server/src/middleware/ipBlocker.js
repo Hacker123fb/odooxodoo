@@ -1,4 +1,3 @@
-import { ApiResponse } from '../utils/apiResponse.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 
 /**
@@ -160,6 +159,11 @@ export const recordSuccessfulLogin = (ip) => {
  * Rejects requests from blocked IPs with HTTP 403 Forbidden
  */
 export const ipBlocker = (req, res, next) => {
+  // Allow preflight OPTIONS requests through so browser sets CORS headers
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
 
   if (isIpBlocked(clientIp)) {
@@ -167,7 +171,7 @@ export const ipBlocker = (req, res, next) => {
     const mins = details ? details.remainingMinutes : 60;
     return res.status(HttpStatusCodes.FORBIDDEN).json({
       success: false,
-      message: `Access Denied: Your IP address (${clientIp}) has been temporarily blocked due to repeated failed login attempts or suspicious activity. Block expires in ${mins} minute(s).`,
+      message: `You have tried too many times. Please try again after some time (${mins} min).`,
       code: 'IP_BLOCKED',
       reason: details?.reason || 'BRUTE_FORCE_PREVENTION',
       remainingMinutes: mins

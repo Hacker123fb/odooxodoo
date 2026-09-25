@@ -17,6 +17,17 @@ app.disable('x-powered-by');
 // Trust reverse proxy (Render, Cloudflare, etc.) for correct client IP detection in rate limiting
 app.set('trust proxy', 1);
 
+// 1. CORS MUST BE THE VERY FIRST MIDDLEWARE
+// This guarantees that ANY response (including 403 Forbidden, 429 Too Many Requests, and preflight OPTIONS)
+// always carries Access-Control-Allow-Origin headers, preventing browser "Network Error" failures!
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
+app.options('*', cors({ origin: true, credentials: true }));
+
 // Strict HTTP security headers (Anti-Clickjacking, Anti-MIME sniffing, XSS Defense)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -26,27 +37,26 @@ app.use((req, res, next) => {
   next();
 });
 
-// 1. IP Blocker & Defense (inspects before any route execution)
+// 2. IP Blocker & Defense (inspects after CORS is established)
 app.use(ipBlocker);
 
-// 2. Standard third-party middleware
-app.use(cors({ origin: true, credentials: true }));
+// 3. Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. Security & Rate Limiting middleware
+// 4. Rate Limiting & SQL Sanitizer
 app.use(globalLimiter);
 app.use(sqlSanitizer);
 
-// 3. Custom core middleware
+// 5. Custom core middleware
 app.use(requestLogger);
 app.use(responseFormatter);
 
-// 3. Central routes registration versioned under /api/v1 and root fallback
+// 6. Central routes registration versioned under /api/v1 and root fallback
 app.use('/api/v1', apiRouter);
 app.use('/', apiRouter);
 
-// 4. Default root route
+// 7. Default root route
 app.get('/', (req, res) => {
   return res.status(200).json({
     success: true,
@@ -54,10 +64,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// 5. Catch-all for undefined routes
+// 8. Catch-all for undefined routes
 app.use(notFoundHandler);
 
-// 6. Global centralized error handler
+// 9. Global centralized error handler
 app.use(errorHandler);
 
 export default app;
