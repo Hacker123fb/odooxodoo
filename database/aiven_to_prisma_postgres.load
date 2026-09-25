@@ -1,0 +1,46 @@
+-- =============================================================================
+-- pgloader Command File: Aiven MySQL to Prisma Postgres Cloud DB Migration
+-- =============================================================================
+-- Usage:
+--   pgloader database/aiven_to_prisma_postgres.load
+-- Or via Docker:
+--   docker run --rm -v "${PWD}:/data" dimitri/pgloader:latest pgloader /data/database/aiven_to_prisma_postgres.load
+-- =============================================================================
+
+LOAD DATABASE
+     FROM mysql://avnadmin:YOUR_AIVEN_PASSWORD@mysql-d796a0c-pavanwinners80-af16.l.aivencloud.com:19659/defaultdb?sslmode=required
+     INTO postgresql://postgres:YOUR_PASSWORD@YOUR_PRISMA_POSTGRES_HOST:5432/YOUR_DB?sslmode=require
+
+WITH include drop,
+     create tables,
+     create indexes,
+     reset sequences,
+     foreign keys,
+     down case identifiers,
+     workers = 4,
+     concurrency = 2,
+     multiple readers per thread,
+     rows per range = 25000
+
+SET MySQL PARAMETERS
+     net_read_timeout  = '180',
+     net_write_timeout = '180',
+     wait_timeout      = '180'
+
+SET PostgreSQL PARAMETERS
+     maintenance_work_mem = '128MB',
+     work_mem             = '16MB',
+     statement_timeout    = '0'
+
+CAST type datetime to timestamptz drop default drop not null using zero-dates-to-null,
+     type timestamp to timestamptz drop default drop not null using zero-dates-to-null,
+     type date drop not null drop default using zero-dates-to-null,
+     type tinyint to smallint drop typemod,
+     type year to smallint drop typemod;
+
+-- =============================================================================
+-- Instructions:
+-- 1. Replace YOUR_AIVEN_PASSWORD with your Aiven MySQL password from server/.env.
+-- 2. Replace the target postgresql:// connection string with your Prisma Postgres / Neon / Render Postgres URL.
+-- 3. Run: pgloader database/aiven_to_prisma_postgres.load
+-- =============================================================================

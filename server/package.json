@@ -7,9 +7,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "db:setup": "node src/config/migrate.js"
+    "db:setup": "node src/config/migrate.js",
+    "prisma:generate": "npx prisma generate --schema=prisma/schema.prisma",
+    "prisma:push": "npx prisma db push --schema=prisma/schema.prisma",
+    "db:migrate:pgloader": "node ../database/pgloader_sync.mjs"
   },
   "dependencies": {
+    "@prisma/client": "^5.19.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
@@ -24,7 +28,8 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.4",
+    "prisma": "^5.19.0"
   },
   "private": true
 }

@@ -9,7 +9,12 @@ import { otpService } from '../services/otp.service.js';
 import { emailService } from '../services/email.service.js';
 import { passwordResetOtpModel } from '../models/passwordResetOtp.model.js';
 import pool from '../config/db.js';
-import { recordFailedLogin, recordSuccessfulLogin, recordFailedOtp } from '../middleware/ipBlocker.js';
+import {
+  recordFailedLogin,
+  recordSuccessfulLogin,
+  recordFailedOtp,
+  getAccountLockDetails
+} from '../middleware/ipBlocker.js';
 
 // Fast memory cache for password reset OTPs to achieve sub-millisecond response
 const passwordResetMemoryCache = new Map();
@@ -24,7 +29,7 @@ const signToken = (userId, roleName) => {
 };
 
 /**
- * Authentication Controller with Ultra-Fast OTP Verification and Brute Force Defense
+ * Authentication Controller with Ultra-Fast OTP Verification and Dual-Layer Brute Force Defense
  */
 export const authController = {
   /**
@@ -98,6 +103,21 @@ export const authController = {
     try {
       const { email, otp } = req.body;
 
+      // Account-level lockout check
+      if (email) {
+        const lockDetails = getAccountLockDetails(email);
+        if (lockDetails) {
+          return res.status(HttpStatusCodes.FORBIDDEN).json({
+            success: false,
+            message: `Account Locked: This account has been temporarily locked for ${lockDetails.formattedDuration}. Please try again later.`,
+            code: 'ACCOUNT_LOCKED',
+            reason: lockDetails.reason,
+            remainingMinutes: lockDetails.remainingMinutes,
+            tier: lockDetails.tier
+          });
+        }
+      }
+
       // 1. Verify OTP code (ultra-fast from memory cache)
       const regData = await otpService.verifyOtp(email, otp);
 
@@ -128,7 +148,7 @@ export const authController = {
       });
 
       // Clear any previous failed attempts
-      recordSuccessfulLogin(req.ip);
+      recordSuccessfulLogin(req.ip, email);
 
       return res.ok(
         {
@@ -143,7 +163,7 @@ export const authController = {
       );
     } catch (error) {
       if (error.statusCode === HttpStatusCodes.BAD_REQUEST || error.statusCode === HttpStatusCodes.FORBIDDEN) {
-        recordFailedOtp(req.ip);
+        recordFailedOtp(req.ip, req.body?.email);
       }
       next(error);
     }
@@ -180,10 +200,25 @@ export const authController = {
     try {
       const { email, password } = req.body;
 
+      // 1. Anti-IP-Hopping Defense: Check if this target account is locked across IPs
+      if (email) {
+        const lockDetails = getAccountLockDetails(email);
+        if (lockDetails) {
+          return res.status(HttpStatusCodes.FORBIDDEN).json({
+            success: false,
+            message: `Account Locked: This account has been temporarily locked for ${lockDetails.formattedDuration} due to repeated failed attempts across multiple locations. Please try again later.`,
+            code: 'ACCOUNT_LOCKED',
+            reason: lockDetails.reason,
+            remainingMinutes: lockDetails.remainingMinutes,
+            tier: lockDetails.tier
+          });
+        }
+      }
+
       const user = await userModel.findByEmail(email);
 
       if (!user) {
-        recordFailedLogin(req.ip);
+        recordFailedLogin(req.ip, email);
         return next(
           new AppError(
             'No account found with this email address.',
@@ -204,7 +239,8 @@ export const authController = {
       const passwordMatched = await bcrypt.compare(password, user.password_hash);
 
       if (!passwordMatched) {
-        recordFailedLogin(req.ip);
+        // Record failed attempt on both IP and Target Account!
+        recordFailedLogin(req.ip, email);
         return next(
           new AppError(
             'Wrong password. Please check your password and try again.',
@@ -217,7 +253,8 @@ export const authController = {
       userModel.updateLastLogin(user.id).catch(() => {});
 
       const token = signToken(user.id, user.role_name);
-      recordSuccessfulLogin(req.ip);
+      // Reset strike counters for both IP and Account on success
+      recordSuccessfulLogin(req.ip, email);
 
       return res.ok(
         {
@@ -272,6 +309,19 @@ export const authController = {
   forgotPassword: async (req, res, next) => {
     try {
       const { email } = req.body;
+
+      if (email) {
+        const lockDetails = getAccountLockDetails(email);
+        if (lockDetails) {
+          return res.status(HttpStatusCodes.FORBIDDEN).json({
+            success: false,
+            message: `Account Locked: This account is temporarily locked for ${lockDetails.formattedDuration}. Please try again later.`,
+            code: 'ACCOUNT_LOCKED',
+            reason: lockDetails.reason,
+            remainingMinutes: lockDetails.remainingMinutes
+          });
+        }
+      }
 
       const user = await userModel.findByEmail(email);
       if (!user) {
@@ -336,6 +386,19 @@ export const authController = {
     try {
       const { email, otp, newPassword } = req.body;
 
+      if (email) {
+        const lockDetails = getAccountLockDetails(email);
+        if (lockDetails) {
+          return res.status(HttpStatusCodes.FORBIDDEN).json({
+            success: false,
+            message: `Account Locked: This account is temporarily locked for ${lockDetails.formattedDuration}. Please try again later.`,
+            code: 'ACCOUNT_LOCKED',
+            reason: lockDetails.reason,
+            remainingMinutes: lockDetails.remainingMinutes
+          });
+        }
+      }
+
       const [user] = await Promise.all([
         userModel.findByEmail(email)
       ]);
@@ -370,7 +433,7 @@ export const authController = {
 
         if (!isMatch) {
           cached.attempts += 1;
-          recordFailedOtp(req.ip);
+          recordFailedOtp(req.ip, email);
           const remaining = 5 - cached.attempts;
           if (remaining <= 0) {
             passwordResetMemoryCache.delete(email);
@@ -396,7 +459,7 @@ export const authController = {
 
         isMatch = await bcrypt.compare(cleanOtp, record.otp_hash);
         if (!isMatch) {
-          recordFailedOtp(req.ip);
+          recordFailedOtp(req.ip, email);
           await passwordResetOtpModel.incrementAttempts(email);
           const remaining = 5 - (record.attempts + 1);
           if (remaining <= 0) {
@@ -415,7 +478,7 @@ export const authController = {
 
       const newHash = await bcrypt.hash(newPassword, 10);
       await userModel.updatePassword(email, newHash);
-      recordSuccessfulLogin(req.ip);
+      recordSuccessfulLogin(req.ip, email);
 
       return res.ok(
         null,
