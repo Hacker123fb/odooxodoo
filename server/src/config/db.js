@@ -7,10 +7,23 @@ const { Pool: PgPool } = pg;
 let pool;
 let isPg = false;
 
-// Helper to translate MySQL '?' placeholders to PostgreSQL '$1, $2, ...'
+// Helper to translate MySQL '?' placeholders and date functions to PostgreSQL
 const convertPlaceholders = (sql) => {
   let paramIndex = 1;
-  return sql.replace(/\?/g, () => `$${paramIndex++}`);
+  let converted = sql.replace(/\?/g, () => `$${paramIndex++}`);
+
+  // Auto-translate MySQL date idioms to PostgreSQL equivalents
+  converted = converted
+    .replace(/DATE_SUB\(\s*CURDATE\(\)\s*,\s*INTERVAL\s+(\d+)\s+MONTH\s*\)/gi, "(CURRENT_DATE - INTERVAL '$1 months')")
+    .replace(/DATE_SUB\(\s*NOW\(\)\s*,\s*INTERVAL\s+(\d+)\s+DAY\s*\)/gi, "(NOW() - INTERVAL '$1 days')")
+    .replace(/DATE_ADD\(\s*CURDATE\(\)\s*,\s*INTERVAL\s+(\d+)\s+DAY\s*\)/gi, "(CURRENT_DATE + INTERVAL '$1 days')")
+    .replace(/DATE_FORMAT\(\s*([^,]+)\s*,\s*'%Y-%m'\s*\)/gi, "TO_CHAR($1, 'YYYY-MM')")
+    .replace(/\bCURDATE\(\)/gi, 'CURRENT_DATE')
+    .replace(/\bYEAR\(([^)]+)\)/gi, 'EXTRACT(YEAR FROM $1)')
+    .replace(/\bMONTH\(([^)]+)\)/gi, 'EXTRACT(MONTH FROM $1)')
+    .replace(/DATE\((\w+(?:\.\w+)?)\)/gi, 'CAST($1 AS DATE)');
+
+  return converted;
 };
 
 if (env.isPostgres || env.databaseUrl) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
-import { dashboardService } from '../api/apiService.js';
+import { dashboardService, clearApiCache } from '../api/apiService.js';
 
 // Import child components
 import { DashboardCards } from './dashboard/DashboardCards.jsx';
@@ -12,6 +12,8 @@ import { ActivityTimeline } from './dashboard/ActivityTimeline.jsx';
 
 /**
  * Main Operations Dashboard View
+ * Uses intelligent client caching so data is only fetched once and reused
+ * unless explicitly refreshed or mutated.
  */
 export const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -21,14 +23,19 @@ export const Dashboard = () => {
   const [lastUpdated, setLastUpdated] = useState(null);
 
   // Fetch API callback
-  const fetchDashboardData = useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
-    else setRefreshing(true);
+  const fetchDashboardData = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setRefreshing(true);
+      clearApiCache('dashboard');
+    } else {
+      setLoading(true);
+    }
     
     setError(null);
 
     try {
-      const response = await dashboardService.getDashboard();
+      // Pass cache: false only when user explicitly clicks Refresh
+      const response = await dashboardService.getDashboard(isManualRefresh ? { cache: false } : {});
       if (response && response.success) {
         setData(response.data);
         setLastUpdated(new Date());
@@ -44,16 +51,9 @@ export const Dashboard = () => {
     }
   }, []);
 
-  // Initial Fetch & Auto Refresh setup
+  // Initial Fetch - cached across views until data changes or user refreshes
   useEffect(() => {
-    fetchDashboardData();
-
-    // Refresh every 60 seconds as required
-    const intervalId = setInterval(() => {
-      fetchDashboardData(true);
-    }, 60000);
-
-    return () => clearInterval(intervalId);
+    fetchDashboardData(false);
   }, [fetchDashboardData]);
 
   const handleManualRefresh = () => {

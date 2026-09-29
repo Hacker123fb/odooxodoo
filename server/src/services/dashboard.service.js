@@ -164,10 +164,11 @@ export const dashboardService = {
       `),
       pool.query(`
         SELECT
-          COALESCE(SUM(CASE WHEN DATE(fueling_date) = CURDATE() THEN total_cost ELSE 0 END), 0) AS today_fuel_cost,
+          COALESCE(SUM(CASE WHEN CAST(fueling_date AS DATE) = CURRENT_DATE THEN total_cost ELSE 0 END), 0) AS today_fuel_cost,
           COALESCE(SUM(
             CASE
-              WHEN YEAR(fueling_date) = YEAR(CURDATE()) AND MONTH(fueling_date) = MONTH(CURDATE())
+              WHEN EXTRACT(YEAR FROM fueling_date) = EXTRACT(YEAR FROM CURRENT_DATE) 
+               AND EXTRACT(MONTH FROM fueling_date) = EXTRACT(MONTH FROM CURRENT_DATE)
               THEN total_cost ELSE 0
             END
           ), 0) AS month_fuel_cost
@@ -175,10 +176,11 @@ export const dashboardService = {
       `),
       pool.query(`
         SELECT
-          COALESCE(SUM(CASE WHEN expense_date = CURDATE() THEN amount ELSE 0 END), 0) AS today_expenses,
+          COALESCE(SUM(CASE WHEN CAST(expense_date AS DATE) = CURRENT_DATE THEN amount ELSE 0 END), 0) AS today_expenses,
           COALESCE(SUM(
             CASE
-              WHEN YEAR(expense_date) = YEAR(CURDATE()) AND MONTH(expense_date) = MONTH(CURDATE())
+              WHEN EXTRACT(YEAR FROM expense_date) = EXTRACT(YEAR FROM CURRENT_DATE) 
+               AND EXTRACT(MONTH FROM expense_date) = EXTRACT(MONTH FROM CURRENT_DATE)
               THEN amount ELSE 0
             END
           ), 0) AS month_expenses
@@ -194,17 +196,21 @@ export const dashboardService = {
         FROM maintenance_logs
       `),
       pool.query(`
-        SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count
+        SELECT 
+          ${pool.isPostgres ? "TO_CHAR(created_at, 'YYYY-MM')" : "DATE_FORMAT(created_at, '%Y-%m')"} AS month, 
+          COUNT(*) AS count
         FROM trips
-        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
-        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+        WHERE created_at >= ${pool.isPostgres ? "(CURRENT_DATE - INTERVAL '11 months')" : "DATE_SUB(CURDATE(), INTERVAL 11 MONTH)"}
+        GROUP BY ${pool.isPostgres ? "TO_CHAR(created_at, 'YYYY-MM')" : "DATE_FORMAT(created_at, '%Y-%m')"}
         ORDER BY month ASC
       `),
       pool.query(`
-        SELECT DATE_FORMAT(fueling_date, '%Y-%m') AS month, COALESCE(SUM(total_cost), 0) AS cost
+        SELECT 
+          ${pool.isPostgres ? "TO_CHAR(fueling_date, 'YYYY-MM')" : "DATE_FORMAT(fueling_date, '%Y-%m')"} AS month, 
+          COALESCE(SUM(total_cost), 0) AS cost
         FROM fuel_logs
-        WHERE fueling_date >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
-        GROUP BY DATE_FORMAT(fueling_date, '%Y-%m')
+        WHERE fueling_date >= ${pool.isPostgres ? "(CURRENT_DATE - INTERVAL '11 months')" : "DATE_SUB(CURDATE(), INTERVAL 11 MONTH)"}
+        GROUP BY ${pool.isPostgres ? "TO_CHAR(fueling_date, 'YYYY-MM')" : "DATE_FORMAT(fueling_date, '%Y-%m')"}
         ORDER BY month ASC
       `),
       pool.query(`
