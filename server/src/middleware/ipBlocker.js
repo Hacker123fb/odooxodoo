@@ -76,10 +76,13 @@ export const getBlockDetails = (ip) => {
   if (!record) return null;
   const remainingMs = Math.max(0, record.blockedUntil - Date.now());
   const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
   return {
     reason: record.reason,
     blockedAt: new Date(record.blockedAt).toISOString(),
+    blockedUntil: record.blockedUntil,
     remainingMinutes,
+    remainingSeconds,
     tier: (record.tier || 0) + 1,
     formattedDuration: formatDurationDesc(remainingMs)
   };
@@ -272,15 +275,26 @@ export const ipBlocker = (req, res, next) => {
 
   const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
 
+  // Allow status check endpoints to pass through so frontend can inspect lockout timer without 403
+  const requestPath = (req.path || '').toLowerCase();
+  if (requestPath.endsWith('/auth/ip-status') || requestPath.endsWith('/health/ping') || requestPath === '/api/v1/auth/ip-status') {
+    return next();
+  }
+
   if (isIpBlocked(clientIp)) {
     const details = getBlockDetails(clientIp);
     const mins = details ? details.remainingMinutes : 15;
+    const remainingSeconds = details ? details.remainingSeconds : mins * 60;
+    const blockedUntil = details?.blockedUntil || (Date.now() + mins * 60 * 1000);
     return res.status(HttpStatusCodes.FORBIDDEN).json({
       success: false,
+      blocked: true,
       message: `You have tried too many times. Your IP is blocked for ${details?.formattedDuration || `${mins} min`}. Please try again later.`,
       code: 'IP_BLOCKED',
       reason: details?.reason || 'BRUTE_FORCE_PREVENTION',
       remainingMinutes: mins,
+      remainingSeconds,
+      blockedUntil,
       tier: details?.tier || 1
     });
   }

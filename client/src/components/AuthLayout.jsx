@@ -1,19 +1,95 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { FiSun, FiMoon, FiShield, FiCheckCircle } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
+import { authService } from '../api/apiService.js';
 
 /**
  * Executive Enterprise Layout for Auth Portals
- * Clean, authoritative corporate aesthetic without blurry AI/neon gradients
+ * Clean, authoritative corporate aesthetic with active IP lockout gatekeeper.
+ * Blocked IPs are prohibited from accessing login/register views completely.
  */
 export const AuthLayout = () => {
   const { isAuthenticated } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const [checkingLockout, setCheckingLockout] = useState(true);
+  const [isBlocked, setIsBlocked] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('lockout_info');
+      if (!saved) return false;
+      const parsed = JSON.parse(saved);
+      return parsed?.blockedUntil && Date.now() < parsed.blockedUntil;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const verifyIpLockout = async () => {
+      // 1. Check local session lockout timestamp
+      try {
+        const saved = sessionStorage.getItem('lockout_info');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.blockedUntil && Date.now() < parsed.blockedUntil) {
+            if (isMounted) {
+              setIsBlocked(true);
+              setCheckingLockout(false);
+            }
+            return;
+          } else {
+            sessionStorage.removeItem('lockout_info');
+          }
+        }
+      } catch {}
+
+      // 2. Query backend to verify if client IP is currently blocked
+      try {
+        const res = await authService.getIpStatus();
+        if (isMounted && res?.blocked) {
+          const remainingSeconds = res.remainingSeconds || ((res.remainingMinutes || 15) * 60);
+          const blockedUntil = res.blockedUntil || (Date.now() + remainingSeconds * 1000);
+          sessionStorage.setItem('lockout_info', JSON.stringify({
+            message: res.message || 'You have tried too many times. Your IP is blocked.',
+            remainingMinutes: res.remainingMinutes || 15,
+            remainingSeconds,
+            blockedUntil,
+            reason: res.reason || 'BRUTE_FORCE_PREVENTION',
+            timestamp: Date.now()
+          }));
+          setIsBlocked(true);
+        }
+      } catch (e) {
+        if (e.status === 403 && e.code === 'IP_BLOCKED') {
+          if (isMounted) setIsBlocked(true);
+        }
+      } finally {
+        if (isMounted) {
+          setCheckingLockout(false);
+        }
+      }
+    };
+
+    verifyIpLockout();
+    return () => { isMounted = false; };
+  }, []);
+
+  if (isBlocked) {
+    return <Navigate to="/blocked" replace />;
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (checkingLockout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100/90 dark:bg-[#0B0F17]">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 dark:border-slate-700 border-t-slate-900 dark:border-t-white" />
+      </div>
+    );
   }
 
   return (
@@ -59,16 +135,9 @@ export const AuthLayout = () => {
         </div>
       </main>
 
-      {/* Corporate Compliance & Security Footer */}
+      {/* Executive Footer */}
       <footer className="w-full py-4 px-6 border-t border-slate-200 dark:border-slate-800/80 bg-white/70 dark:bg-[#0E131F]/70 text-center text-xs text-slate-500 dark:text-slate-400">
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6">
-          <span className="flex items-center gap-1.5 font-medium">
-            <FiShield className="w-3.5 h-3.5 text-slate-400" />
-            AES-256 Encrypted Session
-          </span>
-          <span className="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
-          <span>© 2026 TransitOps Platform. All rights reserved.</span>
-        </div>
+        <span>© 2026 TransitOps Platform • Enterprise Fleet Management System</span>
       </footer>
     </div>
   );

@@ -1,19 +1,43 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { authService } from "../api/apiService.js";
+import { authService, clearApiCache } from "../api/apiService.js";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  // Session storage ensures authentication is strictly tied to the active browser session.
+  // When the browser is closed, sessionStorage is destroyed by the browser, preventing direct entry to dashboard.
+  // LocalStorage is never used for sensitive tokens or credentials to eliminate XSS data harvesting.
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
+    try {
+      // Purge any legacy sensitive data from localStorage
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      
+      const storedUser = sessionStorage.getItem("user");
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch {
+      return null;
+    }
   });
 
-  const [token, setToken] = useState(() => localStorage.getItem("token") || null);
+  const [token, setToken] = useState(() => {
+    try {
+      return sessionStorage.getItem("token") || null;
+    } catch {
+      return null;
+    }
+  });
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initializeAuth = async () => {
+      // Ensure localStorage has no leaked sensitive tokens
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      } catch {}
+
       if (!token) {
         setIsLoading(false);
         return;
@@ -24,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
         if (res?.success && res?.data?.user) {
           setUser(res.data.user);
-          localStorage.setItem("user", JSON.stringify(res.data.user));
+          sessionStorage.setItem("user", JSON.stringify(res.data.user));
         }
       } catch (error) {
         console.warn("Session validation failed:", error.message);
@@ -50,8 +74,13 @@ export const AuthProvider = ({ children }) => {
         setToken(userToken);
         setUser(userProfile);
 
-        localStorage.setItem("token", userToken);
-        localStorage.setItem("user", JSON.stringify(userProfile));
+        // Save exclusively in sessionStorage (destroyed on browser close)
+        sessionStorage.setItem("token", userToken);
+        sessionStorage.setItem("user", JSON.stringify(userProfile));
+
+        // Purge localStorage to prevent sensitive credential leakage
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
 
         return {
           success: true,
@@ -78,8 +107,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
 
+    // Wipe session and local storage
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
+    // Clear client-side API response cache on logout
+    clearApiCache();
   };
 
   return (
@@ -100,10 +135,8 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
   if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-
   return context;
 };

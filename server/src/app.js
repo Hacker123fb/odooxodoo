@@ -8,6 +8,8 @@ import errorHandler from './middleware/errorHandler.js';
 import { globalLimiter } from './middleware/rateLimiter.js';
 import { sqlSanitizer } from './middleware/sqlSanitizer.js';
 import { ipBlocker } from './middleware/ipBlocker.js';
+import { xssSanitizer } from './middleware/xssSanitizer.js';
+import { apiCache } from './middleware/apiCache.js';
 
 const app = express();
 
@@ -44,15 +46,19 @@ app.use(ipBlocker);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 4. Rate Limiting & SQL Sanitizer
+// 4. Rate Limiting, SQL Sanitizer & XSS Sanitizer / Truncation
 app.use(globalLimiter);
 app.use(sqlSanitizer);
+app.use(xssSanitizer);
 
 // 5. Custom core middleware
 app.use(requestLogger);
 app.use(responseFormatter);
 
-// 6. Central routes registration versioned under /api/v1 and root fallback
+// 6. In-Memory API Cache Layer (accelerates repeated GET endpoints)
+app.use(apiCache(45 * 1000));
+
+// 7. Central routes registration versioned under /api/v1 and root fallback
 app.use('/api/v1', apiRouter);
 app.use('/', apiRouter);
 

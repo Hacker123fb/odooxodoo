@@ -16,6 +16,27 @@ const formatBaseUrl = () => {
   return url;
 };
 
+// ============================================================================
+// CLIENT-SIDE IN-MEMORY API CACHE
+// ============================================================================
+const apiCacheStore = new Map(); // key -> { data, timestamp, ttl }
+const DEFAULT_CLIENT_TTL = 30 * 1000; // 30 seconds
+
+/**
+ * Clear cached API responses manually or by resource prefix
+ */
+export const clearApiCache = (resourcePrefix = null) => {
+  if (!resourcePrefix) {
+    apiCacheStore.clear();
+    return;
+  }
+  for (const key of apiCacheStore.keys()) {
+    if (key.includes(resourcePrefix) || key.includes('dashboard') || key.includes('reports')) {
+      apiCacheStore.delete(key);
+    }
+  }
+};
+
 const axiosInstance = axios.create({
   baseURL: formatBaseUrl(),
   timeout: 30000,
@@ -24,13 +45,35 @@ const axiosInstance = axios.create({
   }
 });
 
-// Request Interceptor: Attach JWT Token if available in local storage
+// Request Interceptor: Attach JWT Token from sessionStorage and check GET cache
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // 1. Session Storage - cleared when browser is closed, no sensitive leak in localStorage
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // 2. Client-side GET caching
+    const method = (config.method || 'get').toLowerCase();
+    if (method === 'get' && config.cache !== false) {
+      const cacheKey = `${config.url}_${JSON.stringify(config.params || {})}`;
+      const cached = apiCacheStore.get(cacheKey);
+      const ttl = config.ttl || DEFAULT_CLIENT_TTL;
+
+      if (cached && Date.now() - cached.timestamp < ttl) {
+        // Return resolved cached response without performing network roundtrip
+        config.adapter = () => Promise.resolve({
+          data: cached.data,
+          status: 200,
+          statusText: 'OK (Cached)',
+          headers: { 'x-client-cache': 'HIT' },
+          config,
+          request: {}
+        });
+      }
+    }
+
     return config;
   },
   (err) => {
@@ -38,9 +81,29 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Flatten results and translate standard error responses
+// Response Interceptor: Save GET cache, bust cache on mutations, handle lockout redirect
 axiosInstance.interceptors.response.use(
   (response) => {
+    const method = (response.config.method || 'get').toLowerCase();
+
+    // Cache successful GET responses
+    if (method === 'get' && response.config.cache !== false && response.data) {
+      const cacheKey = `${response.config.url}_${JSON.stringify(response.config.params || {})}`;
+      apiCacheStore.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now()
+      });
+    }
+
+    // Invalidate relevant cache on mutations
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      const pathSegments = (response.config.url || '').split('/').filter(Boolean);
+      const resource = pathSegments[0] || '';
+      clearApiCache(resource);
+      clearApiCache('dashboard');
+      clearApiCache('reports');
+    }
+
     return response.data;
   },
   (err) => {
@@ -59,7 +122,8 @@ axiosInstance.interceptors.response.use(
       message: defaultMsg,
       status: status,
       errors: err.response?.data?.errors || null,
-      code: err.response?.data?.code || null
+      code: err.response?.data?.code || null,
+      data: err.response?.data || null
     };
 
     console.error('[API Error Details]:', {
@@ -70,23 +134,37 @@ axiosInstance.interceptors.response.use(
       data: err.response?.data
     });
 
-    // Auto-clean credentials on token expiration status codes
+    // Auto-clean credentials on 401 Unauthorized
     if (customError.status === 401) {
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }
 
-    // Auto-redirect to custom /blocked page on rate limit (429) or IP lockout (403)
-    if (customError.status === 429 || customError.status === 403 || err.response?.data?.code === 'IP_BLOCKED') {
+    // Auto-redirect to custom /blocked page ONLY on rate limit (429) or explicit IP lockout (code === 'IP_BLOCKED' or 'ACCOUNT_LOCKED')
+    const isLockout = customError.status === 429 || 
+                      err.response?.data?.code === 'IP_BLOCKED' || 
+                      err.response?.data?.code === 'ACCOUNT_LOCKED' ||
+                      (customError.status === 403 && err.response?.data?.reason?.includes('BRUTE_FORCE'));
+
+    if (isLockout) {
+      const remainingMinutes = err.response?.data?.remainingMinutes || 15;
+      const remainingSeconds = err.response?.data?.remainingSeconds || (remainingMinutes * 60);
+      const blockedUntil = err.response?.data?.blockedUntil || (Date.now() + remainingSeconds * 1000);
+
       const lockoutData = {
         message: err.response?.data?.message || 'You have tried too many times. Please try again after some time.',
-        remainingMinutes: err.response?.data?.remainingMinutes || 60,
+        remainingMinutes,
+        remainingSeconds,
+        blockedUntil,
         reason: err.response?.data?.reason || 'TOO_MANY_FAILED_ATTEMPTS',
         timestamp: Date.now()
       };
+
       try {
         sessionStorage.setItem('lockout_info', JSON.stringify(lockoutData));
       } catch (e) {}

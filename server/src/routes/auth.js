@@ -15,6 +15,7 @@ import {
   otpRequestLimiter, 
   otpVerifyLimiter 
 } from '../middleware/rateLimiter.js';
+import { isIpBlocked, getBlockDetails } from '../middleware/ipBlocker.js';
 
 const router = Router();
 
@@ -53,6 +54,32 @@ router.post('/reset-password', otpVerifyLimiter, validateResetPassword, asyncHan
  * @desc Log into the portal and issue a JWT (Rate limited: 5 failed attempts / 15m)
  */
 router.post('/login', loginLimiter, validateLogin, asyncHandler(authController.login));
+
+/**
+ * @route GET /api/v1/auth/ip-status
+ * @desc Check if caller IP is currently blocked/locked out
+ */
+router.get('/ip-status', (req, res) => {
+  const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
+  if (isIpBlocked(clientIp)) {
+    const details = getBlockDetails(clientIp);
+    return res.status(200).json({
+      success: true,
+      blocked: true,
+      reason: details?.reason || 'BRUTE_FORCE_PREVENTION',
+      remainingMinutes: details?.remainingMinutes || 15,
+      remainingSeconds: details?.remainingSeconds || 900,
+      blockedUntil: details?.blockedUntil || (Date.now() + 15 * 60 * 1000),
+      tier: details?.tier || 1,
+      formattedDuration: details?.formattedDuration || '15 minute(s)'
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    blocked: false
+  });
+});
 
 /**
  * @route GET /api/v1/auth/me

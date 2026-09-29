@@ -1,4 +1,6 @@
-import axiosInstance from './axiosInstance.js';
+import axiosInstance, { clearApiCache } from './axiosInstance.js';
+
+export { clearApiCache };
 
 export const authService = {
   login: (credentials) => axiosInstance.post('/auth/login', credentials),
@@ -7,7 +9,8 @@ export const authService = {
   resendOtp: (data) => axiosInstance.post('/auth/resend-otp', data),
   forgotPassword: (data) => axiosInstance.post('/auth/forgot-password', data),
   resetPassword: (data) => axiosInstance.post('/auth/reset-password', data),
-  getMe: () => axiosInstance.get('/auth/me')
+  getMe: () => axiosInstance.get('/auth/me'),
+  getIpStatus: () => axiosInstance.get('/auth/ip-status', { cache: false })
 };
 
 export const vehicleService = {
