@@ -1,2 +1,0 @@
--- DEPRECATED — superseded by database/schema.sql
--- This file is no longer used. See database/schema.sql for the current schema.

@@ -11,6 +11,7 @@ export const authService = {
   resetPassword: (data) => axiosInstance.post('/auth/reset-password', data),
   getMe: () => axiosInstance.get('/auth/me'),
   getIpStatus: () => axiosInstance.get('/auth/ip-status', { cache: false }),
+  unblock: () => axiosInstance.post('/auth/unblock', {}, { cache: false }),
   getCsrfToken: () => axiosInstance.get('/auth/csrf-token', { cache: false }),
   deleteAccount: (data) => axiosInstance.delete('/auth/delete-account', { data })
 };

@@ -14,56 +14,39 @@ export const AuthLayout = () => {
   const { isAuthenticated } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [checkingLockout, setCheckingLockout] = useState(true);
-  const [isBlocked, setIsBlocked] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem('lockout_info');
-      if (!saved) return false;
-      const parsed = JSON.parse(saved);
-      return parsed?.blockedUntil && Date.now() < parsed.blockedUntil;
-    } catch {
-      return false;
-    }
-  });
+  const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     const verifyIpLockout = async () => {
-      // 1. Check local session lockout timestamp
-      try {
-        const saved = sessionStorage.getItem('lockout_info');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed?.blockedUntil && Date.now() < parsed.blockedUntil) {
-            if (isMounted) {
-              setIsBlocked(true);
-              setCheckingLockout(false);
-            }
-            return;
-          } else {
-            sessionStorage.removeItem('lockout_info');
-          }
-        }
-      } catch {}
-
-      // 2. Query backend to verify if client IP is currently blocked
+      // Query backend to verify if client IP is currently blocked
       try {
         const res = await authService.getIpStatus();
-        if (isMounted && res?.blocked) {
-          const remainingSeconds = res.remainingSeconds || ((res.remainingMinutes || 15) * 60);
-          const blockedUntil = res.blockedUntil || (Date.now() + remainingSeconds * 1000);
-          sessionStorage.setItem('lockout_info', JSON.stringify({
-            message: res.message || 'You have tried too many times. Your IP is blocked.',
-            remainingMinutes: res.remainingMinutes || 15,
-            remainingSeconds,
-            blockedUntil,
-            reason: res.reason || 'BRUTE_FORCE_PREVENTION',
-            timestamp: Date.now()
-          }));
-          setIsBlocked(true);
+        if (isMounted) {
+          if (res?.blocked) {
+            const remainingSeconds = res.remainingSeconds || ((res.remainingMinutes || 15) * 60);
+            const blockedUntil = res.blockedUntil || (Date.now() + remainingSeconds * 1000);
+            sessionStorage.setItem('lockout_info', JSON.stringify({
+              message: res.message || 'You have tried too many times. Your IP is blocked.',
+              remainingMinutes: res.remainingMinutes || 15,
+              remainingSeconds,
+              blockedUntil,
+              reason: res.reason || 'BRUTE_FORCE_PREVENTION',
+              timestamp: Date.now()
+            }));
+            setIsBlocked(true);
+          } else {
+            // Not blocked! Clear any lingering local lockout data
+            sessionStorage.removeItem('lockout_info');
+            setIsBlocked(false);
+          }
         }
       } catch (e) {
-        if (e.status === 403 && e.code === 'IP_BLOCKED') {
+        if (e.status === 403 && (e.code === 'IP_BLOCKED' || e.code === 'ACCOUNT_LOCKED')) {
           if (isMounted) setIsBlocked(true);
+        } else {
+          sessionStorage.removeItem('lockout_info');
+          if (isMounted) setIsBlocked(false);
         }
       } finally {
         if (isMounted) {

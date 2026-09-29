@@ -1,7 +1,6 @@
 import app from './app.js';
 import { env } from './config/env.js';
 import pool, { testConnection } from './config/db.js';
-import { dbInit } from './config/dbInit.js';
 import { pgDbInit } from './config/pgDbInit.js';
 
 /**
@@ -41,19 +40,15 @@ const startKeepAlive = () => {
  * Boots the TransitOps backend server
  */
 const startServer = async () => {
-  console.log('[BOOT] Starting TransitOps Backend Server...');
+  console.log('[BOOT] Starting TransitOps Backend Server (PostgreSQL)...');
 
-  // Test connection to the database (PostgreSQL or MySQL)
+  // Test connection to the PostgreSQL database
   const isDbConnected = await testConnection();
   if (!isDbConnected) {
-    console.warn('[BOOT] [WARNING] Proceeding without verified database connectivity. Make sure DB is running.');
+    console.warn('[BOOT] [WARNING] Proceeding without verified database connectivity. Make sure PostgreSQL DB is running.');
   } else {
-    // Run database seeding/initialization sequence
-    if (pool.isPostgres) {
-      await pgDbInit();
-    } else {
-      await dbInit();
-    }
+    // Run PostgreSQL database seeding and verification sequence
+    await pgDbInit();
   }
 
   // Start HTTP listener

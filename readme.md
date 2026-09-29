@@ -1,11 +1,11 @@
 # 🚚 TransitOps - Smart Transport Operations Platform
 
-> A modern Fleet & Transport Management System built with **React, Node.js, Express.js, and MySQL**.
+> A modern Fleet & Transport Management System built with **React, Node.js, Express.js, and PostgreSQL**.
 
 ![React](https://img.shields.io/badge/React-19-blue?logo=react)
 ![Node](https://img.shields.io/badge/Node.js-22-green?logo=node.js)
 ![Express](https://img.shields.io/badge/Express.js-Backend-black?logo=express)
-![MySQL](https://img.shields.io/badge/MySQL-Database-orange?logo=mysql)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)
 ![JWT](https://img.shields.io/badge/Auth-JWT-success)
 ![Nodemailer](https://img.shields.io/badge/Email-SMTP-blue)
 ![License](https://img.shields.io/badge/License-MIT-blue)
@@ -250,19 +250,14 @@ npm run dev
 
 ---
 
-## MySQL
+## PostgreSQL Database
 
-Create Database
-
-```sql
-CREATE DATABASE transitops_db;
-```
-
-Import
+PostgreSQL database schemas and seeds are automatically verified and initialized on startup.
+You can also manually execute:
 
 ```bash
-mysql -u root -p transitops_db < database/schema.sql
-mysql -u root -p transitops_db < database/seed.sql
+cd server
+npm run db:setup
 ```
 
 ---
@@ -521,4 +516,4 @@ This project is licensed under the MIT License.
 
 ## ❤️ Built with
 
-React • Node.js • Express.js • MySQL
+React • Node.js • Express.js • PostgreSQL

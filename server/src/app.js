@@ -19,7 +19,7 @@ const app = express();
 app.disable('x-powered-by');
 
 // Trust reverse proxy (Render, Cloudflare, etc.) for correct client IP detection in rate limiting
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 // 1. CORS MUST BE THE VERY FIRST MIDDLEWARE
 // This guarantees that ANY response (including 403 Forbidden, 429 Too Many Requests, and preflight OPTIONS)

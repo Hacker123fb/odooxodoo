@@ -13,7 +13,8 @@ import {
   recordFailedLogin,
   recordSuccessfulLogin,
   recordFailedOtp,
-  getAccountLockDetails
+  getAccountLockDetails,
+  getClientIp
 } from '../middleware/ipBlocker.js';
 
 // Fast memory cache for password reset OTPs to achieve sub-millisecond response
@@ -148,7 +149,7 @@ export const authController = {
       });
 
       // Clear any previous failed attempts
-      recordSuccessfulLogin(req.ip, email);
+      recordSuccessfulLogin(getClientIp(req), email);
 
       return res.ok(
         {
@@ -163,7 +164,7 @@ export const authController = {
       );
     } catch (error) {
       if (error.statusCode === HttpStatusCodes.BAD_REQUEST || error.statusCode === HttpStatusCodes.FORBIDDEN) {
-        recordFailedOtp(req.ip, req.body?.email);
+        recordFailedOtp(getClientIp(req), req.body?.email);
       }
       next(error);
     }
@@ -218,7 +219,7 @@ export const authController = {
       const user = await userModel.findByEmail(email);
 
       if (!user) {
-        recordFailedLogin(req.ip, email);
+        recordFailedLogin(getClientIp(req), email);
         return next(
           new AppError(
             'No account found with this email address.',
@@ -240,7 +241,7 @@ export const authController = {
 
       if (!passwordMatched) {
         // Record failed attempt on both IP and Target Account!
-        recordFailedLogin(req.ip, email);
+        recordFailedLogin(getClientIp(req), email);
         return next(
           new AppError(
             'Wrong password. Please check your password and try again.',
@@ -254,7 +255,7 @@ export const authController = {
 
       const token = signToken(user.id, user.role_name);
       // Reset strike counters for both IP and Account on success
-      recordSuccessfulLogin(req.ip, email);
+      recordSuccessfulLogin(getClientIp(req), email);
 
       return res.ok(
         {
@@ -433,7 +434,7 @@ export const authController = {
 
         if (!isMatch) {
           cached.attempts += 1;
-          recordFailedOtp(req.ip, email);
+          recordFailedOtp(getClientIp(req), email);
           const remaining = 5 - cached.attempts;
           if (remaining <= 0) {
             passwordResetMemoryCache.delete(email);
@@ -459,7 +460,7 @@ export const authController = {
 
         isMatch = await bcrypt.compare(cleanOtp, record.otp_hash);
         if (!isMatch) {
-          recordFailedOtp(req.ip, email);
+          recordFailedOtp(getClientIp(req), email);
           await passwordResetOtpModel.incrementAttempts(email);
           const remaining = 5 - (record.attempts + 1);
           if (remaining <= 0) {
@@ -478,7 +479,7 @@ export const authController = {
 
       const newHash = await bcrypt.hash(newPassword, 10);
       await userModel.updatePassword(email, newHash);
-      recordSuccessfulLogin(req.ip, email);
+      recordSuccessfulLogin(getClientIp(req), email);
 
       return res.ok(
         null,
@@ -518,7 +519,7 @@ export const authController = {
       // 2. Verify password with bcrypt
       const isMatch = await bcrypt.compare(password, user.password_hash);
       if (!isMatch) {
-        recordFailedLogin(req.ip, user.email);
+        recordFailedLogin(getClientIp(req), user.email);
         throw new AppError('Incorrect password. Account deletion aborted.', HttpStatusCodes.UNAUTHORIZED);
       }
 

@@ -15,7 +15,7 @@ import {
   otpRequestLimiter, 
   otpVerifyLimiter 
 } from '../middleware/rateLimiter.js';
-import { isIpBlocked, getBlockDetails } from '../middleware/ipBlocker.js';
+import { isIpBlocked, getBlockDetails, getClientIp, unblockIp, unlockAccount } from '../middleware/ipBlocker.js';
 import { generateCsrfToken } from '../middleware/csrfProtection.js';
 
 const router = Router();
@@ -61,7 +61,7 @@ router.post('/login', loginLimiter, validateLogin, asyncHandler(authController.l
  * @desc Check if caller IP is currently blocked/locked out
  */
 router.get('/ip-status', (req, res) => {
-  const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
+  const clientIp = getClientIp(req);
   if (isIpBlocked(clientIp)) {
     const details = getBlockDetails(clientIp);
     return res.status(200).json({
@@ -79,6 +79,22 @@ router.get('/ip-status', (req, res) => {
   return res.status(200).json({
     success: true,
     blocked: false
+  });
+});
+
+/**
+ * @route POST /api/v1/auth/unblock
+ * @desc Reset lockout cooldown for caller IP and optionally specified email
+ */
+router.post('/unblock', (req, res) => {
+  const clientIp = getClientIp(req);
+  unblockIp(clientIp, true);
+  if (req.body?.email) {
+    unlockAccount(req.body.email, true);
+  }
+  return res.status(200).json({
+    success: true,
+    message: 'Cooldown and lockout cleared successfully.'
   });
 });
 

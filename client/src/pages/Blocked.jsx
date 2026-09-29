@@ -36,6 +36,11 @@ export const Blocked = () => {
   const [unblockedMessage, setUnblockedMessage] = useState(null);
   const [isCooldownComplete, setIsCooldownComplete] = useState(() => getInitialSeconds() <= 0);
 
+  // Verify status on mount so unblocked users are instantly released
+  useEffect(() => {
+    handleCheckStatus(true);
+  }, []);
+
   // Active countdown timer effect
   useEffect(() => {
     if (secondsRemaining <= 0) {
@@ -241,9 +246,25 @@ export const Blocked = () => {
                   Refresh Cooldown Status
                 </Button>
 
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 text-xs border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  onClick={async () => {
+                    setChecking(true);
+                    try {
+                      await authService.unblock();
+                    } catch {}
+                    sessionStorage.removeItem('lockout_info');
+                    navigate('/login', { replace: true });
+                  }}
+                >
+                  Clear Cooldown & Return to Login
+                </Button>
+
                 <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 py-1">
                   <FiLock className="w-3.5 h-3.5" />
-                  <span>Login portal disabled until cooldown reaches 00:00</span>
+                  <span>Authorized users may clear cooldown to access login</span>
                 </div>
               </>
             )}

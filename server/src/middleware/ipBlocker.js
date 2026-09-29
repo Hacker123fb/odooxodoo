@@ -26,10 +26,44 @@ const ipBlockedMap = new Map();       // ip -> { blockedUntil, reason, blockedAt
 const ipHistoryMap = new Map();       // ip -> { tier, lastBlockedAt }
 
 // Maps to track Account (Email) states - ANTI-IP-HOPPING DEFENSE
-// Prevents attackers from rotating proxy/VPN IPs while targeting the same account!
 const accountFailedLoginsMap = new Map(); // email -> { count, windowStart, ips: Set }
 const accountBlockedMap = new Map();      // email -> { blockedUntil, reason, blockedAt, tier }
 const accountHistoryMap = new Map();      // email -> { tier, lastBlockedAt }
+
+/**
+ * Robust extraction of true client IP address behind reverse proxies (Render, Cloudflare, Nginx)
+ */
+export const getClientIp = (req) => {
+  if (!req) return '127.0.0.1';
+  const xForwardedFor = req.headers ? req.headers['x-forwarded-for'] : null;
+  if (xForwardedFor) {
+    const raw = typeof xForwardedFor === 'string'
+      ? xForwardedFor.split(',')[0].trim()
+      : xForwardedFor[0]?.trim();
+    if (raw) return raw.replace(/^::ffff:/, '');
+  }
+  const ip = req.ip || req.socket?.remoteAddress || '127.0.0.1';
+  return ip.replace(/^::ffff:/, '');
+};
+
+/**
+ * Checks if an IP is a private loopback, local development, or cloud internal proxy gateway IP.
+ * Crucial: Localhost and internal reverse proxy IPs MUST NEVER be blocked globally!
+ */
+export const isPrivateOrLoopbackIp = (ip) => {
+  if (!ip) return true;
+  const cleanIp = ip.replace(/^::ffff:/, '').trim();
+  return (
+    cleanIp === '127.0.0.1' ||
+    cleanIp === '::1' ||
+    cleanIp === 'localhost' ||
+    cleanIp.startsWith('10.') ||
+    cleanIp.startsWith('192.168.') ||
+    cleanIp.startsWith('fc00:') ||
+    cleanIp.startsWith('fe80:') ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(cleanIp)
+  );
+};
 
 /**
  * Returns escalation duration in milliseconds based on current tier index
@@ -56,15 +90,16 @@ const formatDurationDesc = (ms) => {
 // ============================================================================
 
 export const isIpBlocked = (ip) => {
-  if (!ip) return false;
-  const blockRecord = ipBlockedMap.get(ip);
+  if (!ip || isPrivateOrLoopbackIp(ip)) return false;
+  const cleanIp = ip.replace(/^::ffff:/, '').trim();
+  const blockRecord = ipBlockedMap.get(cleanIp);
   if (!blockRecord) return false;
 
   const now = Date.now();
   if (now > blockRecord.blockedUntil) {
-    ipBlockedMap.delete(ip);
-    ipFailedLoginsMap.delete(ip);
-    console.log(`[SECURITY] IP block cooldown expired for: ${ip}`);
+    ipBlockedMap.delete(cleanIp);
+    ipFailedLoginsMap.delete(cleanIp);
+    console.log(`[SECURITY] IP block cooldown expired for: ${cleanIp}`);
     return false;
   }
 
@@ -72,7 +107,9 @@ export const isIpBlocked = (ip) => {
 };
 
 export const getBlockDetails = (ip) => {
-  const record = ipBlockedMap.get(ip);
+  if (!ip || isPrivateOrLoopbackIp(ip)) return null;
+  const cleanIp = ip.replace(/^::ffff:/, '').trim();
+  const record = ipBlockedMap.get(cleanIp);
   if (!record) return null;
   const remainingMs = Math.max(0, record.blockedUntil - Date.now());
   const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
@@ -89,8 +126,10 @@ export const getBlockDetails = (ip) => {
 };
 
 export const blockIpProgressive = (ip, reason = 'BRUTE_FORCE_FAILED_LOGINS') => {
+  if (!ip || isPrivateOrLoopbackIp(ip)) return;
+  const cleanIp = ip.replace(/^::ffff:/, '').trim();
   const now = Date.now();
-  const history = ipHistoryMap.get(ip) || { tier: 0, lastBlockedAt: 0 };
+  const history = ipHistoryMap.get(cleanIp) || { tier: 0, lastBlockedAt: 0 };
 
   // Reset escalation tier if previous block was more than 72 hours ago
   if (now - history.lastBlockedAt > CONFIG.HISTORY_RETENTION_MS) {
@@ -100,7 +139,7 @@ export const blockIpProgressive = (ip, reason = 'BRUTE_FORCE_FAILED_LOGINS') => 
   const durationMs = getTierDuration(history.tier);
   const currentTier = history.tier + 1;
 
-  ipBlockedMap.set(ip, {
+  ipBlockedMap.set(cleanIp, {
     blockedAt: now,
     blockedUntil: now + durationMs,
     reason,
@@ -110,18 +149,30 @@ export const blockIpProgressive = (ip, reason = 'BRUTE_FORCE_FAILED_LOGINS') => 
   // Advance tier for next potential lockout (capped at 24 hours)
   history.tier = Math.min(history.tier + 1, ESCALATION_DURATIONS_MS.length - 1);
   history.lastBlockedAt = now;
-  ipHistoryMap.set(ip, history);
+  ipHistoryMap.set(cleanIp, history);
 
-  console.warn(`[SECURITY] [IP BLOCK] IP ${ip} has been BLOCKED (Tier ${currentTier}: ${formatDurationDesc(durationMs)}). Reason: ${reason}`);
+  console.warn(`[SECURITY] [IP BLOCK] IP ${cleanIp} has been BLOCKED (Tier ${currentTier}: ${formatDurationDesc(durationMs)}). Reason: ${reason}`);
 };
 
-export const unblockIp = (ip, resetHistory = false) => {
-  ipBlockedMap.delete(ip);
-  ipFailedLoginsMap.delete(ip);
+export const unblockIp = (ip, resetHistory = true) => {
+  if (!ip) return;
+  const cleanIp = ip.replace(/^::ffff:/, '').trim();
+  ipBlockedMap.delete(cleanIp);
+  ipFailedLoginsMap.delete(cleanIp);
   if (resetHistory) {
-    ipHistoryMap.delete(ip);
+    ipHistoryMap.delete(cleanIp);
   }
-  console.log(`[SECURITY] IP active block cleared: ${ip} (History reset: ${resetHistory})`);
+  console.log(`[SECURITY] IP active block cleared: ${cleanIp}`);
+};
+
+export const unblockAll = () => {
+  ipBlockedMap.clear();
+  ipFailedLoginsMap.clear();
+  ipHistoryMap.clear();
+  accountBlockedMap.clear();
+  accountFailedLoginsMap.clear();
+  accountHistoryMap.clear();
+  console.log('[SECURITY] All IP and account blocks forcefully reset.');
 };
 
 // ============================================================================
@@ -188,14 +239,15 @@ export const lockAccountProgressive = (email, reason = 'DISTRIBUTED_BRUTE_FORCE_
   console.warn(`[SECURITY] [ACCOUNT LOCKOUT] Account ${cleanEmail} LOCKED (Tier ${currentTier}: ${formatDurationDesc(durationMs)}) across origins.`);
 };
 
-export const unlockAccount = (email, resetHistory = false) => {
+export const unlockAccount = (email, resetHistory = true) => {
+  if (!email) return;
   const cleanEmail = email.toLowerCase().trim();
   accountBlockedMap.delete(cleanEmail);
   accountFailedLoginsMap.delete(cleanEmail);
   if (resetHistory) {
     accountHistoryMap.delete(cleanEmail);
   }
-  console.log(`[SECURITY] Account active lockout cleared: ${cleanEmail} (History reset: ${resetHistory})`);
+  console.log(`[SECURITY] Account active lockout cleared: ${cleanEmail}`);
 };
 
 // ============================================================================
@@ -204,36 +256,36 @@ export const unlockAccount = (email, resetHistory = false) => {
 
 export const recordFailedLogin = (ip, email = null) => {
   const now = Date.now();
+  const cleanIp = ip ? ip.replace(/^::ffff:/, '').trim() : null;
 
-  // 1. Record on IP
-  if (ip) {
-    const ipEntry = ipFailedLoginsMap.get(ip) || { count: 0, windowStart: now };
+  // 1. Record on IP (never track or block loopback/internal proxy IPs)
+  if (cleanIp && !isPrivateOrLoopbackIp(cleanIp)) {
+    const ipEntry = ipFailedLoginsMap.get(cleanIp) || { count: 0, windowStart: now };
     if (now - ipEntry.windowStart > CONFIG.FAILED_WINDOW_MS) {
       ipEntry.count = 1;
       ipEntry.windowStart = now;
     } else {
       ipEntry.count += 1;
     }
-    ipFailedLoginsMap.set(ip, ipEntry);
-    console.warn(`[SECURITY] Failed login for IP ${ip} (${ipEntry.count}/${CONFIG.MAX_FAILED_ATTEMPTS})`);
+    ipFailedLoginsMap.set(cleanIp, ipEntry);
+    console.warn(`[SECURITY] Failed login for IP ${cleanIp} (${ipEntry.count}/${CONFIG.MAX_FAILED_ATTEMPTS})`);
 
     if (ipEntry.count >= CONFIG.MAX_FAILED_ATTEMPTS) {
-      blockIpProgressive(ip, 'BRUTE_FORCE_FAILED_LOGINS');
+      blockIpProgressive(cleanIp, 'BRUTE_FORCE_FAILED_LOGINS');
     }
   }
 
-  // 2. Record on Account (Regardless of what IP was used!)
-  // If an attacker switches IP 5 times while targeting the same email, this triggers!
+  // 2. Record on Account (Regardless of what IP was used)
   if (email) {
     const cleanEmail = email.toLowerCase().trim();
     const acctEntry = accountFailedLoginsMap.get(cleanEmail) || { count: 0, windowStart: now, ips: new Set() };
     if (now - acctEntry.windowStart > CONFIG.FAILED_WINDOW_MS) {
       acctEntry.count = 1;
       acctEntry.windowStart = now;
-      acctEntry.ips = new Set(ip ? [ip] : []);
+      acctEntry.ips = new Set(cleanIp ? [cleanIp] : []);
     } else {
       acctEntry.count += 1;
-      if (ip) acctEntry.ips.add(ip);
+      if (cleanIp) acctEntry.ips.add(cleanIp);
     }
     accountFailedLoginsMap.set(cleanEmail, acctEntry);
     console.warn(`[SECURITY] Failed login for Account ${cleanEmail} (${acctEntry.count}/${CONFIG.MAX_FAILED_ATTEMPTS}) from ${acctEntry.ips.size} IP(s)`);
@@ -249,8 +301,9 @@ export const recordFailedOtp = (ip, email = null) => {
 };
 
 export const recordSuccessfulLogin = (ip, email = null) => {
-  if (ip) {
-    ipFailedLoginsMap.delete(ip);
+  const cleanIp = ip ? ip.replace(/^::ffff:/, '').trim() : null;
+  if (cleanIp) {
+    ipFailedLoginsMap.delete(cleanIp);
   }
   if (email) {
     const cleanEmail = email.toLowerCase().trim();
@@ -259,9 +312,10 @@ export const recordSuccessfulLogin = (ip, email = null) => {
 };
 
 export const recordAttackStrike = (ip, reason = 'MALICIOUS_ATTACK_STRIKE') => {
-  if (!ip) return;
-  console.warn(`[SECURITY] Immediate attack strike recorded for IP ${ip}: ${reason}`);
-  blockIpProgressive(ip, reason);
+  if (!ip || isPrivateOrLoopbackIp(ip)) return;
+  const cleanIp = ip.replace(/^::ffff:/, '').trim();
+  console.warn(`[SECURITY] Attack strike recorded for IP ${cleanIp}: ${reason}`);
+  blockIpProgressive(cleanIp, reason);
 };
 
 // ============================================================================
@@ -273,11 +327,18 @@ export const ipBlocker = (req, res, next) => {
     return next();
   }
 
-  const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
+  const clientIp = getClientIp(req);
 
-  // Allow status check endpoints to pass through so frontend can inspect lockout timer without 403
+  // Allow essential status and unblock endpoints to pass through unconditionally
   const requestPath = (req.path || '').toLowerCase();
-  if (requestPath.endsWith('/auth/ip-status') || requestPath.endsWith('/health/ping') || requestPath === '/api/v1/auth/ip-status') {
+  if (
+    requestPath.endsWith('/auth/ip-status') ||
+    requestPath.endsWith('/auth/unblock') ||
+    requestPath.endsWith('/health/ping') ||
+    requestPath.endsWith('/health') ||
+    requestPath === '/api/v1/auth/ip-status' ||
+    requestPath === '/api/v1/auth/unblock'
+  ) {
     return next();
   }
 

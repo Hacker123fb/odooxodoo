@@ -169,11 +169,10 @@ axiosInstance.interceptors.response.use(
       }
     }
 
-    // Auto-redirect to custom /blocked page ONLY on rate limit (429) or explicit IP lockout (code === 'IP_BLOCKED' or 'ACCOUNT_LOCKED')
-    const isLockout = customError.status === 429 || 
-                      err.response?.data?.code === 'IP_BLOCKED' || 
+    // Auto-redirect to custom /blocked page ONLY on explicit IP lockout or account lockout
+    const isLockout = err.response?.data?.code === 'IP_BLOCKED' || 
                       err.response?.data?.code === 'ACCOUNT_LOCKED' ||
-                      (customError.status === 403 && err.response?.data?.reason?.includes('BRUTE_FORCE'));
+                      (err.response?.data?.blocked === true && (customError.status === 403 || customError.status === 429));
 
     if (isLockout) {
       const remainingMinutes = err.response?.data?.remainingMinutes || 15;
