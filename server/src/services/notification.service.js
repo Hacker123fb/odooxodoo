@@ -106,27 +106,28 @@ export const notificationService = {
 
       // 5. Low fuel efficiency warnings (under 4.0 Km/L)
       const [effRows] = await connection.query(`
-        SELECT 
-          v.id,
-          v.registration_number AS vehiclePlate,
-          CASE 
-            WHEN COALESCE(f_qty.quantity, 0) > 0 THEN ROUND(COALESCE(t_dist.distance, 0) / COALESCE(f_qty.quantity, 0), 2)
-            ELSE 0 
-          END AS kmPerLitre
-        FROM vehicles v
-        LEFT JOIN (
-          SELECT vehicle_id, COALESCE(SUM(distance_km), 0) AS distance 
-          FROM trips 
-          WHERE status = 'COMPLETED' 
-          GROUP BY vehicle_id
-        ) t_dist ON v.id = t_dist.vehicle_id
-        LEFT JOIN (
-          SELECT vehicle_id, COALESCE(SUM(quantity), 0) AS quantity 
-          FROM fuel_logs 
-          GROUP BY vehicle_id
-        ) f_qty ON v.id = f_qty.vehicle_id
-        GROUP BY v.id
-        HAVING kmPerLitre > 0 AND kmPerLitre < 4.0
+        SELECT * FROM (
+          SELECT 
+            v.id,
+            v.registration_number AS vehiclePlate,
+            CASE 
+              WHEN COALESCE(f_qty.quantity, 0) > 0 THEN ROUND(CAST(COALESCE(t_dist.distance, 0) / COALESCE(f_qty.quantity, 0) AS DECIMAL(10,2)), 2)
+              ELSE 0 
+            END AS kmPerLitre
+          FROM vehicles v
+          LEFT JOIN (
+            SELECT vehicle_id, COALESCE(SUM(distance_km), 0) AS distance 
+            FROM trips 
+            WHERE status = 'COMPLETED' 
+            GROUP BY vehicle_id
+          ) t_dist ON v.id = t_dist.vehicle_id
+          LEFT JOIN (
+            SELECT vehicle_id, COALESCE(SUM(quantity), 0) AS quantity 
+            FROM fuel_logs 
+            GROUP BY vehicle_id
+          ) f_qty ON v.id = f_qty.vehicle_id
+        ) sub
+        WHERE kmPerLitre > 0 AND kmPerLitre < 4.0
       `);
       for (const row of effRows) {
         const type = 'LOW_FUEL_EFFICIENCY';

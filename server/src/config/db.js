@@ -1,4 +1,4 @@
-import mysql from 'mysql2/promise';
+import mysql from 'mysql2/promise.js';
 import pg from 'pg';
 import { env } from './env.js';
 
@@ -14,9 +14,16 @@ const convertPlaceholders = (sql) => {
 
   // Auto-translate MySQL date idioms to PostgreSQL equivalents
   converted = converted
-    .replace(/DATE_SUB\(\s*CURDATE\(\)\s*,\s*INTERVAL\s+(\d+)\s+MONTH\s*\)/gi, "(CURRENT_DATE - INTERVAL '$1 months')")
-    .replace(/DATE_SUB\(\s*NOW\(\)\s*,\s*INTERVAL\s+(\d+)\s+DAY\s*\)/gi, "(NOW() - INTERVAL '$1 days')")
-    .replace(/DATE_ADD\(\s*CURDATE\(\)\s*,\s*INTERVAL\s+(\d+)\s+DAY\s*\)/gi, "(CURRENT_DATE + INTERVAL '$1 days')")
+    .replace(/DATE_ADD\(\s*([^,]+?)\s*,\s*INTERVAL\s+(\d+)\s+([A-Za-z]+)\s*\)/gi, (_, date, num, unit) => {
+      const u = unit.toLowerCase().replace(/s$/, '') + 's';
+      const d = date.trim().toUpperCase() === 'CURDATE()' ? 'CURRENT_DATE' : date.trim();
+      return `(${d} + INTERVAL '${num} ${u}')`;
+    })
+    .replace(/DATE_SUB\(\s*([^,]+?)\s*,\s*INTERVAL\s+(\d+)\s+([A-Za-z]+)\s*\)/gi, (_, date, num, unit) => {
+      const u = unit.toLowerCase().replace(/s$/, '') + 's';
+      const d = date.trim().toUpperCase() === 'CURDATE()' ? 'CURRENT_DATE' : date.trim();
+      return `(${d} - INTERVAL '${num} ${u}')`;
+    })
     .replace(/DATE_FORMAT\(\s*([^,]+)\s*,\s*'%Y-%m'\s*\)/gi, "TO_CHAR($1, 'YYYY-MM')")
     .replace(/\bCURDATE\(\)/gi, 'CURRENT_DATE')
     .replace(/\bYEAR\(([^)]+)\)/gi, 'EXTRACT(YEAR FROM $1)')
@@ -24,6 +31,32 @@ const convertPlaceholders = (sql) => {
     .replace(/DATE\((\w+(?:\.\w+)?)\)/gi, 'CAST($1 AS DATE)');
 
   return converted;
+};
+
+// Helper to remap PostgreSQL lowercased column names back to original camelCase aliases
+const remapRowKeys = (rows, sql) => {
+  if (!rows || !Array.isArray(rows) || rows.length === 0 || typeof rows[0] !== 'object') return rows;
+  const aliasRegex = /\bAS\s+["`]?([a-zA-Z0-9_]+)["`]?/gi;
+  const map = {};
+  let match;
+  while ((match = aliasRegex.exec(sql)) !== null) {
+    const original = match[1];
+    if (/[A-Z]/.test(original)) {
+      map[original.toLowerCase()] = original;
+    }
+  }
+  if (Object.keys(map).length === 0) return rows;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || typeof row !== 'object') continue;
+    for (const [lowerKey, origKey] of Object.entries(map)) {
+      if (row[lowerKey] !== undefined && row[origKey] === undefined) {
+        row[origKey] = row[lowerKey];
+      }
+    }
+  }
+  return rows;
 };
 
 if (env.isPostgres || env.databaseUrl) {
@@ -74,7 +107,8 @@ if (env.isPostgres || env.databaseUrl) {
         return [resultHeader, res.fields];
       }
 
-      return [res.rows, res.fields];
+      const rows = remapRowKeys(res.rows, sql);
+      return [rows, res.fields];
     },
 
     async getConnection() {
@@ -91,13 +125,15 @@ if (env.isPostgres || env.databaseUrl) {
             const insertId = res.rows[0]?.id || 0;
             return [{ insertId, affectedRows: res.rowCount, rows: res.rows }, res.fields];
           }
-          return [res.rows, res.fields];
+          const rows = remapRowKeys(res.rows, sql);
+          return [rows, res.fields];
         },
         async beginTransaction() {
           await client.query('BEGIN');
         },
         async commit() {
           await client.query('COMMIT');
+
         },
         async rollback() {
           await client.query('ROLLBACK');

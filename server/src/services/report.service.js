@@ -51,7 +51,7 @@ export const reportService = {
           params.push(vehicleId);
         }
 
-        sql += " GROUP BY v.id ORDER BY totalDistanceKm DESC";
+        sql += " GROUP BY v.id, v.registration_number, vm.name, v.status ORDER BY totalDistanceKm DESC";
         const [rows] = await pool.query(sql, params);
         return rows;
       }
@@ -87,7 +87,7 @@ export const reportService = {
           params.push(driverId);
         }
 
-        sql += " GROUP BY d.id ORDER BY completedTrips DESC";
+        sql += " GROUP BY d.id, d.employee_id, d.full_name, d.status ORDER BY completedTrips DESC";
         const [rows] = await pool.query(sql, params);
         return rows;
       }
@@ -183,7 +183,7 @@ export const reportService = {
           sql += " WHERE " + conditions.join(" AND ");
         }
 
-        sql += " GROUP BY v.id, ft.id HAVING fuelingCount > 0 ORDER BY totalCost DESC";
+        sql += " GROUP BY v.id, v.registration_number, ft.id, ft.label HAVING COUNT(f.id) > 0 ORDER BY totalCost DESC";
         const [rows] = await pool.query(sql, params);
         return rows;
       }
@@ -223,7 +223,7 @@ export const reportService = {
             COALESCE(t_dist.distance, 0) AS totalDistanceKm,
             COALESCE(f_qty.quantity, 0) AS totalFuelLitres,
             CASE 
-              WHEN COALESCE(f_qty.quantity, 0) > 0 THEN ROUND(COALESCE(t_dist.distance, 0) / COALESCE(f_qty.quantity, 0), 2)
+              WHEN COALESCE(f_qty.quantity, 0) > 0 THEN ROUND(CAST(COALESCE(t_dist.distance, 0) / COALESCE(f_qty.quantity, 0) AS DECIMAL(10,2)), 2)
               ELSE 0 
             END AS kmPerLitre
           FROM vehicles v
@@ -278,7 +278,7 @@ export const reportService = {
           sql += " WHERE " + conditions.join(" AND ");
         }
 
-        sql += " GROUP BY v.id HAVING totalJobs > 0 ORDER BY totalCost DESC";
+        sql += " GROUP BY v.id, v.registration_number HAVING COUNT(m.id) > 0 ORDER BY totalCost DESC";
         const [rows] = await pool.query(sql, params);
         return rows;
       }

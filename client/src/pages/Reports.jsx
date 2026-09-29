@@ -205,18 +205,18 @@ export const Reports = () => {
         ];
       }
       case 'fuel-consumption': {
-        const totalLitres = data.reduce((acc, curr) => acc + Number(curr.totalQuantity), 0);
-        const totalCost = data.reduce((acc, curr) => acc + Number(curr.totalCost), 0);
+        const totalLitres = data.reduce((acc, curr) => acc + (Number(curr.totalQuantity ?? curr.totalquantity) || 0), 0);
+        const totalCost = data.reduce((acc, curr) => acc + (Number(curr.totalCost ?? curr.totalcost) || 0), 0);
         return [
-          { label: 'Refuel Events', value: data.reduce((a, b) => a + Number(b.fuelingCount), 0) },
+          { label: 'Refuel Events', value: data.reduce((a, b) => a + (Number(b.fuelingCount ?? b.fuelingcount) || 0), 0) },
           { label: 'Total Fuel Consumed', value: `${totalLitres.toLocaleString()} L` },
           { label: 'Total Fuel Cost', value: `₹${totalCost.toLocaleString()}` }
         ];
       }
       case 'fuel-efficiency': {
-        const activeEff = data.filter(item => Number(item.totalFuelLitres) > 0);
-        const totalDist = activeEff.reduce((acc, curr) => acc + Number(curr.totalDistanceKm), 0);
-        const totalFuel = activeEff.reduce((acc, curr) => acc + Number(curr.totalFuelLitres), 0);
+        const activeEff = data.filter(item => (Number(item.totalFuelLitres ?? item.totalfuellitres) || 0) > 0);
+        const totalDist = activeEff.reduce((acc, curr) => acc + (Number(curr.totalDistanceKm ?? curr.totaldistancekm) || 0), 0);
+        const totalFuel = activeEff.reduce((acc, curr) => acc + (Number(curr.totalFuelLitres ?? curr.totalfuellitres) || 0), 0);
         const avgEfficiency = totalFuel > 0 ? (totalDist / totalFuel).toFixed(2) : '0';
         return [
           { label: 'Evaluated Vehicles', value: data.length },
@@ -224,8 +224,8 @@ export const Reports = () => {
         ];
       }
       case 'maintenance-cost': {
-        const totalJobs = data.reduce((acc, curr) => acc + Number(curr.totalJobs), 0);
-        const totalCost = data.reduce((acc, curr) => acc + Number(curr.totalCost), 0);
+        const totalJobs = data.reduce((acc, curr) => acc + (Number(curr.totalJobs ?? curr.totaljobs) || 0), 0);
+        const totalCost = data.reduce((acc, curr) => acc + (Number(curr.totalCost ?? curr.totalcost) || 0), 0);
         return [
           { label: 'Vehicles Repaired', value: data.length },
           { label: 'Completed Jobs', value: totalJobs },
@@ -233,9 +233,9 @@ export const Reports = () => {
         ];
       }
       case 'expense-summary': {
-        const totalExpenses = data.reduce((acc, curr) => acc + Number(curr.totalAmount), 0);
-        const paidAmount = data.reduce((acc, curr) => acc + Number(curr.paidAmount), 0);
-        const pendingAmount = data.reduce((acc, curr) => acc + Number(curr.pendingAmount), 0);
+        const totalExpenses = data.reduce((acc, curr) => acc + (Number(curr.totalAmount ?? curr.totalamount) || 0), 0);
+        const paidAmount = data.reduce((acc, curr) => acc + (Number(curr.paidAmount ?? curr.paidamount) || 0), 0);
+        const pendingAmount = data.reduce((acc, curr) => acc + (Number(curr.pendingAmount ?? curr.pendingamount) || 0), 0);
         return [
           { label: 'Expense Categories', value: data.length },
           { label: 'Total Logged Expenses', value: `₹${totalExpenses.toLocaleString()}` },
@@ -336,10 +336,10 @@ export const Reports = () => {
       case 'fuel-consumption': {
         const topCost = data.slice(0, 7);
         const chartData = {
-          labels: topCost.map(f => f.vehiclePlate),
+          labels: topCost.map(f => f.vehiclePlate || f.vehicleplate || 'Vehicle'),
           datasets: [{
             label: 'Fuel Cost (INR)',
-            data: topCost.map(f => f.totalCost),
+            data: topCost.map(f => Number(f.totalCost ?? f.totalcost ?? 0)),
             backgroundColor: 'rgba(245, 158, 11, 0.75)',
             borderColor: '#f59e0b',
             borderWidth: 1,
@@ -359,12 +359,12 @@ export const Reports = () => {
       }
 
       case 'fuel-efficiency': {
-        const activeEff = data.filter(item => item.kmPerLitre > 0).slice(0, 7);
+        const activeEff = data.filter(item => (Number(item.kmPerLitre ?? item.kmperlitre) || 0) > 0).slice(0, 7);
         const chartData = {
-          labels: activeEff.map(e => e.vehiclePlate),
+          labels: activeEff.map(e => e.vehiclePlate || e.vehicleplate || 'Vehicle'),
           datasets: [{
             label: 'Efficiency (Km/L)',
-            data: activeEff.map(e => e.kmPerLitre),
+            data: activeEff.map(e => Number(e.kmPerLitre ?? e.kmperlitre ?? 0)),
             backgroundColor: 'rgba(99, 102, 241, 0.75)',
             borderColor: '#6366f1',
             borderWidth: 1,
@@ -386,10 +386,10 @@ export const Reports = () => {
       case 'maintenance-cost': {
         const topMaint = data.slice(0, 7);
         const chartData = {
-          labels: topMaint.map(m => m.vehiclePlate),
+          labels: topMaint.map(m => m.vehiclePlate || m.vehicleplate || 'Vehicle'),
           datasets: [{
             label: 'Maintenance Cost (INR)',
-            data: topMaint.map(m => m.totalCost),
+            data: topMaint.map(m => Number(m.totalCost ?? m.totalcost ?? 0)),
             backgroundColor: 'rgba(217, 119, 6, 0.75)',
             borderColor: '#d97706',
             borderWidth: 1,
@@ -476,29 +476,29 @@ export const Reports = () => {
 
       case 'fuel-consumption':
         return [
-          { header: 'Vehicle Plate', accessor: 'vehiclePlate' },
-          { header: 'Primary Fuel Used', accessor: 'fuelType' },
-          { header: 'Refuel Cycles', accessor: 'fuelingCount' },
-          { header: 'Fuel Consumed', accessor: 'totalQuantity', cell: (row) => `${Number(row.totalQuantity).toLocaleString()} Litres` },
-          { header: 'Total Expenditures', accessor: 'totalCost', cell: (row) => `₹${Number(row.totalCost).toLocaleString()}` }
+          { header: 'Vehicle Plate', accessor: 'vehiclePlate', cell: (row) => row.vehiclePlate || row.vehicleplate || '-' },
+          { header: 'Primary Fuel Used', accessor: 'fuelType', cell: (row) => row.fuelType || row.fueltype || '-' },
+          { header: 'Refuel Cycles', accessor: 'fuelingCount', cell: (row) => Number(row.fuelingCount ?? row.fuelingcount ?? 0).toLocaleString() },
+          { header: 'Fuel Consumed', accessor: 'totalQuantity', cell: (row) => `${Number(row.totalQuantity ?? row.totalquantity ?? 0).toLocaleString()} Litres` },
+          { header: 'Total Expenditures', accessor: 'totalCost', cell: (row) => `₹${Number(row.totalCost ?? row.totalcost ?? 0).toLocaleString()}` }
         ];
 
       case 'fuel-efficiency':
         return [
-          { header: 'Vehicle Plate', accessor: 'vehiclePlate' },
-          { header: 'Trip Distance (Km)', accessor: 'totalDistanceKm', cell: (row) => `${Number(row.totalDistanceKm).toLocaleString()} Km` },
-          { header: 'Refuel Quantity (L)', accessor: 'totalFuelLitres', cell: (row) => `${Number(row.totalFuelLitres).toLocaleString()} L` },
-          { header: 'Fuel Efficiency', accessor: 'kmPerLitre', cell: (row) => <span className="font-extrabold text-slate-800 dark:text-slate-200">{row.kmPerLitre} Km/L</span> }
+          { header: 'Vehicle Plate', accessor: 'vehiclePlate', cell: (row) => row.vehiclePlate || row.vehicleplate || '-' },
+          { header: 'Trip Distance (Km)', accessor: 'totalDistanceKm', cell: (row) => `${Number(row.totalDistanceKm ?? row.totaldistancekm ?? 0).toLocaleString()} Km` },
+          { header: 'Refuel Quantity (L)', accessor: 'totalFuelLitres', cell: (row) => `${Number(row.totalFuelLitres ?? row.totalfuellitres ?? 0).toLocaleString()} L` },
+          { header: 'Fuel Efficiency', accessor: 'kmPerLitre', cell: (row) => <span className="font-extrabold text-slate-800 dark:text-slate-200">{(row.kmPerLitre ?? row.kmperlitre ?? 0)} Km/L</span> }
         ];
 
       case 'maintenance-cost':
         return [
-          { header: 'Vehicle Plate', accessor: 'vehiclePlate' },
-          { header: 'Completed Jobs', accessor: 'totalJobs' },
-          { header: 'Aggregate Repair Cost', accessor: 'totalCost', cell: (row) => `₹${Number(row.totalCost).toLocaleString()}` },
-          { header: 'Routine cost', accessor: 'routineCost', cell: (row) => `₹${Number(row.routineCost).toLocaleString()}` },
-          { header: 'Repair cost', accessor: 'repairCost', cell: (row) => `₹${Number(row.repairCost).toLocaleString()}` },
-          { header: 'Emergency cost', accessor: 'emergencyCost', cell: (row) => `₹${Number(row.emergencyCost).toLocaleString()}` }
+          { header: 'Vehicle Plate', accessor: 'vehiclePlate', cell: (row) => row.vehiclePlate || row.vehicleplate || '-' },
+          { header: 'Completed Jobs', accessor: 'totalJobs', cell: (row) => Number(row.totalJobs ?? row.totaljobs ?? 0).toLocaleString() },
+          { header: 'Aggregate Repair Cost', accessor: 'totalCost', cell: (row) => `₹${Number(row.totalCost ?? row.totalcost ?? 0).toLocaleString()}` },
+          { header: 'Routine cost', accessor: 'routineCost', cell: (row) => `₹${Number(row.routineCost ?? row.routinecost ?? 0).toLocaleString()}` },
+          { header: 'Repair cost', accessor: 'repairCost', cell: (row) => `₹${Number(row.repairCost ?? row.repaircost ?? 0).toLocaleString()}` },
+          { header: 'Emergency cost', accessor: 'emergencyCost', cell: (row) => `₹${Number(row.emergencyCost ?? row.emergencycost ?? 0).toLocaleString()}` }
         ];
 
       case 'expense-summary':
