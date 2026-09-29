@@ -37,15 +37,19 @@ export const clearApiCache = (resourcePrefix = null) => {
   }
 };
 
+let memoryCsrfToken = null;
+export const setCsrfToken = (token) => { memoryCsrfToken = token; };
+
 const axiosInstance = axios.create({
   baseURL: formatBaseUrl(),
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
   }
 });
 
-// Request Interceptor: Attach JWT Token from sessionStorage and check GET cache
+// Request Interceptor: Attach JWT Token from sessionStorage, CSRF token, and check GET cache
 axiosInstance.interceptors.request.use(
   (config) => {
     // 1. Session Storage - cleared when browser is closed, no sensitive leak in localStorage
@@ -54,7 +58,13 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 2. Client-side GET caching
+    // 2. Anti-CSRF Header
+    config.headers['X-Requested-With'] = 'XMLHttpRequest';
+    if (memoryCsrfToken) {
+      config.headers['X-CSRF-Token'] = memoryCsrfToken;
+    }
+
+    // 3. Client-side GET caching
     const method = (config.method || 'get').toLowerCase();
     if (method === 'get' && config.cache !== false) {
       const cacheKey = `${config.url}_${JSON.stringify(config.params || {})}`;
@@ -106,9 +116,19 @@ axiosInstance.interceptors.response.use(
 
     return response.data;
   },
-  (err) => {
+  async (err) => {
     const status = err.response?.status || (err.code === 'ECONNABORTED' ? 408 : 0);
     const serverMessage = err.response?.data?.message;
+
+    // 1. Automatic Retry for Transient Network Glitches / Render Sleep Spin-up
+    const config = err.config;
+    const isTransientError = !err.response && (status === 0 || err.code === 'ECONNABORTED' || err.message === 'Network Error');
+    if (config && isTransientError && (config.__retryCount || 0) < 2) {
+      config.__retryCount = (config.__retryCount || 0) + 1;
+      const delayMs = config.__retryCount * 1200;
+      await new Promise((res) => setTimeout(res, delayMs));
+      return axiosInstance(config);
+    }
 
     // Handle Network Error or Timeout
     let defaultMsg = 'Unable to reach the server. Please check your connection.';
@@ -126,13 +146,17 @@ axiosInstance.interceptors.response.use(
       data: err.response?.data || null
     };
 
-    console.error('[API Error Details]:', {
-      url: err.config?.url,
-      baseURL: err.config?.baseURL,
-      status: status,
-      message: err.message,
-      data: err.response?.data
-    });
+    // Only log error if not a background health probe
+    const isProbe = err.config?.url?.includes('/auth/ip-status') || err.config?.url?.includes('/health');
+    if (!isProbe || status !== 0) {
+      console.error('[API Error Details]:', {
+        url: err.config?.url,
+        baseURL: err.config?.baseURL,
+        status: status,
+        message: err.message,
+        data: err.response?.data
+      });
+    }
 
     // Auto-clean credentials on 401 Unauthorized
     if (customError.status === 401) {

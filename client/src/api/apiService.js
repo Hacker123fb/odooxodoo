@@ -10,7 +10,9 @@ export const authService = {
   forgotPassword: (data) => axiosInstance.post('/auth/forgot-password', data),
   resetPassword: (data) => axiosInstance.post('/auth/reset-password', data),
   getMe: () => axiosInstance.get('/auth/me'),
-  getIpStatus: () => axiosInstance.get('/auth/ip-status', { cache: false })
+  getIpStatus: () => axiosInstance.get('/auth/ip-status', { cache: false }),
+  getCsrfToken: () => axiosInstance.get('/auth/csrf-token', { cache: false }),
+  deleteAccount: (data) => axiosInstance.delete('/auth/delete-account', { data })
 };
 
 export const vehicleService = {

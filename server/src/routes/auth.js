@@ -16,6 +16,7 @@ import {
   otpVerifyLimiter 
 } from '../middleware/rateLimiter.js';
 import { isIpBlocked, getBlockDetails } from '../middleware/ipBlocker.js';
+import { generateCsrfToken } from '../middleware/csrfProtection.js';
 
 const router = Router();
 
@@ -82,9 +83,27 @@ router.get('/ip-status', (req, res) => {
 });
 
 /**
+ * @route GET /api/v1/auth/csrf-token
+ * @desc Generate an HMAC-signed CSRF protection token
+ */
+router.get('/csrf-token', (req, res) => {
+  const token = generateCsrfToken();
+  return res.status(200).json({
+    success: true,
+    csrfToken: token
+  });
+});
+
+/**
  * @route GET /api/v1/auth/me
  * @desc Verify session and return active user profile
  */
 router.get('/me', protect, asyncHandler(authController.getMe));
+
+/**
+ * @route DELETE /api/v1/auth/delete-account
+ * @desc Permanently delete user account and associated personal data
+ */
+router.delete('/delete-account', protect, asyncHandler(authController.deleteAccount));
 
 export default router;

@@ -487,6 +487,87 @@ export const authController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  /**
+   * Delete User Account (Permanent removal with data integrity safeguards)
+   */
+  deleteAccount: async (req, res, next) => {
+    try {
+      const userId = req.user.id;
+      const { password, confirmText } = req.body;
+
+      if (!password) {
+        throw new AppError('Password confirmation is required to delete your account.', HttpStatusCodes.BAD_REQUEST);
+      }
+
+      if (confirmText !== 'DELETE') {
+        throw new AppError('Please type DELETE to confirm account deletion.', HttpStatusCodes.BAD_REQUEST);
+      }
+
+      // 1. Fetch user record with password hash
+      const [userRows] = await pool.query(
+        'SELECT u.*, r.name AS role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?',
+        [userId]
+      );
+      if (userRows.length === 0) {
+        throw new AppError('User account not found.', HttpStatusCodes.NOT_FOUND);
+      }
+      const user = userRows[0];
+
+      // 2. Verify password with bcrypt
+      const isMatch = await bcrypt.compare(password, user.password_hash);
+      if (!isMatch) {
+        recordFailedLogin(req.ip, user.email);
+        throw new AppError('Incorrect password. Account deletion aborted.', HttpStatusCodes.UNAUTHORIZED);
+      }
+
+      // 3. Prevent deletion of the sole Super Administrator
+      if (user.role_name === 'SUPER_ADMIN') {
+        const [superAdminRows] = await pool.query(
+          "SELECT COUNT(u.id) AS count FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'SUPER_ADMIN' AND u.id != ? AND u.status = 'ACTIVE'",
+          [userId]
+        );
+        const otherAdmins = parseInt(superAdminRows[0]?.count || 0, 10);
+        if (otherAdmins === 0) {
+          throw new AppError('You cannot delete the sole Super Administrator account. Please designate another Super Admin first.', HttpStatusCodes.FORBIDDEN);
+        }
+      }
+
+      // 4. Safe Resource Reassignment
+      // Find a fallback administrator to inherit created records so CASCADE DELETE doesn't wipe fleet assets
+      const [adminRows] = await pool.query(
+        "SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'SUPER_ADMIN' AND u.id != ? AND u.status = 'ACTIVE' ORDER BY u.id ASC LIMIT 1",
+        [userId]
+      );
+      const fallbackAdminId = adminRows[0]?.id || null;
+
+      if (fallbackAdminId) {
+        await pool.query('UPDATE vehicles SET created_by = ? WHERE created_by = ?', [fallbackAdminId, userId]);
+        await pool.query('UPDATE drivers SET created_by = ? WHERE created_by = ?', [fallbackAdminId, userId]);
+        await pool.query('UPDATE trips SET created_by = ? WHERE created_by = ?', [fallbackAdminId, userId]);
+        await pool.query('UPDATE maintenance_logs SET created_by = ? WHERE created_by = ?', [fallbackAdminId, userId]);
+        await pool.query('UPDATE fuel_logs SET created_by = ? WHERE created_by = ?', [fallbackAdminId, userId]);
+        await pool.query('UPDATE expenses SET created_by = ? WHERE created_by = ?', [fallbackAdminId, userId]);
+        await pool.query('UPDATE expenses SET approved_by = ? WHERE approved_by = ?', [fallbackAdminId, userId]);
+      }
+
+      // 5. Unlink driver profile if applicable
+      await pool.query('UPDATE drivers SET user_id = NULL WHERE user_id = ?', [userId]);
+
+      // 6. Delete user notifications and finally the user record
+      await pool.query('DELETE FROM notifications WHERE user_id = ?', [userId]);
+      await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+
+      console.warn(`[SECURITY] User account ${user.email} (ID: ${userId}) permanently deleted upon authorized request.`);
+
+      return res.ok(
+        null,
+        'Your account and associated personal data have been permanently deleted.'
+      );
+    } catch (error) {
+      next(error);
+    }
   }
 };
 

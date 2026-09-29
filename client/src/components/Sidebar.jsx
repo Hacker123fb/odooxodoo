@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   FiGrid,
@@ -10,10 +10,12 @@ import {
   FiDollarSign,
   FiBarChart2,
   FiLogOut,
+  FiTrash2,
   FiChevronLeft,
   FiChevronRight
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
+import DeleteAccountModal from './DeleteAccountModal.jsx';
 
 /**
  * Responsive Sidebar Navigation with RBAC filtering
@@ -25,6 +27,7 @@ export const Sidebar = ({
   toggleCollapse
 }) => {
   const { logout, user } = useAuth();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: FiGrid },
@@ -151,15 +154,31 @@ export const Sidebar = ({
           </div>
         )}
 
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200"
-        >
-          <FiLogOut className="w-5 h-5 shrink-0" />
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={logout}
+            className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
+            title="Log Out"
+          >
+            <FiLogOut className="w-4 h-4 shrink-0 text-slate-500" />
+            {!isCollapsed && <span>Log Out</span>}
+          </button>
 
-          {!isCollapsed && <span>Log Out</span>}
-        </button>
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200"
+            title="Delete Account"
+          >
+            <FiTrash2 className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span>Delete Account</span>}
+          </button>
+        </div>
       </div>
+
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </aside>
   );
 };

@@ -11,6 +11,8 @@ import { ipBlocker } from './middleware/ipBlocker.js';
 import { xssSanitizer } from './middleware/xssSanitizer.js';
 import { apiCache } from './middleware/apiCache.js';
 
+import { csrfProtection } from './middleware/csrfProtection.js';
+
 const app = express();
 
 // Disable Express server fingerprinting
@@ -26,16 +28,21 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'x-csrf-token', 'Accept', 'Origin']
 }));
 app.options('*', cors({ origin: true, credentials: true }));
 
-// Strict HTTP security headers (Anti-Clickjacking, Anti-MIME sniffing, XSS Defense)
+// Strict HTTP security headers ("Security Pro Max Level")
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   next();
 });
 
@@ -43,15 +50,18 @@ app.use((req, res, next) => {
 app.use(ipBlocker);
 
 // 3. Body parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// 4. Rate Limiting, SQL Sanitizer & XSS Sanitizer / Truncation
+// 4. Cross-Site Request Forgery (CSRF) Protection
+app.use(csrfProtection);
+
+// 5. Rate Limiting, SQL Sanitizer & XSS Sanitizer / Truncation
 app.use(globalLimiter);
 app.use(sqlSanitizer);
 app.use(xssSanitizer);
 
-// 5. Custom core middleware
+// 6. Custom core middleware
 app.use(requestLogger);
 app.use(responseFormatter);
 
