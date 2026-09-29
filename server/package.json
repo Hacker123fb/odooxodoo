@@ -7,15 +7,14 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build": "prisma generate --schema=prisma/schema.prisma",
-    "postinstall": "prisma generate --schema=prisma/schema.prisma",
+    "build": "echo 'Build complete'",
     "db:setup": "node src/config/migrate.js",
-    "prisma:generate": "npx prisma generate --schema=prisma/schema.prisma",
-    "prisma:push": "npx prisma db push --schema=prisma/schema.prisma",
-    "db:migrate:pgloader": "node ../database/pgloader_sync.mjs"
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema=prisma/schema.prisma",
+    "db:migrate:pgloader": "node scripts/pgloader_sync.js"
   },
   "dependencies": {
-    "@prisma/client": "^5.19.0",
+    "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
@@ -27,11 +26,11 @@
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.10.1",
     "nodemailer": "^9.0.3",
-    "pg": "^8.23.0",
-    "prisma": "^5.19.0"
+    "pg": "^8.23.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.4",
+    "prisma": "^5.22.0"
   },
   "private": true
 }

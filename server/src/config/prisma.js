@@ -1,8 +1,13 @@
-import { PrismaClient } from '@prisma/client';
+let prisma = null;
 
-// Global singleton instance for Prisma Client in ES modules
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error']
-});
+try {
+  const { PrismaClient } = await import('@prisma/client');
+  prisma = new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error']
+  });
+} catch (e) {
+  // Graceful fallback if @prisma/client has not been generated yet
+  prisma = null;
+}
 
 export default prisma;

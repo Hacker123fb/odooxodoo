@@ -255,6 +255,12 @@ export const recordSuccessfulLogin = (ip, email = null) => {
   }
 };
 
+export const recordAttackStrike = (ip, reason = 'MALICIOUS_ATTACK_STRIKE') => {
+  if (!ip) return;
+  console.warn(`[SECURITY] Immediate attack strike recorded for IP ${ip}: ${reason}`);
+  blockIpProgressive(ip, reason);
+};
+
 // ============================================================================
 // 4. IP BLOCKER MIDDLEWARE GUARD
 // ============================================================================
