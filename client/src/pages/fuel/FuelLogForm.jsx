@@ -49,6 +49,8 @@ export const FuelLogForm = () => {
   const watchVehicleId = watch('vehicleId');
   const watchQuantity = watch('fuelQuantity');
   const watchCostPerLitre = watch('costPerLitre');
+  const watchTripId = watch('tripId');
+  const watchFuelTypeId = watch('fuelTypeId');
 
   // Load select options on mount
   const loadOptions = async () => {
@@ -229,10 +231,14 @@ export const FuelLogForm = () => {
                   : 'border-slate-350 dark:border-slate-700 focus:border-primary-500'
               }`}
               {...register('vehicleId', { required: 'Vehicle is required.' })}
+              value={watchVehicleId ? String(watchVehicleId) : ''}
+              onChange={(e) => {
+                setValue('vehicleId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">Select vehicle...</option>
               {vehicles.map(v => (
-                <option key={v.id} value={v.id}>
+                <option key={v.id} value={String(v.id)}>
                   {v.registration_number} ({v.make_name} {v.model_name})
                 </option>
               ))}
@@ -251,10 +257,14 @@ export const FuelLogForm = () => {
               id="tripId"
               className="w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-700 rounded-lg outline-none focus:border-primary-500 text-slate-900 dark:text-slate-100"
               {...register('tripId')}
+              value={watchTripId ? String(watchTripId) : ''}
+              onChange={(e) => {
+                setValue('tripId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">Select trip...</option>
               {trips.map(t => (
-                <option key={t.id} value={t.id}>
+                <option key={t.id} value={String(t.id)}>
                   {t.trip_number} ({t.source_location} ➔ {t.destination_location})
                 </option>
               ))}
@@ -274,10 +284,14 @@ export const FuelLogForm = () => {
                   : 'border-slate-350 dark:border-slate-700 focus:border-primary-500'
               }`}
               {...register('fuelTypeId', { required: 'Fuel Type is required.' })}
+              value={watchFuelTypeId ? String(watchFuelTypeId) : ''}
+              onChange={(e) => {
+                setValue('fuelTypeId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">Select type...</option>
               {fuelTypes.map(f => (
-                <option key={f.id} value={f.id}>{f.label}</option>
+                <option key={f.id} value={String(f.id)}>{f.label}</option>
               ))}
             </select>
             {errors.fuelTypeId && (

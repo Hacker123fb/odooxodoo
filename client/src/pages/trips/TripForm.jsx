@@ -55,50 +55,92 @@ export const TripForm = () => {
   const watchDepartureTime = watch('departureTime');
   const watchExpectedArrivalDate = watch('expectedArrivalDate');
   const watchExpectedArrivalTime = watch('expectedArrivalTime');
+  const watchVehicleId = watch('vehicleId');
+  const watchDriverId = watch('driverId');
 
-  // Fetch dropdown selector lists for vehicles and drivers
-  const loadOptions = async () => {
-    try {
-      const res = await tripService.getOptions(isEdit ? { excludeTripId: id } : {});
-      if (res.success && res.data) {
-        setVehicles(res.data.vehicles || []);
-        setDrivers(res.data.drivers || []);
-      }
-    } catch (err) {
-      showToast('Failed to load vehicle or driver options.', 'error');
-    }
-  };
-
+  // Unified data initialization: guarantees vehicle and driver options are loaded before setting values
   useEffect(() => {
-    loadOptions();
-  }, [id, isEdit]);
+    let isMounted = true;
 
-  // Load existing trip details
-  useEffect(() => {
-    if (!isEdit) return;
-    const fetchTrip = async () => {
+    const initFormData = async () => {
       setIsLoading(true);
       try {
-        const res = await tripService.getById(id);
-        if (res.success && res.data) {
-          const t = res.data;
-          
-          setValue('sourceLocation', t.sourceLocation || '');
-          setValue('destinationLocation', t.destinationLocation || '');
-          setValue('vehicleId', t.vehicleId || '');
-          setValue('driverId', t.driverId || '');
-          setValue('departureDate', t.departureDate || '');
-          setValue('departureTime', t.departureTime || '');
-          setValue('expectedArrivalDate', t.expectedArrivalDate || '');
-          setValue('expectedArrivalTime', t.expectedArrivalTime || '');
-          setValue('distanceKm', t.distanceKm || '');
-          setValue('estimatedFuel', t.estimatedFuel || '');
-          setValue('cargoPassengerDesc', t.cargoPassengerDesc || '');
-          setValue('userNotes', t.userNotes || '');
-          setValue('status', t.status || 'SCHEDULED');
-          setCurrentStatus(t.status || 'SCHEDULED');
+        if (isEdit) {
+          // Concurrently fetch trip details and dropdown options with exclusion of current trip
+          const [tripRes, optionsRes] = await Promise.all([
+            tripService.getById(id),
+            tripService.getOptions({ excludeTripId: id })
+          ]);
+
+          if (!isMounted) return;
+
+          let loadedVehicles = [];
+          let loadedDrivers = [];
+
+          if (optionsRes.success && optionsRes.data) {
+            loadedVehicles = optionsRes.data.vehicles || [];
+            loadedDrivers = optionsRes.data.drivers || [];
+          }
+
+          if (tripRes.success && tripRes.data) {
+            const t = tripRes.data;
+
+            // Ensure the currently assigned vehicle is present in the dropdown options
+            if (t.vehicleId && !loadedVehicles.some(v => String(v.id) === String(t.vehicleId))) {
+              loadedVehicles = [
+                {
+                  id: t.vehicleId,
+                  registration_number: t.registration_number || t.registrationNumber || `Vehicle #${t.vehicleId}`,
+                  make_name: t.vehicle_make || t.vehicleMake || '',
+                  model_name: t.vehicle_model || t.vehicleModel || ''
+                },
+                ...loadedVehicles
+              ];
+            }
+
+            // Ensure the currently assigned driver is present in the dropdown options
+            if (t.driverId && !loadedDrivers.some(d => String(d.id) === String(t.driverId))) {
+              loadedDrivers = [
+                {
+                  id: t.driverId,
+                  full_name: t.driver_name || t.driverName || `Driver #${t.driverId}`,
+                  employee_id: t.driver_code || t.driverCode || 'N/A'
+                },
+                ...loadedDrivers
+              ];
+            }
+
+            // Update lists first
+            setVehicles(loadedVehicles);
+            setDrivers(loadedDrivers);
+
+            // Populate form values
+            setValue('sourceLocation', t.sourceLocation || '');
+            setValue('destinationLocation', t.destinationLocation || '');
+            setValue('vehicleId', t.vehicleId ? String(t.vehicleId) : '');
+            setValue('driverId', t.driverId ? String(t.driverId) : '');
+            setValue('departureDate', t.departureDate || '');
+            setValue('departureTime', t.departureTime || '');
+            setValue('expectedArrivalDate', t.expectedArrivalDate || '');
+            setValue('expectedArrivalTime', t.expectedArrivalTime || '');
+            setValue('distanceKm', t.distanceKm || '');
+            setValue('estimatedFuel', t.estimatedFuel !== null && t.estimatedFuel !== undefined ? t.estimatedFuel : '');
+            setValue('cargoPassengerDesc', t.cargoPassengerDesc || '');
+            setValue('userNotes', t.userNotes || '');
+            setValue('status', t.status || 'SCHEDULED');
+            setCurrentStatus(t.status || 'SCHEDULED');
+          }
+        } else {
+          // Creating a new trip
+          const optionsRes = await tripService.getOptions({});
+          if (!isMounted) return;
+          if (optionsRes.success && optionsRes.data) {
+            setVehicles(optionsRes.data.vehicles || []);
+            setDrivers(optionsRes.data.drivers || []);
+          }
         }
       } catch (err) {
+        if (!isMounted) return;
         if (err.status === 401) {
           navigate('/401', { replace: true, state: { from: `/trips/edit/${id}` } });
         } else if (err.status === 403 || err.code === 'FORBIDDEN') {
@@ -116,10 +158,17 @@ export const TripForm = () => {
           navigate('/trips');
         }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
-    fetchTrip();
+
+    initFormData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id, isEdit, setValue, navigate, showToast]);
 
   const onSubmit = async (data) => {
@@ -318,10 +367,16 @@ export const TripForm = () => {
                   : 'border-slate-350 dark:border-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20'
               }`}
               {...register('vehicleId', { required: 'Vehicle is required.' })}
+              value={watchVehicleId ? String(watchVehicleId) : ''}
+              onChange={(e) => {
+                setValue('vehicleId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">Select vehicle...</option>
               {vehicles.map(v => (
-                <option key={v.id} value={v.id}>{v.registration_number} ({v.make_name} {v.model_name})</option>
+                <option key={v.id} value={String(v.id)}>
+                  {v.registration_number} ({v.make_name ? `${v.make_name} ` : ''}{v.model_name || ''})
+                </option>
               ))}
             </select>
             {errors.vehicleId && (
@@ -342,10 +397,16 @@ export const TripForm = () => {
                   : 'border-slate-350 dark:border-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20'
               }`}
               {...register('driverId', { required: 'Driver is required.' })}
+              value={watchDriverId ? String(watchDriverId) : ''}
+              onChange={(e) => {
+                setValue('driverId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">Select driver...</option>
               {drivers.map(d => (
-                <option key={d.id} value={d.id}>{d.full_name} (Code: {d.employee_id})</option>
+                <option key={d.id} value={String(d.id)}>
+                  {d.full_name} (Code: {d.employee_id})
+                </option>
               ))}
             </select>
             {errors.driverId && (

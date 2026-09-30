@@ -222,7 +222,7 @@ export const tripModel = {
   },
 
   /**
-   * Retrieve active vehicles that have no scheduled or in-progress trips
+   * Retrieve active vehicles that have no scheduled or in-progress trips (including assigned vehicle if editing)
    */
   async getAvailableVehicles(excludeTripId = null) {
     let sql = `
@@ -231,56 +231,62 @@ export const tripModel = {
       JOIN vehicle_models vm ON v.model_id = vm.id
       JOIN vehicle_makes vma ON vm.make_id = vma.id
       JOIN vehicle_types vt ON vm.vehicle_type_id = vt.id
-      WHERE v.status = 'ACTIVE'
-        AND NOT EXISTS (
-          SELECT 1 FROM trips t 
-          WHERE t.vehicle_id = v.id 
-            AND t.status IN ('SCHEDULED', 'IN_PROGRESS', 'DELAYED')
+      WHERE (
+        (
+          v.status = 'ACTIVE'
+          AND NOT EXISTS (
+            SELECT 1 FROM trips t 
+            WHERE t.vehicle_id = v.id 
+              AND t.status IN ('SCHEDULED', 'IN_PROGRESS', 'DELAYED')
+              ${excludeTripId !== null ? 'AND t.id != ?' : ''}
+          )
+        )
+        ${excludeTripId !== null ? 'OR v.id = (SELECT vehicle_id FROM trips WHERE id = ?)' : ''}
+      )
+      ORDER BY vma.name, vm.name
     `;
     
     const params = [];
     if (excludeTripId !== null) {
-      sql += ' AND t.id != ?';
+      params.push(excludeTripId);
       params.push(excludeTripId);
     }
-    
-    sql += ' ) ORDER BY vma.name, vm.name';
     
     const [rows] = await pool.query(sql, params);
     return rows;
   },
 
   /**
-   * Retrieve available drivers (no active trips and license not expired)
+   * Retrieve available drivers (including assigned driver if editing)
    */
   async getAvailableDrivers(excludeTripId = null, targetArrival = null) {
     let sql = `
       SELECT d.id, d.full_name, d.employee_id, d.license_number, d.license_class, d.license_expiry
       FROM drivers d
-      WHERE d.status = 'AVAILABLE'
+      WHERE (
+        (
+          d.status = 'AVAILABLE'
+          ${targetArrival ? 'AND d.license_expiry > ?' : 'AND d.license_expiry > CURRENT_DATE'}
+          AND NOT EXISTS (
+            SELECT 1 FROM trips t 
+            WHERE t.driver_id = d.id 
+              AND t.status IN ('SCHEDULED', 'IN_PROGRESS', 'DELAYED')
+              ${excludeTripId !== null ? 'AND t.id != ?' : ''}
+          )
+        )
+        ${excludeTripId !== null ? 'OR d.id = (SELECT driver_id FROM trips WHERE id = ?)' : ''}
+      )
+      ORDER BY d.full_name
     `;
     
     const params = [];
     if (targetArrival) {
-      sql += ' AND d.license_expiry > ?';
       params.push(targetArrival);
-    } else {
-      sql += ' AND d.license_expiry > CURRENT_DATE';
     }
-
-    sql += `
-        AND NOT EXISTS (
-          SELECT 1 FROM trips t 
-          WHERE t.driver_id = d.id 
-            AND t.status IN ('SCHEDULED', 'IN_PROGRESS', 'DELAYED')
-    `;
-    
     if (excludeTripId !== null) {
-      sql += ' AND t.id != ?';
+      params.push(excludeTripId);
       params.push(excludeTripId);
     }
-    
-    sql += ' ) ORDER BY d.full_name';
     
     const [rows] = await pool.query(sql, params);
     return rows;

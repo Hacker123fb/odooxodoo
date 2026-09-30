@@ -38,6 +38,7 @@ export const ExpenseForm = () => {
     handleSubmit,
     setValue,
     setError,
+    watch,
     formState: { errors }
   } = useForm({
     defaultValues: {
@@ -54,6 +55,9 @@ export const ExpenseForm = () => {
       status: 'Pending'
     }
   });
+
+  const watchVehicleId = watch('vehicleId');
+  const watchTripId = watch('tripId');
 
   // Load select options on mount
   useEffect(() => {
@@ -272,10 +276,14 @@ export const ExpenseForm = () => {
               id="vehicleId"
               className="w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-700 rounded-lg outline-none focus:border-primary-500 text-slate-900 dark:text-slate-100"
               {...register('vehicleId')}
+              value={watchVehicleId ? String(watchVehicleId) : ''}
+              onChange={(e) => {
+                setValue('vehicleId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">None</option>
               {vehicles.map(v => (
-                <option key={v.id} value={v.id}>
+                <option key={v.id} value={String(v.id)}>
                   {v.registration_number} ({v.make_name} {v.model_name})
                 </option>
               ))}
@@ -293,10 +301,14 @@ export const ExpenseForm = () => {
               id="tripId"
               className="w-full py-2 px-3 text-sm bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-700 rounded-lg outline-none focus:border-primary-500 text-slate-900 dark:text-slate-100"
               {...register('tripId')}
+              value={watchTripId ? String(watchTripId) : ''}
+              onChange={(e) => {
+                setValue('tripId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">None</option>
               {trips.map(t => (
-                <option key={t.id} value={t.id}>
+                <option key={t.id} value={String(t.id)}>
                   {t.trip_number} ({t.source_location} ➔ {t.destination_location})
                 </option>
               ))}

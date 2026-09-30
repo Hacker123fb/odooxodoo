@@ -222,10 +222,14 @@ export const MaintenanceForm = () => {
                   : 'border-slate-350 dark:border-slate-700 focus:border-primary-500'
               }`}
               {...register('vehicleId', { required: 'Vehicle selection is required.' })}
+              value={watchVehicleId ? String(watchVehicleId) : ''}
+              onChange={(e) => {
+                setValue('vehicleId', e.target.value, { shouldValidate: true });
+              }}
             >
               <option value="">Select vehicle...</option>
               {vehicles.map(v => (
-                <option key={v.id} value={v.id}>
+                <option key={v.id} value={String(v.id)}>
                   {v.registration_number} ({v.make_name} {v.model_name})
                 </option>
               ))}
