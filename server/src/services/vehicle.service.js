@@ -120,8 +120,29 @@ export const vehicleService = {
       }
     }
 
-    // 4. Map UI status
+    // 4. Odometer reading cannot decrease
+    if (parseInt(data.current_odometer, 10) < vehicle.current_odometer) {
+      throw new AppError(
+        `Odometer reading cannot decrease below the current recorded value (${vehicle.current_odometer} km).`,
+        HttpStatusCodes.BAD_REQUEST,
+        [{ field: 'current_odometer', message: `Odometer cannot decrease below the current recorded value (${vehicle.current_odometer} km).` }]
+      );
+    }
+
+    // 5. Map UI status
     const dbStatus = mapUiStatusToDb(data.status);
+
+    // 6. Cannot retire or send to maintenance a vehicle currently on an active trip
+    if ((dbStatus === 'RETIRED' || dbStatus === 'IN_MAINTENANCE') && vehicle.status === 'ACTIVE') {
+      const [activeTrips] = await pool.query("SELECT trip_number FROM trips WHERE vehicle_id = ? AND status = 'IN_PROGRESS'", [id]);
+      if (activeTrips.length > 0) {
+        throw new AppError(
+          `Vehicle cannot be set to ${data.status} while actively deployed on Trip ${activeTrips[0].trip_number}.`,
+          HttpStatusCodes.BAD_REQUEST,
+          [{ field: 'status', message: `Vehicle is currently active on Trip ${activeTrips[0].trip_number}. Complete or cancel the trip first.` }]
+        );
+      }
+    }
 
     await vehicleModel.update(id, {
       registrationNumber: data.registration_number,

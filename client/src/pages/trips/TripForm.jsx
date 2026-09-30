@@ -31,6 +31,7 @@ export const TripForm = () => {
     handleSubmit,
     setValue,
     setError,
+    watch,
     formState: { errors }
   } = useForm({
     defaultValues: {
@@ -49,6 +50,11 @@ export const TripForm = () => {
       status: 'SCHEDULED'
     }
   });
+
+  const watchDepartureDate = watch('departureDate');
+  const watchDepartureTime = watch('departureTime');
+  const watchExpectedArrivalDate = watch('expectedArrivalDate');
+  const watchExpectedArrivalTime = watch('expectedArrivalTime');
 
   // Fetch dropdown selector lists for vehicles and drivers
   const loadOptions = async () => {
@@ -119,6 +125,66 @@ export const TripForm = () => {
   const onSubmit = async (data) => {
     setIsSaving(true);
     setApiError(null);
+
+    // 1. Same source and destination check
+    if (data.sourceLocation && data.destinationLocation && data.sourceLocation.trim().toLowerCase() === data.destinationLocation.trim().toLowerCase()) {
+      setError('destinationLocation', {
+        type: 'manual',
+        message: 'Destination Location cannot be the same as the Source Location.'
+      });
+      setApiError('Destination Location cannot be the same as the Source Location.');
+      showToast('Destination Location cannot be the same as the Source Location.', 'error');
+      setIsSaving(false);
+      return;
+    }
+
+    // 2. Arrival date & time must strictly be after departure date & time
+    if (data.departureDate && data.expectedArrivalDate) {
+      const depDate = new Date(`${data.departureDate}T${data.departureTime || '00:00'}:00`);
+      const arrDate = new Date(`${data.expectedArrivalDate}T${data.expectedArrivalTime || '00:00'}:00`);
+      if (arrDate <= depDate) {
+        setError('expectedArrivalDate', {
+          type: 'manual',
+          message: 'Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.'
+        });
+        setError('expectedArrivalTime', {
+          type: 'manual',
+          message: 'Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.'
+        });
+        setApiError('Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.');
+        showToast('Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.', 'error');
+        setIsSaving(false);
+        return;
+      }
+    }
+
+    // 3. Distance must be strictly positive
+    const dist = parseFloat(data.distanceKm);
+    if (isNaN(dist) || dist <= 0) {
+      setError('distanceKm', {
+        type: 'manual',
+        message: 'Distance must be greater than zero.'
+      });
+      setApiError('Distance must be greater than zero.');
+      showToast('Distance must be greater than zero.', 'error');
+      setIsSaving(false);
+      return;
+    }
+
+    // 4. Fuel cannot be negative
+    if (data.estimatedFuel !== '' && data.estimatedFuel !== null && data.estimatedFuel !== undefined) {
+      const fuel = parseFloat(data.estimatedFuel);
+      if (isNaN(fuel) || fuel < 0) {
+        setError('estimatedFuel', {
+          type: 'manual',
+          message: 'Estimated fuel consumption cannot be negative.'
+        });
+        setApiError('Estimated fuel consumption cannot be negative.');
+        showToast('Estimated fuel consumption cannot be negative.', 'error');
+        setIsSaving(false);
+        return;
+      }
+    }
 
     const payload = {
       sourceLocation: data.sourceLocation,
@@ -321,7 +387,19 @@ export const TripForm = () => {
             type="date"
             disabled={isEnded}
             error={errors.expectedArrivalDate}
-            {...register('expectedArrivalDate', { required: 'Expected Arrival Date is required.' })}
+            {...register('expectedArrivalDate', { 
+              required: 'Expected Arrival Date is required.',
+              validate: (val) => {
+                if (val && watchDepartureDate) {
+                  const depStr = `${watchDepartureDate}T${watchDepartureTime || '00:00'}:00`;
+                  const arrStr = `${val}T${watchExpectedArrivalTime || '00:00'}:00`;
+                  if (new Date(arrStr) <= new Date(depStr)) {
+                    return 'Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.';
+                  }
+                }
+                return true;
+              }
+            })}
           />
 
           <Input
@@ -330,7 +408,19 @@ export const TripForm = () => {
             type="time"
             disabled={isEnded}
             error={errors.expectedArrivalTime}
-            {...register('expectedArrivalTime', { required: 'Expected Arrival Time is required.' })}
+            {...register('expectedArrivalTime', { 
+              required: 'Expected Arrival Time is required.',
+              validate: (val) => {
+                if (watchDepartureDate && watchExpectedArrivalDate) {
+                  const depStr = `${watchDepartureDate}T${watchDepartureTime || '00:00'}:00`;
+                  const arrStr = `${watchExpectedArrivalDate}T${val || '00:00'}:00`;
+                  if (new Date(arrStr) <= new Date(depStr)) {
+                    return 'Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.';
+                  }
+                }
+                return true;
+              }
+            })}
           />
 
         </div>

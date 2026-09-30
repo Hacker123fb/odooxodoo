@@ -188,6 +188,21 @@ export const driverService = {
     // Map status
     const dbStatus = mapUiStatusToDb(data.status);
 
+    // Cannot set driver to Off Duty or Suspended if currently on an active trip
+    if (dbStatus === 'INACTIVE' || dbStatus === 'SUSPENDED') {
+      const [activeTrips] = await pool.query(
+        "SELECT trip_number FROM trips WHERE driver_id = ? AND status = 'IN_PROGRESS'",
+        [id]
+      );
+      if (activeTrips.length > 0) {
+        throw new AppError(
+          `Driver cannot be set to ${data.status} while actively driving on Trip ${activeTrips[0].trip_number}.`,
+          HttpStatusCodes.BAD_REQUEST,
+          [{ field: 'status', message: `Driver is currently active on Trip ${activeTrips[0].trip_number}. Complete or reassign the trip first.` }]
+        );
+      }
+    }
+
     await driverModel.update(id, {
       employeeId: data.employee_id,
       fullName: data.full_name,

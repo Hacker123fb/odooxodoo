@@ -132,7 +132,38 @@ export const maintenanceService = {
       }
       const vehicle = vehicleRows[0];
 
-      // 2. Odometer Reading cannot decrease below current recorded odometer
+      // 2. Cost must be strictly positive
+      const costVal = parseFloat(data.cost);
+      if (isNaN(costVal) || costVal <= 0) {
+        throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+          { field: 'cost', message: 'Maintenance cost must be greater than zero. Cost cannot be zero or negative.' }
+        ]);
+      }
+
+      // 3. Date sequence: completion cannot be before maintenance start date
+      if (data.actualCompletionDate && new Date(data.actualCompletionDate) < new Date(data.maintenanceDate)) {
+        throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+          { field: 'actualCompletionDate', message: 'Actual completion date cannot be earlier than the maintenance start date.' }
+        ]);
+      }
+      if (data.estimatedCompletionDate && new Date(data.estimatedCompletionDate) < new Date(data.maintenanceDate)) {
+        throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+          { field: 'estimatedCompletionDate', message: 'Estimated completion date cannot be earlier than the maintenance start date.' }
+        ]);
+      }
+
+      // 4. Vehicle currently on an active trip cannot be scheduled for maintenance
+      const [activeTripRows] = await connection.query(
+        "SELECT id, trip_number FROM trips WHERE vehicle_id = ? AND status = 'IN_PROGRESS'",
+        [data.vehicleId]
+      );
+      if (activeTripRows.length > 0) {
+        throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+          { field: 'vehicleId', message: `Vehicle is currently active on trip ${activeTripRows[0].trip_number} and cannot be assigned to maintenance until the trip completes.` }
+        ]);
+      }
+
+      // 5. Odometer Reading cannot decrease below current recorded odometer
       if (parseInt(data.odometerReading, 10) < vehicle.current_odometer) {
         throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
           {
@@ -142,7 +173,7 @@ export const maintenanceService = {
         ]);
       }
 
-      // 3. A vehicle already in maintenance cannot have another active maintenance record
+      // 6. A vehicle already in maintenance cannot have another active maintenance record
       const hasActive = await maintenanceModel.hasActiveMaintenance(data.vehicleId);
       if (hasActive && (data.status === 'Scheduled' || data.status === 'In Progress')) {
         throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
@@ -153,7 +184,7 @@ export const maintenanceService = {
         ]);
       }
 
-      // 4. Map UI status/type parameters
+      // 7. Map UI status/type parameters
       const statusDb = mapUiStatusToDb(data.status);
       const maintenanceTypeDb = mapUiTypeToDb(data.maintenanceType);
       
@@ -226,7 +257,43 @@ export const maintenanceService = {
       }
       const vehicle = vehicleRows[0];
 
-      // 2. Odometer Reading cannot decrease below current recorded odometer
+      // 2. Cost must be strictly positive
+      const costVal = parseFloat(data.cost);
+      if (isNaN(costVal) || costVal <= 0) {
+        throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+          { field: 'cost', message: 'Maintenance cost must be greater than zero. Cost cannot be zero or negative.' }
+        ]);
+      }
+
+      // 3. Date sequence: completion cannot be before maintenance start date
+      if (data.actualCompletionDate && new Date(data.actualCompletionDate) < new Date(data.maintenanceDate)) {
+        throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+          { field: 'actualCompletionDate', message: 'Actual completion date cannot be earlier than the maintenance start date.' }
+        ]);
+      }
+      if (data.estimatedCompletionDate && new Date(data.estimatedCompletionDate) < new Date(data.maintenanceDate)) {
+        throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+          { field: 'estimatedCompletionDate', message: 'Estimated completion date cannot be earlier than the maintenance start date.' }
+        ]);
+      }
+
+      // 4. Vehicle currently on an active trip cannot be placed into active maintenance
+      if (data.status === 'Scheduled' || data.status === 'In Progress') {
+        const [activeTripRows] = await connection.query(
+          "SELECT id, trip_number FROM trips WHERE vehicle_id = ? AND status = 'IN_PROGRESS'",
+          [data.vehicleId]
+        );
+        if (activeTripRows.length > 0) {
+          throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
+            {
+              field: 'vehicleId',
+              message: `Vehicle is currently active on Trip ${activeTripRows[0].trip_number} and cannot be scheduled for maintenance.`
+            }
+          ]);
+        }
+      }
+
+      // 5. Odometer Reading cannot decrease below current recorded odometer
       if (parseInt(data.odometerReading, 10) < vehicle.current_odometer) {
         throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [
           {
@@ -236,7 +303,7 @@ export const maintenanceService = {
         ]);
       }
 
-      // 3. A vehicle already in maintenance cannot have another active maintenance record (excluding current record)
+      // 6. A vehicle already in maintenance cannot have another active maintenance record (excluding current record)
       const hasActive = await maintenanceModel.hasActiveMaintenance(data.vehicleId, id);
       if (hasActive && (data.status === 'Scheduled' || data.status === 'In Progress')) {
         throw new AppError('Validation failed.', HttpStatusCodes.BAD_REQUEST, [

@@ -22,6 +22,7 @@ export const VehicleForm = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('');
+  const [recordedOdometer, setRecordedOdometer] = useState(null);
 
   // Lock status check: Retired vehicles cannot be edited except status
   const isRetired = isEdit && currentStatus === 'Retired';
@@ -79,6 +80,7 @@ export const VehicleForm = () => {
           setValue('purchase_price', v.purchase_price);
           setValue('status', v.ui_status);
           setCurrentStatus(v.ui_status);
+          setRecordedOdometer(v.current_odometer);
         }
       } catch (err) {
         if (err.status === 401) {
@@ -118,6 +120,21 @@ export const VehicleForm = () => {
   const onSubmit = async (data) => {
     setIsSaving(true);
     setApiError(null);
+
+    // Prevent odometer decrease on edit
+    if (isEdit && recordedOdometer !== null) {
+      const num = parseInt(data.current_odometer, 10);
+      if (num < recordedOdometer) {
+        setError('current_odometer', {
+          type: 'manual',
+          message: `Odometer cannot decrease below the current recorded value (${recordedOdometer} km).`
+        });
+        setApiError(`Odometer cannot decrease below the current recorded value (${recordedOdometer} km).`);
+        showToast(`Odometer cannot decrease below the current recorded value (${recordedOdometer} km).`, 'error');
+        setIsSaving(false);
+        return;
+      }
+    }
     try {
       let res;
       if (isEdit) {
@@ -271,7 +288,16 @@ export const VehicleForm = () => {
             error={errors.current_odometer}
             {...register('current_odometer', {
               required: 'Odometer value is required.',
-              min: { value: 0, message: 'Odometer cannot be negative.' }
+              min: { value: 0, message: 'Odometer cannot be negative.' },
+              validate: (val) => {
+                if (isEdit && recordedOdometer !== null) {
+                  const num = parseInt(val, 10);
+                  if (num < recordedOdometer) {
+                    return `Odometer cannot decrease below the current recorded value (${recordedOdometer} km).`;
+                  }
+                }
+                return true;
+              }
             })}
           />
 

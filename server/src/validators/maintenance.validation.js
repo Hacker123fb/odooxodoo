@@ -70,9 +70,10 @@ export const validateMaintenance = [
     }),
 
   body('cost')
-    .optional({ nullable: true, checkFalsy: true })
-    .isFloat({ min: 0 })
-    .withMessage('Cost cannot be negative.'),
+    .notEmpty()
+    .withMessage('Maintenance cost is required.')
+    .isFloat({ gt: 0 })
+    .withMessage('Maintenance cost must be greater than zero. Cost cannot be zero or negative.'),
 
   body('odometerReading')
     .notEmpty()

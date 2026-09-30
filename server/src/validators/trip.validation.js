@@ -66,13 +66,15 @@ export const validateTrip = [
     .isISO8601()
     .withMessage('Expected Arrival Date must be a valid date.')
     .custom((value, { req }) => {
-      const departureDateStr = `${req.body.departureDate}T${req.body.departureTime || '00:00'}:00`;
-      const arrivalDateStr = `${value}T${req.body.expectedArrivalTime || '00:00'}:00`;
-      const departureDate = new Date(departureDateStr);
-      const arrivalDate = new Date(arrivalDateStr);
-      
-      if (arrivalDate <= departureDate) {
-        throw new Error('Expected Arrival must be after Departure.');
+      if (req.body.departureDate) {
+        const departureDateStr = `${req.body.departureDate}T${req.body.departureTime || '00:00'}:00`;
+        const arrivalDateStr = `${value}T${req.body.expectedArrivalTime || '00:00'}:00`;
+        const departureDate = new Date(departureDateStr);
+        const arrivalDate = new Date(arrivalDateStr);
+        
+        if (arrivalDate <= departureDate) {
+          throw new Error('Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.');
+        }
       }
       return true;
     }),
@@ -81,7 +83,20 @@ export const validateTrip = [
     .notEmpty()
     .withMessage('Expected Arrival Time is required.')
     .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .withMessage('Expected Arrival Time must be a valid time (HH:MM).'),
+    .withMessage('Expected Arrival Time must be a valid time (HH:MM).')
+    .custom((value, { req }) => {
+      if (req.body.departureDate && req.body.expectedArrivalDate) {
+        const departureDateStr = `${req.body.departureDate}T${req.body.departureTime || '00:00'}:00`;
+        const arrivalDateStr = `${req.body.expectedArrivalDate}T${value || '00:00'}:00`;
+        const departureDate = new Date(departureDateStr);
+        const arrivalDate = new Date(arrivalDateStr);
+        
+        if (arrivalDate <= departureDate) {
+          throw new Error('Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.');
+        }
+      }
+      return true;
+    }),
   
   body('distanceKm')
     .notEmpty()

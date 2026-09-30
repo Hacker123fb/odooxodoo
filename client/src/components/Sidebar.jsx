@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   FiGrid,
   FiTruck,
@@ -15,7 +15,6 @@ import {
   FiChevronRight
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
-import DeleteAccountModal from './DeleteAccountModal.jsx';
 
 /**
  * Responsive Sidebar Navigation with RBAC filtering
@@ -27,7 +26,7 @@ export const Sidebar = ({
   toggleCollapse
 }) => {
   const { logout, user } = useAuth();
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: FiGrid },
@@ -165,7 +164,10 @@ export const Sidebar = ({
           </button>
 
           <button
-            onClick={() => setIsDeleteModalOpen(true)}
+            onClick={() => {
+              if (isOpen && toggleSidebar) toggleSidebar();
+              navigate('/delete-account');
+            }}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200"
             title="Delete Account"
           >
@@ -174,11 +176,6 @@ export const Sidebar = ({
           </button>
         </div>
       </div>
-
-      <DeleteAccountModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-      />
     </aside>
   );
 };

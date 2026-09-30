@@ -339,13 +339,20 @@ export const MaintenanceForm = () => {
           
           <Input
             id="cost"
-            label="Cost (₹)"
+            label="Cost (₹) *"
             type="number"
             step="0.01"
             placeholder="e.g. 15000"
             error={errors.cost}
             {...register('cost', {
-              min: { value: 0, message: 'Cost cannot be negative.' }
+              required: 'Maintenance cost is required.',
+              validate: (val) => {
+                const num = parseFloat(val);
+                if (isNaN(num) || num <= 0) {
+                  return 'Maintenance cost must be greater than zero. Cost cannot be zero or negative.';
+                }
+                return true;
+              }
             })}
           />
 

@@ -54,6 +54,7 @@ const ExpenseDetails = lazy(() => import('../pages/expenses/ExpenseDetails.jsx')
 
 // Reports & Fallback
 const Reports = lazy(() => import('../pages/Reports.jsx'));
+const DeleteAccount = lazy(() => import('../pages/settings/DeleteAccount.jsx'));
 const NotFound = lazy(() => import('../pages/NotFound.jsx'));
 
 /**
@@ -164,6 +165,10 @@ export const AppRoutes = () => {
           
           {/* Reports */}
           <Route path="/reports" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST']}><Reports /></RoleRoute>} />
+
+          {/* Account Management Danger Zone */}
+          <Route path="/delete-account" element={<DeleteAccount />} />
+          <Route path="/settings/delete-account" element={<DeleteAccount />} />
         </Route>
 
         {/* Public Landing & Showcase */}

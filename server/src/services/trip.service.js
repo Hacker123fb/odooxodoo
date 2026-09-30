@@ -44,8 +44,9 @@ const validateDriverAndVehicleScheduling = async ({ driverId, vehicleId, schedul
   const now = new Date();
 
   if (arrDate <= depDate) {
-    throw new AppError('Trip arrival time must be strictly after the departure time.', HttpStatusCodes.BAD_REQUEST, [
-      { field: 'expectedArrivalDate', message: 'Estimated arrival time must be later than departure time.' }
+    throw new AppError('Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.', HttpStatusCodes.BAD_REQUEST, [
+      { field: 'expectedArrivalDate', message: 'Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.' },
+      { field: 'expectedArrivalTime', message: 'Arrival date & time at destination cannot be earlier than or equal to departure date & time from source.' }
     ]);
   }
 
