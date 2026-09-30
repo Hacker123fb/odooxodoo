@@ -70,11 +70,14 @@ export const VerifyOTP = () => {
       const currentStrikes = parseInt(sessionStorage.getItem('otp_failed_strikes') || '0', 10) + 1;
       sessionStorage.setItem('otp_failed_strikes', currentStrikes.toString());
 
-      if (currentStrikes >= 5 || err.status === 429 || err.status === 403 || err.code === 'IP_BLOCKED') {
+      const isExplicitBlock = err.code === 'IP_BLOCKED' || err.code === 'ACCOUNT_LOCKED' || err.blocked === true;
+      if (isExplicitBlock) {
         sessionStorage.setItem('lockout_info', JSON.stringify({
-          message: 'You have tried too many times. Please try again after some time.',
-          remainingMinutes: 60,
-          reason: 'TOO_MANY_FAILED_OTP_ATTEMPTS',
+          message: err.message || 'You have tried too many times. Your IP address is temporarily blocked.',
+          remainingMinutes: err.data?.remainingMinutes || 15,
+          remainingSeconds: err.data?.remainingSeconds || 900,
+          blockedUntil: err.data?.blockedUntil || (Date.now() + 15 * 60 * 1000),
+          reason: err.data?.reason || 'TOO_MANY_FAILED_OTP_ATTEMPTS',
           timestamp: Date.now()
         }));
         navigate('/blocked');

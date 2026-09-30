@@ -96,7 +96,12 @@ export const AuthProvider = ({ children }) => {
         success: false,
         error: error.message || "Network error.",
         errors: error.errors,
-        status: error.status
+        status: error.status,
+        code: error.code,
+        blocked: error.blocked,
+        remainingMinutes: error.data?.remainingMinutes,
+        remainingSeconds: error.data?.remainingSeconds,
+        blockedUntil: error.data?.blockedUntil
       };
     } finally {
       setIsLoading(false);

@@ -43,12 +43,19 @@ export const Login = () => {
       const currentStrikes = parseInt(sessionStorage.getItem('login_failed_strikes') || '0', 10) + 1;
       sessionStorage.setItem('login_failed_strikes', currentStrikes.toString());
 
-      // On 5 consecutive wrong passwords or 403/429 lockout, redirect to custom blocked page
-      if (currentStrikes >= 5 || result.status === 429 || result.status === 403 || result.error?.includes('tried too many times') || result.code === 'IP_BLOCKED') {
+      // Only redirect to /blocked if the server explicitly returned an IP_BLOCKED or ACCOUNT_LOCKED code
+      const isExplicitBlock = result.code === 'IP_BLOCKED' || 
+                             result.code === 'ACCOUNT_LOCKED' || 
+                             result.blocked === true ||
+                             (typeof result.error === 'string' && result.error.toLowerCase().includes('ip is blocked'));
+
+      if (isExplicitBlock) {
         sessionStorage.setItem('lockout_info', JSON.stringify({
-          message: 'You have tried too many times. Please try again after some time.',
-          remainingMinutes: 60,
-          reason: 'TOO_MANY_FAILED_ATTEMPTS',
+          message: result.error || 'You have tried too many times. Your IP is blocked.',
+          remainingMinutes: result.remainingMinutes || 15,
+          remainingSeconds: result.remainingSeconds || 900,
+          blockedUntil: result.blockedUntil || (Date.now() + 15 * 60 * 1000),
+          reason: result.reason || 'BRUTE_FORCE_PREVENTION',
           timestamp: Date.now()
         }));
         navigate('/blocked');

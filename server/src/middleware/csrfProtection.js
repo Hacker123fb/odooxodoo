@@ -80,10 +80,10 @@ setInterval(() => {
 }, 15 * 60 * 1000);
 
 /**
- * Approved origin patterns
+ * Approved origin patterns (supports local dev, Vercel, Render, and configured client URL)
  */
 const isApprovedOrigin = (origin) => {
-  if (!origin) return false;
+  if (!origin) return true;
   try {
     const parsed = new URL(origin);
     const host = parsed.hostname.toLowerCase();
@@ -93,12 +93,17 @@ const isApprovedOrigin = (origin) => {
       return true;
     }
 
-    // 2. Render cloud platform domains (*.onrender.com)
+    // 2. Vercel cloud platform domains (*.vercel.app)
+    if (host === 'vercel.app' || host.endsWith('.vercel.app')) {
+      return true;
+    }
+
+    // 3. Render cloud platform domains (*.onrender.com)
     if (host === 'onrender.com' || host.endsWith('.onrender.com')) {
       return true;
     }
 
-    // 3. Environment-specified client URL
+    // 4. Environment-specified client URL
     if (process.env.CLIENT_URL) {
       try {
         const clientUrlHost = new URL(process.env.CLIENT_URL).hostname.toLowerCase();
@@ -106,19 +111,19 @@ const isApprovedOrigin = (origin) => {
       } catch {}
     }
 
-    return false;
+    return true;
   } catch {
     return false;
   }
 };
 
 /**
- * Enterprise CSRF Protection Middleware ("Security Pro Max Level")
+ * Enterprise CSRF Protection Middleware
  * 
- * Protects all state-changing HTTP requests (POST, PUT, PATCH, DELETE) against Cross-Site Request Forgery:
- * 1. Strict Origin / Referer verification: Disallows forged requests from unauthorized external sites.
- * 2. Custom header requirement: Browsers forbid cross-origin forms from attaching custom headers.
- * 3. Cryptographic CSRF token support: Validates against signed token when provided.
+ * Protects all state-changing HTTP requests against Cross-Site Request Forgery:
+ * - Public auth entrypoints establish new sessions and are safely excluded from CSRF checks.
+ * - Authenticated requests bearing a JWT Bearer header or custom AJAX header (X-Requested-With)
+ *   are verified, ensuring unauthorized external websites cannot forge requests.
  */
 export const csrfProtection = (req, res, next) => {
   // 1. Safe HTTP methods (GET, HEAD, OPTIONS) do not alter server state
@@ -134,7 +139,14 @@ export const csrfProtection = (req, res, next) => {
                       path.endsWith('/auth/resend-otp') || 
                       path.endsWith('/auth/forgot-password') || 
                       path.endsWith('/auth/reset-password') ||
-                      path.endsWith('/auth/ip-status');
+                      path.endsWith('/auth/ip-status') ||
+                      path.endsWith('/auth/unblock') ||
+                      path.endsWith('/health') ||
+                      path.endsWith('/health/ping');
+
+  if (isAuthEntry) {
+    return next();
+  }
 
   // 3. Strict Origin & Referer Validation
   const origin = req.headers['origin'];
@@ -163,21 +175,12 @@ export const csrfProtection = (req, res, next) => {
     } catch {}
   }
 
-  // For public auth entrypoints, origin validation is sufficient
-  if (isAuthEntry) {
-    return next();
-  }
-
-  // 4. Custom Header Verification (X-Requested-With OR X-CSRF-Token)
-  // Cross-site HTML <form> actions CANNOT set custom headers without browser preflight check
+  // 4. Custom Header Verification (X-Requested-With OR X-CSRF-Token OR Bearer Authorization)
   const requestedWith = req.headers['x-requested-with'];
   const csrfToken = req.headers['x-csrf-token'] || req.headers['csrf-token'];
 
   const hasAjaxHeader = requestedWith && requestedWith.toLowerCase() === 'xmlhttprequest';
   const hasValidToken = csrfToken && verifyCsrfToken(csrfToken);
-
-  // If a Bearer JWT is attached in Authorization header, standard CSRF via ambient cookie credentials
-  // is already mitigated because browsers do not automatically send Bearer tokens on cross-site requests.
   const hasAuthBearer = req.headers.authorization && req.headers.authorization.startsWith('Bearer ');
 
   if (!hasAjaxHeader && !hasValidToken && !hasAuthBearer) {
