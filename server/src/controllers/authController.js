@@ -692,10 +692,13 @@ export const authController = {
 
   /**
    * Get all registrations pending approval (Super Admin and Fleet Manager only)
+   * Fleet Managers can only review operational staff (excluding other Fleet Managers)
    */
   getPendingApprovals: async (req, res, next) => {
     try {
-      const pendingUsers = await userModel.getPendingUsers();
+      const isSuperAdmin = req.user.role_name === 'SUPER_ADMIN';
+      const excludeRoles = isSuperAdmin ? [] : ['FLEET_MANAGER'];
+      const pendingUsers = await userModel.getPendingUsers(excludeRoles);
       return res.ok(
         pendingUsers,
         'Pending registrations retrieved successfully.'
@@ -707,6 +710,7 @@ export const authController = {
 
   /**
    * Approve a pending user account
+   * Fleet Manager accounts require Super Admin authorization
    */
   approveUser: async (req, res, next) => {
     try {
@@ -718,11 +722,22 @@ export const authController = {
       if (targetUser.status !== 'PENDING_APPROVAL') {
         throw new AppError(`User account is not pending approval (current status: ${targetUser.status}).`, HttpStatusCodes.BAD_REQUEST);
       }
+
+      // If target user registered as FLEET_MANAGER, only SUPER_ADMIN can approve
+      if (targetUser.role_name === 'FLEET_MANAGER' && req.user.role_name !== 'SUPER_ADMIN') {
+        throw new AppError('Unauthorized: Only a Super Admin can approve Fleet Manager registrations.', HttpStatusCodes.FORBIDDEN);
+      }
+
       await userModel.updateStatus(id, 'ACTIVE');
+
+      // Dispatch approval confirmation email to registered user
+      emailService.sendApprovalEmail(targetUser.email, targetUser.full_name, targetUser.role_name).catch(err => {
+        console.error(`[EMAIL] Failed to send approval email to ${targetUser.email}:`, err.message);
+      });
 
       return res.ok(
         { id, status: 'ACTIVE', email: targetUser.email },
-        `User account ${targetUser.email} has been approved successfully.`
+        `User account ${targetUser.email} has been approved successfully. Notification email dispatched.`
       );
     } catch (error) {
       next(error);
@@ -731,6 +746,7 @@ export const authController = {
 
   /**
    * Reject a pending user account
+   * Fleet Manager accounts require Super Admin authorization
    */
   rejectUser: async (req, res, next) => {
     try {
@@ -742,11 +758,22 @@ export const authController = {
       if (targetUser.status !== 'PENDING_APPROVAL') {
         throw new AppError(`User account is not pending approval (current status: ${targetUser.status}).`, HttpStatusCodes.BAD_REQUEST);
       }
+
+      // If target user registered as FLEET_MANAGER, only SUPER_ADMIN can reject
+      if (targetUser.role_name === 'FLEET_MANAGER' && req.user.role_name !== 'SUPER_ADMIN') {
+        throw new AppError('Unauthorized: Only a Super Admin can reject Fleet Manager registrations.', HttpStatusCodes.FORBIDDEN);
+      }
+
       await userModel.updateStatus(id, 'REJECTED');
+
+      // Dispatch rejection notification email to registered user
+      emailService.sendRejectionEmail(targetUser.email, targetUser.full_name, targetUser.role_name).catch(err => {
+        console.error(`[EMAIL] Failed to send rejection email to ${targetUser.email}:`, err.message);
+      });
 
       return res.ok(
         { id, status: 'REJECTED', email: targetUser.email },
-        `User account ${targetUser.email} registration has been rejected.`
+        `User account ${targetUser.email} registration has been rejected. Notification email dispatched.`
       );
     } catch (error) {
       next(error);

@@ -156,6 +156,68 @@ const sendViaBrevoHttpApi = async ({ to, subject, html, text }) => {
   return data;
 };
 
+/**
+ * Unified email dispatcher with Brevo HTTP API (Port 443 HTTPS), SMTP fallback, and debug file fallback
+ */
+const dispatchEmail = async ({ to, subject, html, text, type = 'NOTIFICATION' }) => {
+  // 1. First attempt: Brevo HTTP API (Port 443 HTTPS - never blocked by cloud firewalls)
+  const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
+  if (apiKey && (process.env.BREVO_API_KEY || process.env.SMTP_HOST?.includes('brevo'))) {
+    try {
+      const brevoResult = await sendViaBrevoHttpApi({
+        to,
+        subject,
+        html,
+        text
+      });
+      console.log(`[EMAIL] ${type} successfully dispatched via Brevo HTTP API to ${to}. MessageId:`, brevoResult.messageId);
+      return brevoResult;
+    } catch (brevoErr) {
+      console.warn(`[EMAIL] Brevo HTTP API attempt failed for ${type}: ${brevoErr.message}. Attempting SMTP fallback...`);
+    }
+  }
+
+  // 2. Second attempt: Standard SMTP Transport
+  await autoConfigureSmtp();
+  const host = process.env.SMTP_HOST;
+
+  if (!host || host === 'localhost') {
+    console.log(`[EMAIL] No external SMTP host configured. ${type} for ${to}: ${subject}`);
+    try {
+      const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
+      const content = `Timestamp: ${new Date().toISOString()}\nType: ${type}\nEmail: ${to}\nSubject: ${subject}\nText: ${text}\n`;
+      fs.appendFileSync(otpPath, content, 'utf8');
+    } catch (e) {}
+    return;
+  }
+
+  try {
+    const transporter = getTransporter();
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@transitops.com';
+
+    const info = await sendWithTimeout(transporter, {
+      from: `"TransitOps Notifications" <${fromAddress}>`,
+      to,
+      subject,
+      text,
+      html
+    }, 5000);
+
+    console.log(`[EMAIL] ${type} successfully dispatched via SMTP to ${to}`);
+    return info;
+  } catch (smtpErr) {
+    console.warn(`[EMAIL] SMTP delivery failed for ${type}: ${smtpErr.message}. Fallback to server debug file.`);
+    try {
+      const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
+      const content = `Timestamp: ${new Date().toISOString()}\nType: ${type}\nEmail: ${to}\nSubject: ${subject}\nText: ${text}\n`;
+      fs.appendFileSync(otpPath, content, 'utf8');
+      console.log(`[EMAIL] ${type} backup written to: server/otp-debug.txt`);
+    } catch (fsErr) {
+      console.error('[EMAIL] Failed to write backup email debug file:', fsErr.message);
+    }
+  }
+};
+
 export const emailService = {
   /**
    * Sends the 6-digit numeric OTP to the user's email address for Registration
@@ -185,61 +247,13 @@ export const emailService = {
     `;
     const textBody = `Welcome to TransitOps! Your registration verification code is: ${otp}. This code is valid for 3 minutes.`;
 
-    // 1. First attempt: Brevo HTTP API (Port 443 HTTPS - never blocked by cloud firewalls)
-    const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
-    if (apiKey && (process.env.BREVO_API_KEY || process.env.SMTP_HOST?.includes('brevo'))) {
-      try {
-        const brevoResult = await sendViaBrevoHttpApi({
-          to: email,
-          subject: 'TransitOps - User Registration Verification Code',
-          html: htmlBody,
-          text: textBody
-        });
-        console.log(`[EMAIL] Registration OTP successfully dispatched via Brevo HTTP API to ${email}. MessageId:`, brevoResult.messageId);
-        return;
-      } catch (brevoErr) {
-        console.warn(`[EMAIL] Brevo HTTP API attempt failed: ${brevoErr.message}. Attempting SMTP fallback...`);
-      }
-    }
-
-    // 2. Second attempt: Standard SMTP Transport
-    await autoConfigureSmtp();
-    const host = process.env.SMTP_HOST;
-
-    if (!host || host === 'localhost') {
-      console.log(`[EMAIL] No external SMTP host configured. OTP for ${email}: ${otp}`);
-      try {
-        const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
-        const content = `Timestamp: ${new Date().toISOString()}\nType: REGISTRATION\nEmail: ${email}\nOTP: ${otp}\n`;
-        fs.appendFileSync(otpPath, content, 'utf8');
-      } catch (e) {}
-      return;
-    }
-
-    try {
-      const transporter = getTransporter();
-      const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@transitops.com';
-
-      const info = await sendWithTimeout(transporter, {
-        from: `"TransitOps Notifications" <${fromAddress}>`,
-        to: email,
-        subject: 'TransitOps - User Registration Verification Code',
-        text: textBody,
-        html: htmlBody
-      }, 5000);
-
-      console.log(`[EMAIL] Registration OTP successfully dispatched via SMTP to ${email}`);
-    } catch (smtpErr) {
-      console.warn(`[EMAIL] SMTP delivery failed: ${smtpErr.message}. Fallback to server debug file.`);
-      try {
-        const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
-        const content = `Timestamp: ${new Date().toISOString()}\nType: REGISTRATION\nEmail: ${email}\nOTP: ${otp}\n`;
-        fs.appendFileSync(otpPath, content, 'utf8');
-        console.log(`[EMAIL] OTP backup written to: server/otp-debug.txt`);
-      } catch (fsErr) {
-        console.error('[EMAIL] Failed to write backup OTP debug file:', fsErr.message);
-      }
-    }
+    return dispatchEmail({
+      to: email,
+      subject: 'TransitOps - User Registration Verification Code',
+      html: htmlBody,
+      text: textBody,
+      type: 'REGISTRATION_OTP'
+    });
   },
 
   /**
@@ -270,61 +284,117 @@ export const emailService = {
     `;
     const textBody = `You have requested to reset your TransitOps password. Your verification code is: ${otp}. This code is valid for 10 minutes.`;
 
-    // 1. First attempt: Brevo HTTP API
-    const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
-    if (apiKey && (process.env.BREVO_API_KEY || process.env.SMTP_HOST?.includes('brevo'))) {
-      try {
-        const brevoResult = await sendViaBrevoHttpApi({
-          to: email,
-          subject: 'TransitOps - Password Reset Request Code',
-          html: htmlBody,
-          text: textBody
-        });
-        console.log(`[EMAIL] Password reset OTP dispatched via Brevo HTTP API to ${email}. MessageId:`, brevoResult.messageId);
-        return;
-      } catch (brevoErr) {
-        console.warn(`[EMAIL] Brevo HTTP API attempt failed: ${brevoErr.message}. Attempting SMTP fallback...`);
-      }
-    }
+    return dispatchEmail({
+      to: email,
+      subject: 'TransitOps - Password Reset Request Code',
+      html: htmlBody,
+      text: textBody,
+      type: 'PASSWORD_RESET_OTP'
+    });
+  },
 
-    // 2. Second attempt: SMTP Transport
-    await autoConfigureSmtp();
-    const host = process.env.SMTP_HOST;
+  /**
+   * Sends an account approval notification email with portal login link
+   */
+  async sendApprovalEmail(email, fullName, roleName) {
+    const formattedRole = (roleName || '').replace(/_/g, ' ');
+    const clientUrl = process.env.CLIENT_URL || 'https://transitops-lemon-seven.vercel.app';
+    const loginUrl = `${clientUrl.replace(/\/+$/, '')}/login`;
 
-    if (!host || host === 'localhost') {
-      console.log(`[EMAIL] No external SMTP host configured. Password Reset OTP for ${email}: ${otp}`);
-      try {
-        const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
-        const content = `Timestamp: ${new Date().toISOString()}\nType: PASSWORD_RESET\nEmail: ${email}\nOTP: ${otp}\n`;
-        fs.appendFileSync(otpPath, content, 'utf8');
-      } catch (e) {}
-      return;
-    }
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #edf2f7; padding-bottom: 16px;">
+          <h2 style="color: #2b6cb0; margin: 0; font-size: 24px; letter-spacing: 0.5px;">Transit<span style="color: #4a5568;">Ops</span></h2>
+          <p style="color: #718096; font-size: 12px; margin-top: 4px; margin-bottom: 0;">Logistics &amp; Fleet Intelligence</p>
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="display: inline-block; background-color: #def7ec; border: 1px solid #bcf0da; border-radius: 50%; width: 56px; height: 56px; line-height: 56px; font-size: 26px; color: #046c4e;">
+            ✓
+          </div>
+        </div>
+        <h3 style="color: #1a202c; font-size: 20px; margin-top: 0; margin-bottom: 12px; text-align: center;">Account Registration Approved</h3>
+        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+          Hello <strong>${fullName}</strong>,
+        </p>
+        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+          Your registration request for the role of <strong style="color: #2b6cb0;">${formattedRole}</strong> has been reviewed and authorized by platform administration.
+        </p>
+        <div style="background-color: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+          <table style="width: 100%; font-size: 13px; color: #4a5568;">
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; width: 40%;">Account Email:</td>
+              <td style="padding: 4px 0; font-family: monospace;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold;">Authorized Role:</td>
+              <td style="padding: 4px 0;">${formattedRole}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold;">Account Status:</td>
+              <td style="padding: 4px 0; color: #046c4e; font-weight: bold;">ACTIVE</td>
+            </tr>
+          </table>
+        </div>
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="${loginUrl}" style="background-color: #1a202c; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block;">
+            Sign In to TransitOps
+          </a>
+        </div>
+        <p style="color: #718096; font-size: 12px; line-height: 1.5; margin-bottom: 0; text-align: center;">
+          Portal Link: <a href="${loginUrl}" style="color: #2b6cb0;">${loginUrl}</a>
+        </p>
+        <div style="text-align: center; margin-top: 32px; border-top: 1px solid #edf2f7; padding-top: 16px; font-size: 10px; color: #a0aec0;">
+          © 2026 TransitOps. All rights reserved.
+        </div>
+      </div>
+    `;
+    const textBody = `Hello ${fullName},\n\nYour TransitOps registration for the role of ${formattedRole} has been approved by administration. You may now sign in at: ${loginUrl}\n\nAccount: ${email}`;
 
-    try {
-      const transporter = getTransporter();
-      const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@transitops.com';
+    return dispatchEmail({
+      to: email,
+      subject: 'TransitOps - Account Registration Approved',
+      html: htmlBody,
+      text: textBody,
+      type: 'ACCOUNT_APPROVED'
+    });
+  },
 
-      const info = await sendWithTimeout(transporter, {
-        from: `"TransitOps Security" <${fromAddress}>`,
-        to: email,
-        subject: 'TransitOps - Password Reset Request Code',
-        text: textBody,
-        html: htmlBody
-      }, 5000);
+  /**
+   * Sends an account rejection notification email
+   */
+  async sendRejectionEmail(email, fullName, roleName) {
+    const formattedRole = (roleName || '').replace(/_/g, ' ');
 
-      console.log(`[EMAIL] Password reset OTP successfully dispatched via SMTP to ${email}`);
-    } catch (smtpErr) {
-      console.warn(`[EMAIL] SMTP delivery failed: ${smtpErr.message}. Fallback to server debug file.`);
-      try {
-        const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
-        const content = `Timestamp: ${new Date().toISOString()}\nType: PASSWORD_RESET\nEmail: ${email}\nOTP: ${otp}\n`;
-        fs.appendFileSync(otpPath, content, 'utf8');
-        console.log(`[EMAIL] OTP backup written to: server/otp-debug.txt`);
-      } catch (fsErr) {
-        console.error('[EMAIL] Failed to write backup OTP debug file:', fsErr.message);
-      }
-    }
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #edf2f7; padding-bottom: 16px;">
+          <h2 style="color: #2b6cb0; margin: 0; font-size: 24px; letter-spacing: 0.5px;">Transit<span style="color: #4a5568;">Ops</span></h2>
+          <p style="color: #718096; font-size: 12px; margin-top: 4px; margin-bottom: 0;">Logistics &amp; Fleet Intelligence</p>
+        </div>
+        <h3 style="color: #1a202c; font-size: 20px; margin-top: 0; margin-bottom: 12px; text-align: center;">Registration Request Update</h3>
+        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+          Hello <strong>${fullName}</strong>,
+        </p>
+        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+          Thank you for your interest in joining TransitOps. Following administrative security review, your registration request for the role of <strong style="color: #e53e3e;">${formattedRole}</strong> was not approved at this time.
+        </p>
+        <div style="background-color: #fdf2f2; border: 1px solid #fbd5d5; border-radius: 8px; padding: 16px; margin-bottom: 24px; color: #9b1c1c; font-size: 13px;">
+          If you believe this decision was made in error or you require operational access, please reach out directly to your organization Super Admin or Fleet Manager.
+        </div>
+        <div style="text-align: center; margin-top: 32px; border-top: 1px solid #edf2f7; padding-top: 16px; font-size: 10px; color: #a0aec0;">
+          © 2026 TransitOps. All rights reserved.
+        </div>
+      </div>
+    `;
+    const textBody = `Hello ${fullName},\n\nYour TransitOps registration request for the role of ${formattedRole} was not approved at this time. If you believe this is an error, please contact your organization administrator.`;
+
+    return dispatchEmail({
+      to: email,
+      subject: 'TransitOps - Registration Request Status',
+      html: htmlBody,
+      text: textBody,
+      type: 'ACCOUNT_REJECTED'
+    });
   },
 
   /**

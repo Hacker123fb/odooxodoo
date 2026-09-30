@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiCheck, FiX, FiClock, FiUserCheck, FiShield, FiRefreshCw, FiMail, FiPhone } from 'react-icons/fi';
+import { FiCheck, FiX, FiClock, FiUserCheck, FiShield, FiRefreshCw, FiMail, FiPhone, FiSend } from 'react-icons/fi';
 import { authService } from '../../api/apiService.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import Button from '../../components/common/Button.jsx';
 
@@ -9,6 +10,7 @@ import Button from '../../components/common/Button.jsx';
  * Displayed for Super Admins and Fleet Managers to authorize or decline new registrations
  */
 export const PendingStaffApprovals = () => {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [pendingUsers, setPendingUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -113,13 +115,13 @@ export const PendingStaffApprovals = () => {
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              Staff Registration Approval Queue
+              {user?.role === 'SUPER_ADMIN' ? 'Staff & Fleet Manager Approval Queue' : 'Staff Registration Approval Queue'}
               <span className="px-2 py-0.2 rounded-full text-xs font-semibold bg-amber-500 text-white">
                 {pendingUsers.length} Pending
               </span>
             </h3>
             <p className="text-[11px] text-slate-600 dark:text-slate-400">
-              Higher authority clearance required before operational staff credentials are activated
+              Clearance required before credentials are activated. An automated decision email is sent immediately to the user upon approval or decline.
             </p>
           </div>
         </div>
@@ -148,6 +150,11 @@ export const PendingStaffApprovals = () => {
                   {candidate.full_name}
                 </span>
                 {getRoleBadge(candidate.role_name)}
+                {candidate.role_name === 'FLEET_MANAGER' && (
+                  <span className="inline-flex items-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                    Super Admin Approval Required
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1 font-mono">

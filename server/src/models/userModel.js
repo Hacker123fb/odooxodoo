@@ -71,17 +71,23 @@ export const userModel = {
   },
 
   /**
-   * Fetch all user accounts pending administrative approval
+   * Fetch user accounts pending administrative approval
+   * @param {string[]} excludeRoles Optional role names to exclude from query (e.g. ['FLEET_MANAGER'])
    */
-  async getPendingUsers() {
-    const sql = `
+  async getPendingUsers(excludeRoles = []) {
+    let sql = `
       SELECT u.id, u.full_name, u.email, u.phone, u.status, u.created_at, r.name AS role_name
       FROM users u
       JOIN roles r ON u.role_id = r.id
       WHERE u.status = 'PENDING_APPROVAL'
-      ORDER BY u.created_at DESC
     `;
-    const [rows] = await pool.query(sql);
+    const params = [];
+    if (Array.isArray(excludeRoles) && excludeRoles.length > 0) {
+      sql += ` AND r.name NOT IN (${excludeRoles.map(() => '?').join(', ')})`;
+      params.push(...excludeRoles);
+    }
+    sql += ` ORDER BY u.created_at DESC`;
+    const [rows] = await pool.query(sql, params);
     return rows;
   },
 
