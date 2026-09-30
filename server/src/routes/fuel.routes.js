@@ -5,8 +5,9 @@ import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// Require session validation for all endpoints in this module
+// Require session validation and fuel monitoring clearance for all endpoints in this module
 router.use(protect);
+router.use(restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST'));
 
 /**
  * GET /api/v1/fuel
@@ -30,32 +31,18 @@ router.get('/:id', fuelController.getById);
  * POST /api/v1/fuel
  * Create a new fuel log record
  */
-router.post(
-  '/',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST'),
-  validateFuel,
-  fuelController.create
-);
+router.post('/', validateFuel, fuelController.create);
 
 /**
  * PUT /api/v1/fuel/:id
  * Update details of a fuel log record
  */
-router.put(
-  '/:id',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST'),
-  validateFuel,
-  fuelController.update
-);
+router.put('/:id', validateFuel, fuelController.update);
 
 /**
  * DELETE /api/v1/fuel/:id
  * Remove a fuel log record
  */
-router.delete(
-  '/:id',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST'),
-  fuelController.delete
-);
+router.delete('/:id', fuelController.delete);
 
 export default router;

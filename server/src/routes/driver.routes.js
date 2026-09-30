@@ -12,13 +12,21 @@ router.use(protect);
  * GET /api/v1/drivers
  * Retrieve list of all operators with filters
  */
-router.get('/', driverController.getAll);
+router.get(
+  '/',
+  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'SAFETY_OFFICER'),
+  driverController.getAll
+);
 
 /**
  * GET /api/v1/drivers/:id
  * Retrieve details for a single driver profile
  */
-router.get('/:id', driverController.getById);
+router.get(
+  '/:id',
+  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'SAFETY_OFFICER'),
+  driverController.getById
+);
 
 /**
  * POST /api/v1/drivers

@@ -68,14 +68,28 @@ export const DriverForm = () => {
           setValue('user_notes', d.user_notes || '');
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve driver profile.', 'error');
-        navigate('/drivers');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/drivers/edit/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/drivers/edit/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to edit driver #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve driver profile.', 'error');
+          navigate('/drivers');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchDriver();
-  }, [id, isEdit, setValue]);
+  }, [id, isEdit, setValue, navigate, showToast]);
 
   const onInvalid = (errs) => {
     const firstErrorField = Object.keys(errs)[0];

@@ -10,7 +10,7 @@ export const MaintenanceDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   const [record, setRecord] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,22 +19,55 @@ export const MaintenanceDetails = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
   useEffect(() => {
+    // 1. Pre-request authorization check
+    if (!isAuthenticated) {
+      navigate('/401', { replace: true, state: { from: `/maintenance/${id}` } });
+      return;
+    }
+
+    if (user && !['SUPER_ADMIN', 'FLEET_MANAGER'].includes(user.role)) {
+      navigate('/403', { 
+        replace: true, 
+        state: { 
+          attemptedPath: `/maintenance/${id}`,
+          reason: `Access Denied: You do not have clearance to view maintenance log #${id}.`
+        } 
+      });
+      return;
+    }
+
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
         const res = await maintenanceService.getById(id);
-        if (res.success) {
+        if (res && res.success && res.data) {
           setRecord(res.data);
+        } else {
+          navigate('/404', { replace: true });
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve maintenance details.', 'error');
-        navigate('/maintenance');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/maintenance/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/maintenance/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to view maintenance record #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve maintenance details.', 'error');
+          navigate('/maintenance');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchDetails();
-  }, [id, navigate]);
+  }, [id, user, isAuthenticated, navigate, showToast]);
 
   if (isLoading) {
     return (

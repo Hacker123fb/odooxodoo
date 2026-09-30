@@ -108,14 +108,28 @@ export const FuelLogForm = () => {
           setValue('remarks', f.remarks || '');
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve fuel log details.', 'error');
-        navigate('/fuel');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/fuel/edit/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/fuel/edit/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to edit fuel log #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve fuel log details.', 'error');
+          navigate('/fuel');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchRecord();
-  }, [id, isEdit, setValue]);
+  }, [id, isEdit, setValue, navigate, showToast]);
 
   const onSubmit = async (data) => {
     setIsSaving(true);

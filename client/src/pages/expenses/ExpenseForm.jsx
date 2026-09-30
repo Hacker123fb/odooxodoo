@@ -93,14 +93,28 @@ export const ExpenseForm = () => {
           setValue('status', e.status || 'Pending');
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve expense details.', 'error');
-        navigate('/expenses');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/expenses/edit/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/expenses/edit/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to edit expense record #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve expense details.', 'error');
+          navigate('/expenses');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchRecord();
-  }, [id, isEdit, setValue]);
+  }, [id, isEdit, setValue, navigate, showToast]);
 
   const onSubmit = async (data) => {
     setIsSaving(true);

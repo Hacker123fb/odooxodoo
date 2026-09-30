@@ -1,5 +1,7 @@
 import driverService from '../services/driver.service.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { AppError } from '../utils/customError.js';
+import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 
 export const driverController = {
   /**
@@ -14,11 +16,18 @@ export const driverController = {
 
   /**
    * GET /api/v1/drivers/:id
-   * Fetch single driver profile
+   * Fetch single driver profile with parameter validation
    */
   getById: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const driver = await driverService.getDriverById(id);
+    const numId = parseInt(id, 10);
+    if (isNaN(numId) || numId <= 0) {
+      throw new AppError('Invalid driver identifier parameter.', HttpStatusCodes.BAD_REQUEST);
+    }
+    const driver = await driverService.getDriverById(numId);
+    if (!driver) {
+      throw new AppError(`Driver #${numId} was not found.`, HttpStatusCodes.NOT_FOUND);
+    }
     return res.ok(driver, 'Driver details retrieved successfully.');
   }),
 

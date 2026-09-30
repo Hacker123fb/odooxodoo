@@ -13,7 +13,7 @@ export const DriverDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   const [driver, setDriver] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,22 +21,55 @@ export const DriverDetails = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
   useEffect(() => {
+    // 1. Pre-request authorization check
+    if (!isAuthenticated) {
+      navigate('/401', { replace: true, state: { from: `/drivers/${id}` } });
+      return;
+    }
+
+    if (user && !['SUPER_ADMIN', 'FLEET_MANAGER', 'SAFETY_OFFICER'].includes(user.role)) {
+      navigate('/403', { 
+        replace: true, 
+        state: { 
+          attemptedPath: `/drivers/${id}`,
+          reason: `Access Denied: You do not have clearance to view driver profile #${id}.`
+        } 
+      });
+      return;
+    }
+
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
         const res = await driverService.getById(id);
-        if (res.success) {
+        if (res && res.success && res.data) {
           setDriver(res.data);
+        } else {
+          navigate('/404', { replace: true });
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve driver profile.', 'error');
-        navigate('/drivers');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/drivers/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/drivers/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to view driver #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve driver profile.', 'error');
+          navigate('/drivers');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchDetails();
-  }, [id, navigate]);
+  }, [id, user, isAuthenticated, navigate, showToast]);
 
   if (isLoading) {
     return (

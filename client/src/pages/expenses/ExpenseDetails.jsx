@@ -10,7 +10,7 @@ export const ExpenseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const [record, setRecord] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,22 +18,55 @@ export const ExpenseDetails = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FINANCIAL_ANALYST' || user?.role === 'FLEET_MANAGER';
 
   useEffect(() => {
+    // 1. Pre-request authorization check
+    if (!isAuthenticated) {
+      navigate('/401', { replace: true, state: { from: `/expenses/${id}` } });
+      return;
+    }
+
+    if (user && !['SUPER_ADMIN', 'FINANCIAL_ANALYST', 'FLEET_MANAGER'].includes(user.role)) {
+      navigate('/403', { 
+        replace: true, 
+        state: { 
+          attemptedPath: `/expenses/${id}`,
+          reason: `Access Denied: You do not have clearance to view expense record #${id}.`
+        } 
+      });
+      return;
+    }
+
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
         const res = await expenseService.getById(id);
-        if (res.success) {
+        if (res && res.success && res.data) {
           setRecord(res.data);
+        } else {
+          navigate('/404', { replace: true });
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve expense details.', 'error');
-        navigate('/expenses');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/expenses/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/expenses/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to view expense record #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve expense details.', 'error');
+          navigate('/expenses');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchDetails();
-  }, [id, navigate]);
+  }, [id, navigate, isAuthenticated, user, showToast]);
 
   if (isLoading) {
     return (

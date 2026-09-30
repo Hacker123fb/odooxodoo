@@ -12,19 +12,31 @@ router.use(protect);
  * GET /api/v1/expenses
  * Retrieve list of all expense records with filters
  */
-router.get('/', expenseController.getAll);
+router.get(
+  '/',
+  restrictTo('SUPER_ADMIN', 'FINANCIAL_ANALYST', 'FLEET_MANAGER'),
+  expenseController.getAll
+);
 
 /**
  * GET /api/v1/expenses/meta/options
  * Retrieve selector options (vehicles, trips)
  */
-router.get('/meta/options', expenseController.getMetadataOptions);
+router.get(
+  '/meta/options',
+  restrictTo('SUPER_ADMIN', 'FINANCIAL_ANALYST', 'FLEET_MANAGER'),
+  expenseController.getMetadataOptions
+);
 
 /**
  * GET /api/v1/expenses/:id
  * Retrieve details for a single expense record
  */
-router.get('/:id', expenseController.getById);
+router.get(
+  '/:id',
+  restrictTo('SUPER_ADMIN', 'FINANCIAL_ANALYST', 'FLEET_MANAGER'),
+  expenseController.getById
+);
 
 /**
  * POST /api/v1/expenses

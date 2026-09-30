@@ -1,5 +1,7 @@
 import { maintenanceService } from '../services/maintenance.service.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { AppError } from '../utils/customError.js';
+import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 
 export const maintenanceController = {
   /**
@@ -14,11 +16,18 @@ export const maintenanceController = {
 
   /**
    * GET /api/v1/maintenance/:id
-   * Fetch details for a single maintenance record
+   * Fetch details for a single maintenance record with parameter validation
    */
   getById: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const record = await maintenanceService.getRecordById(id);
+    const numId = parseInt(id, 10);
+    if (isNaN(numId) || numId <= 0) {
+      throw new AppError('Invalid maintenance identifier parameter.', HttpStatusCodes.BAD_REQUEST);
+    }
+    const record = await maintenanceService.getRecordById(numId);
+    if (!record) {
+      throw new AppError(`Maintenance record #${numId} was not found.`, HttpStatusCodes.NOT_FOUND);
+    }
     return res.ok(record, 'Maintenance record retrieved successfully.');
   }),
 

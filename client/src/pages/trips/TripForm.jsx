@@ -93,14 +93,28 @@ export const TripForm = () => {
           setCurrentStatus(t.status || 'SCHEDULED');
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve trip profile.', 'error');
-        navigate('/trips');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/trips/edit/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/trips/edit/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to edit trip #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve trip profile.', 'error');
+          navigate('/trips');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchTrip();
-  }, [id, isEdit, setValue]);
+  }, [id, isEdit, setValue, navigate, showToast]);
 
   const onSubmit = async (data) => {
     setIsSaving(true);

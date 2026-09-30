@@ -101,14 +101,28 @@ export const MaintenanceForm = () => {
           setValue('status', m.status);
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve maintenance details.', 'error');
-        navigate('/maintenance');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/maintenance/edit/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/maintenance/edit/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to edit maintenance log #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve maintenance details.', 'error');
+          navigate('/maintenance');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchRecord();
-  }, [id, isEdit, setValue]);
+  }, [id, isEdit, setValue, navigate, showToast]);
 
   const onSubmit = async (data) => {
     setIsSaving(true);

@@ -5,8 +5,9 @@ import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// Require session validation for all endpoints in this module
+// Require session validation and dispatch clearance for all endpoints in this module
 router.use(protect);
+router.use(restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER'));
 
 /**
  * GET /api/v1/trips
@@ -30,32 +31,18 @@ router.get('/:id', tripController.getById);
  * POST /api/v1/trips
  * Schedule a new trip
  */
-router.post(
-  '/',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER'),
-  validateTrip,
-  tripController.create
-);
+router.post('/', validateTrip, tripController.create);
 
 /**
  * PUT /api/v1/trips/:id
  * Update trip details (handles state changes)
  */
-router.put(
-  '/:id',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER'),
-  validateTrip,
-  tripController.update
-);
+router.put('/:id', validateTrip, tripController.update);
 
 /**
  * DELETE /api/v1/trips/:id
  * Remove a trip from list
  */
-router.delete(
-  '/:id',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER'),
-  tripController.delete
-);
+router.delete('/:id', tripController.delete);
 
 export default router;

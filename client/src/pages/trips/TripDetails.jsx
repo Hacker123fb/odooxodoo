@@ -13,7 +13,7 @@ export const TripDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   const [trip, setTrip] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,22 +22,55 @@ export const TripDetails = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER' || user?.role === 'DISPATCHER';
 
   useEffect(() => {
+    // 1. Pre-request authorization check
+    if (!isAuthenticated) {
+      navigate('/401', { replace: true, state: { from: `/trips/${id}` } });
+      return;
+    }
+
+    if (user && !['SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER'].includes(user.role)) {
+      navigate('/403', { 
+        replace: true, 
+        state: { 
+          attemptedPath: `/trips/${id}`,
+          reason: `Access Denied: You do not have clearance to view trip dispatch #${id}.`
+        } 
+      });
+      return;
+    }
+
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
         const res = await tripService.getById(id);
-        if (res.success) {
+        if (res && res.success && res.data) {
           setTrip(res.data);
+        } else {
+          navigate('/404', { replace: true });
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve trip details.', 'error');
-        navigate('/trips');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/trips/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/trips/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to view trip #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve trip details.', 'error');
+          navigate('/trips');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchDetails();
-  }, [id, navigate]);
+  }, [id, user, isAuthenticated, navigate, showToast]);
 
   if (isLoading) {
     return (

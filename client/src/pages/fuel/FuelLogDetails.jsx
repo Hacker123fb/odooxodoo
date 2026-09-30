@@ -10,7 +10,7 @@ export const FuelLogDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   const [record, setRecord] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,22 +19,55 @@ export const FuelLogDetails = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER' || user?.role === 'FINANCIAL_ANALYST';
 
   useEffect(() => {
+    // 1. Pre-request authorization check
+    if (!isAuthenticated) {
+      navigate('/401', { replace: true, state: { from: `/fuel/${id}` } });
+      return;
+    }
+
+    if (user && !['SUPER_ADMIN', 'FLEET_MANAGER', 'FINANCIAL_ANALYST'].includes(user.role)) {
+      navigate('/403', { 
+        replace: true, 
+        state: { 
+          attemptedPath: `/fuel/${id}`,
+          reason: `Access Denied: You do not have clearance to view fuel log #${id}.`
+        } 
+      });
+      return;
+    }
+
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
         const res = await fuelService.getById(id);
-        if (res.success) {
+        if (res && res.success && res.data) {
           setRecord(res.data);
+        } else {
+          navigate('/404', { replace: true });
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve fuel log details.', 'error');
-        navigate('/fuel');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/fuel/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/fuel/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to view fuel log #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve fuel log details.', 'error');
+          navigate('/fuel');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchDetails();
-  }, [id, navigate]);
+  }, [id, navigate, isAuthenticated, user, showToast]);
 
   if (isLoading) {
     return (

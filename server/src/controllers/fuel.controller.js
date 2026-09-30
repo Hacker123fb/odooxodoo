@@ -1,5 +1,7 @@
 import { fuelService } from '../services/fuel.service.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { AppError } from '../utils/customError.js';
+import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 
 export const fuelController = {
   /**
@@ -14,11 +16,18 @@ export const fuelController = {
 
   /**
    * GET /api/v1/fuel/:id
-   * Fetch details for a single fuel log record
+   * Fetch details for a single fuel log record with parameter validation
    */
   getById: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const record = await fuelService.getRecordById(id);
+    const numId = parseInt(id, 10);
+    if (isNaN(numId) || numId <= 0) {
+      throw new AppError('Invalid fuel record identifier parameter.', HttpStatusCodes.BAD_REQUEST);
+    }
+    const record = await fuelService.getRecordById(numId);
+    if (!record) {
+      throw new AppError(`Fuel log record #${numId} was not found.`, HttpStatusCodes.NOT_FOUND);
+    }
     return res.ok(record, 'Fuel log record retrieved successfully.');
   }),
 
