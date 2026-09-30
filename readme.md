@@ -1,127 +1,105 @@
-# 🚚 TransitOps - Smart Transport Operations Platform (Enterprise v2.4)
+# 🚚 TransitOps - Smart Transport Operations Platform
 
 [![Live Web App](https://img.shields.io/badge/Production%20Web%20App-Vercel-black?style=for-the-badge&logo=vercel)](https://transitops-lemon-seven.vercel.app)
-[![Backend API](https://img.shields.io/badge/Production%20API-Render-46E3B7?style=for-the-badge&logo=render)](https://transitops-backend-nkkb.onrender.com/api/v1/health)
+[![React](https://img.shields.io/badge/React%2018-Vite%20SPA-61DAFB?style=for-the-badge&logo=react)](https://transitops-lemon-seven.vercel.app)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-3NF%20Engine-336791?style=for-the-badge&logo=postgresql)](https://transitops-lemon-seven.vercel.app)
-[![Security](https://img.shields.io/badge/Security-Zero--Trust%20RBAC-success?style=for-the-badge)](https://transitops-lemon-seven.vercel.app)
-[![Idempotency](https://img.shields.io/badge/Mutations-Idempotency%20Guaranteed-blue?style=for-the-badge)](https://transitops-lemon-seven.vercel.app)
+[![RBAC Security](https://img.shields.io/badge/Security-Zero--Trust%20RBAC-success?style=for-the-badge)](https://transitops-lemon-seven.vercel.app)
 
 ---
 
-## 🌐 Direct Deployment Links
+## 🌐 Live Access Links
 
-| Resource | URL | Description |
+| Portal | URL | Description |
 | :--- | :--- | :--- |
-| **🚀 Live Application Portal** | **[https://transitops-lemon-seven.vercel.app](https://transitops-lemon-seven.vercel.app)** | Production frontend with high-converting Landing Page & Operations Portal |
-| **🏢 Staff Login Portal** | **[https://transitops-lemon-seven.vercel.app/login](https://transitops-lemon-seven.vercel.app/login)** | Executive staff login with password visibility toggle & brute-force shield |
-| **🌟 Platform Showcase** | **[https://transitops-lemon-seven.vercel.app/landing](https://transitops-lemon-seven.vercel.app/landing)** | Interactive architecture, achievements, and technology showcase |
-| **⚡ Backend Health Endpoint** | **[https://transitops-backend-nkkb.onrender.com/api/v1/health](https://transitops-backend-nkkb.onrender.com/api/v1/health)** | Self-healing Node/Express backend with live database latency checks |
+| **🚀 Live Application** | **[https://transitops-lemon-seven.vercel.app](https://transitops-lemon-seven.vercel.app)** | Production operations portal and public landing page |
+| **🏢 Staff Login** | **[https://transitops-lemon-seven.vercel.app/login](https://transitops-lemon-seven.vercel.app/login)** | Secure staff authentication with show/hide password toggle |
+| **🌟 Platform Showcase** | **[https://transitops-lemon-seven.vercel.app/landing](https://transitops-lemon-seven.vercel.app/landing)** | Overview of platform capabilities, features, and workflows |
 
 ---
 
-## 📖 Executive Summary
+## 📖 Overview
 
-**TransitOps** is an enterprise-grade Transport & Logistics Management System built from the ground up for high reliability, zero-trust security, and sub-millisecond query performance. 
+**TransitOps** is an enterprise-grade Transport & Logistics Operations Management System designed for high reliability, data integrity, and operational clarity.
 
-Engineered with a **PostgreSQL 3NF** relational architecture, authoritative server-side **Role-Based Access Control (RBAC)** across 100% of endpoints, **dual-layer mutation idempotency**, and **Vite-powered code-split chunks**, TransitOps eliminates operational bottlenecks while providing an uncompromising security fortress against unauthorized access and URL tampering.
-
----
-
-## 🏆 Major Engineering Achievements
-
-### 1. 🛡️ Zero-Trust Server-Side RBAC & Route Clearance
-- **Authoritative Server Clearance**: Every single endpoint enforces strict role validation (`restrictTo`). Bypassing the frontend UI is impossible; direct API hits from unauthorized roles receive an immediate `403 Forbidden` (`INSUFFICIENT_PERMISSIONS`).
-- **URL Parameter Tampering Protection**: If an unauthorized user attempts to manipulate URL parameters (e.g. changing `/vehicles/3` to `/vehicles/1` or `/expenses/edit/999`), client-side pre-guards halt execution and redirect to dedicated `/401 Unauthorized` or `/403 Forbidden` barriers.
-- **Strict Numeric ID Validation**: Controllers reject non-numeric and out-of-range IDs with `400 Bad Request` and missing entities with `404 Not Found`.
-
-### 2. 🔁 Dual-Layer Mutation Idempotency Protection
-- **No Duplicate Inserts on Double-Clicks**: Mutating operations (`POST`, `PUT`, `DELETE`) pass through an in-flight mutex lock. If a user clicks a button twice rapidly or experiences network lag, identical concurrent requests receive `409 Conflict`.
-- **Cached Replay Stream**: Successfully processed mutations cache their output against a client-generated UUIDv4 `Idempotency-Key` or request signature, returning `X-Idempotent-Replay: true` without re-writing to the database.
-
-### 3. ⚡ PostgreSQL 3NF & High-Read Partial Indexing
-- **Database Indexing for High-Read / Low-Write Operations**: 
-  - Master and lookup tables (`vehicle_models`, `vehicle_makes`, `fuel_types`, `roles`) feature dedicated B-tree foreign key indexes, slashing multi-table `JOIN` overhead.
-  - **PostgreSQL Partial Indexes** (e.g. `CREATE INDEX idx_vehicles_active ON vehicles(id, registration_number) WHERE status = 'ACTIVE'`) enable pure index-only scans for high-frequency queries while introducing zero write overhead on non-matching rows.
-  - Sub-queries checking active trip collisions (`EXISTS (SELECT 1 FROM trips WHERE vehicle_id = v.id AND status = 'IN_PROGRESS')`) execute in $< 1\text{ms}$.
-
-### 4. 🚀 Ultra-Fast Modular UI (< 3s Vite Production Build)
-- **On-Demand Dynamic Code Splitting**: All pages and heavyweight modules (Recharts, Forms, Details) are split into standalone chunks via `React.lazy()` and `Suspense`, achieving instantaneous initial page loads.
-- **Smart Client-Side Caching**: Cached GET requests eliminate redundant network calls when navigating between views, instantly invalidating when mutating actions take place.
-- **Password Visibility Toggles**: Interactive show/hide password buttons (`FiEye` / `FiEyeOff`) integrated into both Login and Registration forms.
-
-### 5. 🧱 Defensive Security Fortress
-- **Anti-Brute-Force & Account Lockout**: Exponential IP cooldowns (`/blocked`) protect staff accounts from credential stuffing.
-- **CSRF Token Verification**: Double-submit cookie verification (`x-csrf-token`) prevents cross-site request forgery.
-- **HMAC Backend Signature Verification**: High-risk operations (account deletion, security resets) require server-verified cryptographic signatures.
+Built on a normalized **PostgreSQL 3NF** schema with authoritative **Role-Based Access Control (RBAC)** across all endpoints and client-side modules, TransitOps provides end-to-end visibility and control over fleet vehicles, drivers, trips, maintenance, fuel consumption, and operational expenses.
 
 ---
 
-## 🛠️ Complete Feature Modules
+## ⚡ Core Features
 
-### 🚛 1. Vehicle Lifecycle Management
-- Complete vehicle inventory tracking (Registration Plate, Make, Model, Type, Year, Seating/Cargo Capacity, Purchase Cost).
-- Real-time automated status mapping: `Available`, `On Trip`, `In Shop`, `Retired`.
-- Active trip dependency locks: vehicles cannot be deleted or assigned to maintenance while on an active journey.
-- Live odometer progression updated automatically upon trip completion.
+### 🚛 1. Fleet & Vehicle Lifecycle
+* **Complete Inventory Roster**: Tracks registration plate, manufacturer make, model, category, manufacturing year, load capacity, and purchase cost.
+* **Automatic Duty Statuses**: Real-time asset statuses (`Available`, `On Trip`, `In Shop`, `Retired`) updated dynamically based on operational state.
+* **Odometer Integrity Protection**: Validates continuous mileage progression; prevents backward odometer entries on updates.
+* **Operational Locks**: Active vehicles on dispatched trips cannot be retired or scheduled for workshop maintenance.
 
-### 👨‍✈️ 2. Driver Administration & Compliance
-- Full operator profile roster (Employee ID, License Class, Contact, Expiry Dates).
-- Automatic license expiry warning banners (highlighting licenses expiring within 30 days).
-- Real-time safety score tracking (0–100 scale).
-- Assignment availability state (prevents double-booking drivers on overlapping trips).
+### 👨‍✈️ 2. Driver Roster & Regulatory Safety
+* **Driver Profiles**: Stores employee ID, contact information, license number, license class, and safety rating scores.
+* **Proactive Expiry Warnings**: Automatic notifications and visual indicators for licenses approaching expiration within 30 days.
+* **In-Transit Compliance Engine**: Enforces that assigned drivers possess valid, non-expired credentials throughout the scheduled journey window.
+* **Assignment State Management**: Prevents double-booking drivers across concurrent or overlapping trip schedules.
 
-### 🛣️ 3. Smart Trip Scheduling & Dispatch
-- End-to-end trip state machine: `SCHEDULED` ➔ `IN_PROGRESS` ➔ `COMPLETED` or `CANCELLED`.
-- Automated dispatch validation: checks driver validity and vehicle readiness prior to departure.
-- Distance (km) and estimated fuel consumption metrics.
-- Conflict avoidance engine preventing scheduling of unavailable assets.
+### 🛣️ 3. Intelligent Trip Scheduling & Dispatch
+* **End-to-End Lifecycle**: Manages full dispatch lifecycle: `SCHEDULED` ➔ `IN_PROGRESS` ➔ `COMPLETED` / `CANCELLED`.
+* **Conflict Avoidance Engine**: Rejects overlapping bookings for both vehicles and drivers during scheduled time windows.
+* **Strict Datetime Sequencing**: Validates that destination arrival date & time cannot precede departure date & time from source.
+* **Route Validation**: Distance ($> 0$), estimated fuel usage, cargo descriptions, and location checks.
+* **Preserved Selections**: Robust data synchronization ensures assigned assets and drivers remain selected upon editing records.
 
-### 🔧 4. Maintenance & Workshop Tracking
-- Comprehensive service logs (Preventive Maintenance, Corrective Repairs, Inspections).
-- Service center recording, technician assignments, and cost audits.
-- Automatically transitions vehicle status to `In Shop` while service is open, releasing it upon completion.
+### 🔧 4. Maintenance & Workshop Orders
+* **Work Order Management**: Tracks preventive services, inspections, oil changes, engine repairs, and unscheduled maintenance.
+* **Positive Cost Verification**: Strict validation ensuring maintenance expenditures are non-zero positive amounts.
+* **Automated Status Handoff**: Places vehicles into `In Shop` (`IN_MAINTENANCE`) upon work scheduling, returning them to `Available` upon completion.
+* **Service Details**: Records service centers, assigned technicians, completion milestones, and repair notes.
 
-### ⛽ 5. Fuel Consumption Intelligence
-- Detailed refill logs linked directly to vehicles and optional trips.
-- Cost-per-liter tracking and total transaction cost auto-calculation.
-- Odometer verification preventing backward mileage entry.
-- Fuel type categorization matching engine specifications.
+### ⛽ 5. Fuel Intelligence & Consumption Logging
+* **Fuel Transaction Entries**: Captures fuel quantity (L), cost per liter, station name, invoice number, and payment method.
+* **Automatic Cost Calculation**: Auto-computes transaction totals dynamically upon quantity and price input.
+* **Mileage Verification**: Verifies pump odometer against current recorded vehicle odometer to safeguard mileage tracking.
+* **Trip Attribution**: Direct attribution of fuel receipts to specific trips and vehicles.
 
 ### 💰 6. Financial Expense Audits
-- Operational expense filing across 5 categories: `FUEL`, `MAINTENANCE`, `TOLL`, `PARKING`, `MISCELLANEOUS`.
-- Multi-tier role permissions: Staff create, Financial Analysts and Super Admins approve/reject/reimburse.
-- Audit notes and approval timestamp tracking.
+* **Comprehensive Categories**: Covers Fuel, Maintenance, Toll, Parking, Driver Allowance, Office, and Miscellaneous costs.
+* **Multi-Tier Approval Workflow**: Staff members file claims; Financial Analysts and Super Admins review, approve, or reject.
+* **Audit Trail**: Preserves timestamps, vendor identities, invoice references, and financial review notes.
 
-### 📊 7. Executive Analytics & Reports
-- Live executive KPI dashboard with operational telemetry and activity audit trail.
-- 6 parameterized report configurations:
-  1. Fleet Utilization Ratios
-  2. Fuel Efficiency & Consumption by Vehicle
-  3. Maintenance Cost Breakdown
-  4. Driver Performance & Safety Distribution
+### 📊 7. Executive Telemetry & Reporting
+* **Interactive KPI Dashboard**: Real-time fleet utilization rates, active trip counters, maintenance alert feeds, and financial summaries.
+* **Parameterized Operational Reports**:
+  1. Fleet Asset Utilization
+  2. Fuel Efficiency Analysis
+  3. Maintenance Expenditure Breakdown
+  4. Driver Safety Distribution
   5. Expense Category Ledgers
-  6. Trip Route Execution Statistics
+  6. Route Performance Statistics
+
+### 🛡️ 8. Zero-Trust Access Control & Security
+* **Role-Based Route Barriers**: Client-side role routing (`RoleRoute`) and server-side middleware (`restrictTo`) across all routes.
+* **Tamper-Resistant Navigation**: URL manipulation triggers dedicated `/401 Unauthorized` or `/403 Forbidden` response pages.
+* **Idempotency Protection**: Dual-layer mutation guards block duplicate database writes on rapid button clicks or network retries.
+* **Account Deletion Safety**: Full-page danger zone with credential verification, explicit consequences review, and confirmation safeguards.
 
 ---
 
 ## 🔐 Role-Based Access Control (RBAC) Matrix
 
-| Portal Route | Authorized Roles | Access Scope |
+| Module / Route | Authorized Roles | Access Scope |
 | :--- | :--- | :--- |
 | **`/dashboard`** | All authenticated staff | Overview KPIs & Activity Feed |
-| **`/vehicles`** | `SUPER_ADMIN`, `FLEET_MANAGER` | Full Fleet Inventory & CRUD |
-| **`/drivers`** | `SUPER_ADMIN`, `FLEET_MANAGER`, `SAFETY_OFFICER` | Driver Roster, Compliance, Safety |
-| **`/trips`** | `SUPER_ADMIN`, `FLEET_MANAGER`, `DISPATCHER` | Trip Scheduling, Dispatch, Status Tracking |
-| **`/maintenance`**| `SUPER_ADMIN`, `FLEET_MANAGER` | Repair Logs, Workshop Service Management |
-| **`/fuel`** | `SUPER_ADMIN`, `FLEET_MANAGER`, `FINANCIAL_ANALYST` | Refill Logs, Fuel Cost Tracking |
-| **`/expenses`** | `SUPER_ADMIN`, `FINANCIAL_ANALYST`, `FLEET_MANAGER` | Approvals & Expense Ledgers |
-| **`/reports`** | `SUPER_ADMIN`, `FINANCIAL_ANALYST` | Analytics & Financial Exports |
+| **`/vehicles`** | `SUPER_ADMIN`, `FLEET_MANAGER` | Vehicle Fleet Inventory & Management |
+| **`/drivers`** | `SUPER_ADMIN`, `FLEET_MANAGER`, `SAFETY_OFFICER` | Driver Roster, Compliance, Safety Scores |
+| **`/trips`** | `SUPER_ADMIN`, `FLEET_MANAGER`, `DISPATCHER` | Trip Scheduling, Dispatch & Route Tracking |
+| **`/maintenance`**| `SUPER_ADMIN`, `FLEET_MANAGER` | Maintenance Logs & Workshop Work Orders |
+| **`/fuel`** | `SUPER_ADMIN`, `FLEET_MANAGER`, `FINANCIAL_ANALYST` | Fuel Logs & Consumption Analytics |
+| **`/expenses`** | `SUPER_ADMIN`, `FINANCIAL_ANALYST`, `FLEET_MANAGER` | Expense Claims & Financial Approvals |
+| **`/reports`** | `SUPER_ADMIN`, `FINANCIAL_ANALYST` | Operational Telemetry & Audit Reports |
+| **`/delete-account`** | All authenticated users | Full-Page Account Management & Danger Zone |
 
 ---
 
 ## 🗄️ Database Architecture & Performance Indexing
 
-TransitOps runs on a normalized **PostgreSQL 3NF** schema comprising 12 primary tables.
+TransitOps runs on a normalized **PostgreSQL 3NF** schema with dedicated indexing for high-frequency reads:
 
 ```
        [users] ───────────── [roles]
@@ -140,18 +118,14 @@ TransitOps runs on a normalized **PostgreSQL 3NF** schema comprising 12 primary 
 ### High-Read Performance Indexes Applied
 
 ```sql
--- 1. Master & Dimension Lookups (Almost Nil Writes, High Reads)
+-- Master & Lookup Indexes
 CREATE INDEX idx_vehicle_models_make_id ON vehicle_models(make_id);
 CREATE INDEX idx_vehicle_models_type_id ON vehicle_models(vehicle_type_id);
 CREATE INDEX idx_vehicles_model_id ON vehicles(model_id);
 CREATE INDEX idx_vehicles_fuel_type_id ON vehicles(fuel_type_id);
 CREATE INDEX idx_vehicles_reg_no ON vehicles(registration_number);
 
--- 2. Authentication & User Lookups
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_active_email ON users(email, is_active);
-
--- 3. Composite Schedule & Operational Indexes
+-- Composite Schedule & Query Indexes
 CREATE INDEX idx_trips_driver_status ON trips(driver_id, status);
 CREATE INDEX idx_trips_vehicle_status ON trips(vehicle_id, status);
 CREATE INDEX idx_trips_schedule ON trips(scheduled_departure, scheduled_arrival);
@@ -159,7 +133,7 @@ CREATE INDEX idx_fuel_vehicle_date ON fuel_logs(vehicle_id, fueling_date);
 CREATE INDEX idx_maintenance_vehicle_date ON maintenance_logs(vehicle_id, start_date);
 CREATE INDEX idx_expenses_category_date ON expenses(category, expense_date);
 
--- 4. PostgreSQL Partial Indexes (0 Write Overhead on Other Rows)
+-- Partial Indexes for Operational Queries
 CREATE INDEX idx_trips_in_progress ON trips(vehicle_id, driver_id) WHERE status = 'IN_PROGRESS';
 CREATE INDEX idx_vehicles_active ON vehicles(id, registration_number) WHERE status = 'ACTIVE';
 CREATE INDEX idx_drivers_available ON drivers(id, full_name, phone) WHERE status = 'AVAILABLE';
@@ -172,29 +146,29 @@ CREATE INDEX idx_maintenance_open ON maintenance_logs(vehicle_id, status) WHERE 
 ## 💻 Tech Stack
 
 ### Frontend
-- **React 18** + **Vite 6**
-- **React Router 6** (Dynamic lazy route boundaries)
-- **React Hook Form** (Schema validation & field autofocus)
-- **Tailwind CSS** (Adaptive dark/light theme engine)
-- **Axios** (Centralized interceptors, idempotency headers, auto-routing 401/403)
-- **Recharts** (Interactive telemetry charts)
-- **React Icons** (Feather icon set)
+* **React 18** (Component-driven architecture)
+* **Vite 6** (Modern build tooling & dynamic code splitting)
+* **React Router 6** (Declarative role-based routing)
+* **React Hook Form** (Form validation & error feedback)
+* **Tailwind CSS** (Adaptive dark and light theme engine)
+* **Axios** (Centralized API client with idempotency headers)
+* **Recharts** (Interactive telemetry and operational charts)
+* **React Icons** (Feather icon suite)
 
 ### Backend
-- **Node.js 22 LTS** + **Express.js 4**
-- **PostgreSQL** via `pg` connection pool + **Prisma ORM**
-- **JWT (JSON Web Tokens)** + **Bcrypt** (Secure hashing)
-- **Express Rate Limit** (Anti-brute-force defense)
-- **Self-Healing Keep-Alive Worker** (Permanently keeps Render instance warm)
+* **Node.js 22 LTS** & **Express.js 4**
+* **PostgreSQL** via `pg` connection pool
+* **JWT (JSON Web Tokens)** & **Bcrypt** for secure authentication
+* **Express Rate Limit** & **Double-Submit CSRF Protection**
 
 ---
 
 ## 🚀 Local Development Setup
 
 ### Prerequisites
-- **Node.js** >= 18.0.0
-- **PostgreSQL** >= 14
-- **npm** >= 9.0.0
+* **Node.js** >= 18.0.0
+* **PostgreSQL** >= 14
+* **npm** >= 9.0.0
 
 ### 1. Clone the Repository
 ```bash
@@ -217,7 +191,7 @@ JWT_ACCESS_SECRET=your_jwt_access_secret_here
 JWT_REFRESH_SECRET=your_jwt_refresh_secret_here
 CLIENT_URL=http://localhost:5173
 ```
-Run database setup and start the server:
+Run database migrations and start the backend:
 ```bash
 npm run db:setup
 npm run dev
@@ -230,10 +204,3 @@ npm install
 npm run dev
 ```
 Open **[http://localhost:5173](http://localhost:5173)** in your browser.
-
----
-
-## 📜 License
-
-TransitOps is licensed under the **MIT License**.
-Developed with ❤️ for mission-critical logistics operations.
