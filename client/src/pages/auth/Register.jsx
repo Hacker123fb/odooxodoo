@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiLock, FiPhone, FiSliders, FiHash } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiPhone, FiSliders, FiHash, FiEye, FiEyeOff } from 'react-icons/fi';
 import { authService } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import Input from '../../components/common/Input.jsx';
@@ -16,6 +16,8 @@ export const Register = () => {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -167,9 +169,21 @@ export const Register = () => {
         {/* Password */}
         <Input
           label="Password *"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           placeholder="Min 8 chars, 1 Upper, 1 Lower, 1 Num, 1 Spec"
           icon={FiLock}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowPassword(prev => !prev)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 focus:outline-none"
+              title={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              tabIndex="-1"
+            >
+              {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+            </button>
+          }
           error={errors.password}
           {...register('password', {
             required: 'Password is required',
@@ -187,9 +201,21 @@ export const Register = () => {
         {/* Confirm Password */}
         <Input
           label="Confirm Password *"
-          type="password"
+          type={showConfirmPassword ? 'text' : 'password'}
           placeholder="Re-enter password"
           icon={FiLock}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(prev => !prev)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 focus:outline-none"
+              title={showConfirmPassword ? 'Hide password' : 'Show password'}
+              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              tabIndex="-1"
+            >
+              {showConfirmPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+            </button>
+          }
           error={errors.confirmPassword}
           {...register('confirmPassword', {
             required: 'Please confirm your password',

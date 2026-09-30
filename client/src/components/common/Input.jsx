@@ -11,6 +11,7 @@ export const Input = forwardRef(({
   error = null,
   className = '',
   icon: Icon = null,
+  rightElement = null,
   ...props
 }, ref) => {
   return (
@@ -43,12 +44,20 @@ export const Input = forwardRef(({
           className={`w-full py-2 px-3 text-sm bg-white dark:bg-[#0E1422] border rounded-lg outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 ${
             Icon ? 'pl-10' : ''
           } ${
+            rightElement ? 'pr-10' : ''
+          } ${
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
               : 'border-slate-300 dark:border-slate-700 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 dark:focus:border-slate-300 dark:focus:ring-slate-300'
           }`}
           {...props}
         />
+
+        {rightElement && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            {rightElement}
+          </div>
+        )}
       </div>
 
       {error && (

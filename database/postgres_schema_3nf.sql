@@ -294,17 +294,64 @@ CREATE TABLE IF NOT EXISTS password_reset_otp (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 7. PERFORMANCE INDEXES
+-- 7. PERFORMANCE & HIGH-READ QUERY OPTIMIZATION INDEXES
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- 1. Master & Dimension Tables (Almost NIL Writes, Heavily Read on every Join)
+CREATE INDEX IF NOT EXISTS idx_vehicle_models_make_id ON vehicle_models(make_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_models_type_id ON vehicle_models(vehicle_type_id);
+CREATE INDEX IF NOT EXISTS idx_vehicles_model_id ON vehicles(model_id);
+CREATE INDEX IF NOT EXISTS idx_vehicles_fuel_type_id ON vehicles(fuel_type_id);
+CREATE INDEX IF NOT EXISTS idx_vehicles_created_by ON vehicles(created_by);
+CREATE INDEX IF NOT EXISTS idx_vehicles_reg_no ON vehicles(registration_number);
+
+-- 2. User & Auth Lookups (High Read on Every Request Auth Middleware)
 CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_active_email ON users(email, is_active);
+
+-- 3. Driver Lookups & Compliance Filters
 CREATE INDEX IF NOT EXISTS idx_drivers_status_expiry ON drivers(status, license_expiry);
-CREATE INDEX IF NOT EXISTS idx_vehicles_status ON vehicles(status);
+CREATE INDEX IF NOT EXISTS idx_drivers_license_no ON drivers(license_number);
+CREATE INDEX IF NOT EXISTS idx_drivers_employee_id ON drivers(employee_id);
+CREATE INDEX IF NOT EXISTS idx_drivers_user_id ON drivers(user_id);
+
+-- 4. Trips Query & Schedule Optimization
 CREATE INDEX IF NOT EXISTS idx_trips_driver_status ON trips(driver_id, status);
 CREATE INDEX IF NOT EXISTS idx_trips_vehicle_status ON trips(vehicle_id, status);
+CREATE INDEX IF NOT EXISTS idx_trips_trip_number ON trips(trip_number);
 CREATE INDEX IF NOT EXISTS idx_trips_schedule ON trips(scheduled_departure, scheduled_arrival);
+CREATE INDEX IF NOT EXISTS idx_trips_created_by ON trips(created_by);
+
+-- 5. Operational Logs: Fuel, Maintenance, Expenses
 CREATE INDEX IF NOT EXISTS idx_fuel_vehicle_date ON fuel_logs(vehicle_id, fueling_date);
+CREATE INDEX IF NOT EXISTS idx_fuel_trip_id ON fuel_logs(trip_id);
+CREATE INDEX IF NOT EXISTS idx_fuel_fuel_type_id ON fuel_logs(fuel_type_id);
+
 CREATE INDEX IF NOT EXISTS idx_maintenance_vehicle_date ON maintenance_logs(vehicle_id, start_date);
+CREATE INDEX IF NOT EXISTS idx_maintenance_status ON maintenance_logs(status);
+CREATE INDEX IF NOT EXISTS idx_maintenance_service_center ON maintenance_logs(service_center);
+
 CREATE INDEX IF NOT EXISTS idx_expenses_category_date ON expenses(category, expense_date);
+CREATE INDEX IF NOT EXISTS idx_expenses_vehicle_id ON expenses(vehicle_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_trip_id ON expenses(trip_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_payment_status ON expenses(payment_status);
+CREATE INDEX IF NOT EXISTS idx_expenses_approved_by ON expenses(approved_by);
+
+-- 6. Notifications & Security
 CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_reg_otp_email ON registration_otp(email);
+CREATE INDEX IF NOT EXISTS idx_pwd_otp_email ON password_reset_otp(email);
+
+-- 7. High-Performance Partial Indexes (PostgreSQL Specific: 0 Write Overhead for Other Rows)
+-- Pure index-only speed for subqueries checking if a vehicle is currently on a trip
+CREATE INDEX IF NOT EXISTS idx_trips_in_progress ON trips(vehicle_id, driver_id) WHERE status = 'IN_PROGRESS';
+-- Lightning-fast lookups for active inventory in select dropdowns
+CREATE INDEX IF NOT EXISTS idx_vehicles_active ON vehicles(id, registration_number) WHERE status = 'ACTIVE';
+-- Fast lookups for available drivers ready for dispatch
+CREATE INDEX IF NOT EXISTS idx_drivers_available ON drivers(id, full_name, phone) WHERE status = 'AVAILABLE';
+-- Managers reviewing pending expenses
+CREATE INDEX IF NOT EXISTS idx_expenses_pending ON expenses(id, amount, expense_date) WHERE payment_status = 'PENDING';
+-- Open maintenance logs requiring attention
+CREATE INDEX IF NOT EXISTS idx_maintenance_open ON maintenance_logs(vehicle_id, status) WHERE status IN ('SCHEDULED', 'IN_PROGRESS');
+

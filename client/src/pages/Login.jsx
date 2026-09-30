@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import Input from '../components/common/Input.jsx';
@@ -17,6 +17,7 @@ export const Login = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [formError, setFormError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -132,9 +133,21 @@ export const Login = () => {
         <Input
           id="password"
           label="Password *"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           placeholder="••••••••"
           icon={FiLock}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowPassword(prev => !prev)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 focus:outline-none"
+              title={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              tabIndex="-1"
+            >
+              {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+            </button>
+          }
           error={errors.password}
           {...register('password', {
             required: 'Password is required',

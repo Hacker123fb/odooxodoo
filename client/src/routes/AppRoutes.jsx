@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('../pages/Dashboard.jsx'));
 const Unauthorized401 = lazy(() => import('../pages/errors/Unauthorized401.jsx'));
 const Forbidden403 = lazy(() => import('../pages/errors/Forbidden403.jsx'));
 const NotFound404 = lazy(() => import('../pages/errors/NotFound404.jsx'));
+const Landing = lazy(() => import('../pages/Landing.jsx'));
 
 // Vehicles
 const VehicleList = lazy(() => import('../pages/vehicles/VehicleList.jsx'));
@@ -163,13 +164,14 @@ export const AppRoutes = () => {
           <Route path="/reports" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST']}><Reports /></RoleRoute>} />
         </Route>
 
+        {/* Public Landing & Showcase */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/landing" element={<Landing />} />
+
         {/* Standalone Error Routes */}
         <Route path="/401" element={<Unauthorized401 />} />
         <Route path="/403" element={<Forbidden403 />} />
         <Route path="/404" element={<NotFound404 />} />
-
-        {/* Root path redirect */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* Unmatched fallback */}
         <Route path="*" element={<NotFound404 />} />
