@@ -13,7 +13,7 @@ export const VehicleDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   const [vehicle, setVehicle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,22 +21,55 @@ export const VehicleDetails = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
   useEffect(() => {
+    // 1. Check authorization first before requesting data
+    if (!isAuthenticated) {
+      navigate('/401', { replace: true, state: { from: `/vehicles/${id}` } });
+      return;
+    }
+
+    if (user && !['SUPER_ADMIN', 'FLEET_MANAGER'].includes(user.role)) {
+      navigate('/403', { 
+        replace: true, 
+        state: { 
+          attemptedPath: `/vehicles/${id}`,
+          reason: `Access Denied: You do not have permission to view vehicle #${id}. Vehicle records are restricted to Super Administrators and Fleet Managers.`
+        } 
+      });
+      return;
+    }
+
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
         const res = await vehicleService.getById(id);
-        if (res.success) {
+        if (res && res.success && res.data) {
           setVehicle(res.data);
+        } else {
+          navigate('/404', { replace: true });
         }
       } catch (err) {
-        showToast(err.message || 'Failed to fetch details.', 'error');
-        navigate('/vehicles');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/vehicles/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/vehicles/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to view vehicle #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to fetch details.', 'error');
+          navigate('/vehicles');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchDetails();
-  }, [id, navigate]);
+  }, [id, user, isAuthenticated, navigate, showToast]);
 
   if (isLoading) {
     return (

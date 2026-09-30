@@ -64,8 +64,24 @@ axiosInstance.interceptors.request.use(
       config.headers['X-CSRF-Token'] = memoryCsrfToken;
     }
 
-    // 3. Client-side GET caching
     const method = (config.method || 'get').toLowerCase();
+
+    // 3. Client-side Idempotency Header for Mutating Operations (POST, PUT, DELETE)
+    // Prevents duplicate database insertions on double-clicks or repeated submissions
+    if (['post', 'put', 'delete'].includes(method)) {
+      if (!config.headers['Idempotency-Key'] && !config.headers['idempotency-key']) {
+        const payloadStr = typeof config.data === 'string' ? config.data : JSON.stringify(config.data || {});
+        let hash = 0;
+        const keyBase = `${config.url}_${payloadStr}`;
+        for (let i = 0; i < keyBase.length; i++) {
+          hash = ((hash << 5) - hash) + keyBase.charCodeAt(i);
+          hash |= 0;
+        }
+        config.headers['Idempotency-Key'] = `idemp_${Date.now()}_${Math.abs(hash)}`;
+      }
+    }
+
+    // 4. Client-side GET caching
     if (method === 'get' && config.cache !== false) {
       const cacheKey = `${config.url}_${JSON.stringify(config.params || {})}`;
       const cached = apiCacheStore.get(cacheKey);
@@ -158,17 +174,18 @@ axiosInstance.interceptors.response.use(
       });
     }
 
-    // Auto-clean credentials on 401 Unauthorized (do not redirect if already on login, register, or blocked)
+    // Auto-clean credentials and redirect to /401 on Unauthorized (unless already on auth pages)
     if (customError.status === 401) {
       if (typeof window !== 'undefined' && 
           window.location.pathname !== '/login' && 
           window.location.pathname !== '/register' && 
-          window.location.pathname !== '/blocked') {
+          window.location.pathname !== '/blocked' &&
+          window.location.pathname !== '/401') {
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = '/401';
       }
     }
 
@@ -197,6 +214,13 @@ axiosInstance.interceptors.response.use(
       
       if (typeof window !== 'undefined' && window.location.pathname !== '/blocked') {
         window.location.href = '/blocked';
+      }
+    } else if (customError.status === 403) {
+      // General 403 Forbidden / Access Denied (not IP lockout) -> Redirect to /403
+      if (typeof window !== 'undefined' && 
+          window.location.pathname !== '/403' && 
+          window.location.pathname !== '/blocked') {
+        window.location.href = '/403';
       }
     }
 

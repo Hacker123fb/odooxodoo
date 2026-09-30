@@ -81,14 +81,28 @@ export const VehicleForm = () => {
           setCurrentStatus(v.ui_status);
         }
       } catch (err) {
-        showToast(err.message || 'Failed to retrieve vehicle details.', 'error');
-        navigate('/vehicles');
+        if (err.status === 401) {
+          navigate('/401', { replace: true, state: { from: `/vehicles/edit/${id}` } });
+        } else if (err.status === 403 || err.code === 'FORBIDDEN') {
+          navigate('/403', { 
+            replace: true, 
+            state: { 
+              attemptedPath: `/vehicles/edit/${id}`,
+              reason: err.message || `Access Denied: You are not authorized to edit vehicle #${id}.`
+            } 
+          });
+        } else if (err.status === 404 || err.code === 'NOT_FOUND') {
+          navigate('/404', { replace: true });
+        } else {
+          showToast(err.message || 'Failed to retrieve vehicle details.', 'error');
+          navigate('/vehicles');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchVehicle();
-  }, [id, isEdit, setValue]);
+  }, [id, isEdit, setValue, navigate, showToast]);
 
   const onInvalid = (errs) => {
     const firstErrorField = Object.keys(errs)[0];

@@ -13,6 +13,8 @@ import { apiCache } from './middleware/apiCache.js';
 
 import { csrfProtection } from './middleware/csrfProtection.js';
 
+import { idempotencyMiddleware } from './middleware/idempotency.js';
+
 const app = express();
 
 // Disable Express server fingerprinting
@@ -28,7 +30,19 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'x-csrf-token', 'Accept', 'Origin']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'X-CSRF-Token', 
+    'x-csrf-token', 
+    'Idempotency-Key', 
+    'idempotency-key', 
+    'X-Idempotency-Key', 
+    'x-idempotency-key', 
+    'Accept', 
+    'Origin'
+  ]
 }));
 app.options('*', cors({ origin: true, credentials: true }));
 
@@ -61,7 +75,10 @@ app.use(globalLimiter);
 app.use(sqlSanitizer);
 app.use(xssSanitizer);
 
-// 6. Custom core middleware
+// 6. Enterprise Idempotency Middleware (prevents duplicate DB records on rapid button clicks)
+app.use(idempotencyMiddleware);
+
+// 7. Custom core middleware
 app.use(requestLogger);
 app.use(responseFormatter);
 

@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout.jsx';
 import ProtectedLayout from '../components/ProtectedLayout.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -13,6 +13,11 @@ const VerifyOTP = lazy(() => import('../pages/auth/VerifyOTP.jsx'));
 const ForgotPassword = lazy(() => import('../pages/auth/ForgotPassword.jsx'));
 const Blocked = lazy(() => import('../pages/Blocked.jsx'));
 const Dashboard = lazy(() => import('../pages/Dashboard.jsx'));
+
+// Custom Error Pages
+const Unauthorized401 = lazy(() => import('../pages/errors/Unauthorized401.jsx'));
+const Forbidden403 = lazy(() => import('../pages/errors/Forbidden403.jsx'));
+const NotFound404 = lazy(() => import('../pages/errors/NotFound404.jsx'));
 
 // Vehicles
 const VehicleList = lazy(() => import('../pages/vehicles/VehicleList.jsx'));
@@ -68,18 +73,29 @@ const PageLoader = () => (
  */
 const RoleRoute = ({ allowedRoles, children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <PageLoader />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/401" state={{ from: location.pathname }} replace />;
   }
 
-  // Redirect to dashboard if role is unauthorized
+  // Redirect to custom 403 Forbidden page if role is unauthorized
   if (user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <Navigate 
+        to="/403" 
+        state={{ 
+          attemptedPath: location.pathname,
+          requiredRoles: allowedRoles,
+          reason: `Access Denied: The requested portal path requires one of the following roles: [${allowedRoles.join(', ')}]. Your current role is '${user.role}'.`
+        }} 
+        replace 
+      />
+    );
   }
 
   return children;
@@ -147,11 +163,16 @@ export const AppRoutes = () => {
           <Route path="/reports" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST']}><Reports /></RoleRoute>} />
         </Route>
 
+        {/* Standalone Error Routes */}
+        <Route path="/401" element={<Unauthorized401 />} />
+        <Route path="/403" element={<Forbidden403 />} />
+        <Route path="/404" element={<NotFound404 />} />
+
         {/* Root path redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* Unmatched fallback */}
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<NotFound404 />} />
       </Routes>
     </Suspense>
   );

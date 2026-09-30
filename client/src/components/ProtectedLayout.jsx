@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import Sidebar from './Sidebar.jsx';
 import Navbar from './Navbar.jsx';
@@ -9,6 +9,7 @@ import Navbar from './Navbar.jsx';
  */
 export const ProtectedLayout = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -21,9 +22,9 @@ export const ProtectedLayout = () => {
     );
   }
 
-  // Redirect to login if user session is invalid
+  // Redirect to custom 401 page if user session is invalid
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/401" state={{ from: location.pathname }} replace />;
   }
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev);

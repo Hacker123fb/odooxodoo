@@ -5,8 +5,9 @@ import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// All routes in this module require authentication
+// All routes in this module require authentication and vehicle operations clearance
 router.use(protect);
+router.use(restrictTo('SUPER_ADMIN', 'FLEET_MANAGER'));
 
 /**
  * GET /api/v1/vehicles
@@ -30,32 +31,18 @@ router.get('/:id', vehicleController.getById);
  * POST /api/v1/vehicles
  * Register a new vehicle in inventory
  */
-router.post(
-  '/',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER'),
-  validateVehicle,
-  vehicleController.create
-);
+router.post('/', validateVehicle, vehicleController.create);
 
 /**
  * PUT /api/v1/vehicles/:id
  * Update an existing vehicle's attributes
  */
-router.put(
-  '/:id',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER'),
-  validateVehicle,
-  vehicleController.update
-);
+router.put('/:id', validateVehicle, vehicleController.update);
 
 /**
  * DELETE /api/v1/vehicles/:id
  * Remove a vehicle from inventory
  */
-router.delete(
-  '/:id',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER'),
-  vehicleController.delete
-);
+router.delete('/:id', vehicleController.delete);
 
 export default router;

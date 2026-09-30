@@ -14,11 +14,18 @@ export const vehicleController = {
 
   /**
    * GET /api/v1/vehicles/:id
-   * Fetch single vehicle profile
+   * Fetch single vehicle profile with strict ID validation and authorization
    */
   getById: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const vehicle = await vehicleService.getVehicleById(id);
+    const numId = parseInt(id, 10);
+    if (isNaN(numId) || numId <= 0) {
+      throw new AppError('Invalid vehicle identifier.', HttpStatusCodes.BAD_REQUEST);
+    }
+    const vehicle = await vehicleService.getVehicleById(numId);
+    if (!vehicle) {
+      throw new AppError(`Vehicle #${numId} was not found.`, HttpStatusCodes.NOT_FOUND);
+    }
     return res.ok(vehicle, 'Vehicle details retrieved successfully.');
   }),
 
