@@ -47,8 +47,8 @@ export const validateRegister = [
     .trim()
     .notEmpty()
     .withMessage('Role selection is required.')
-    .isIn(['SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER', 'SAFETY_OFFICER', 'FINANCIAL_ANALYST'])
-    .withMessage('Invalid role classification specified.'),
+    .isIn(['FLEET_MANAGER', 'DISPATCHER', 'SAFETY_OFFICER', 'FINANCIAL_ANALYST'])
+    .withMessage('Invalid role classification specified. Super Admin accounts cannot be registered.'),
 
   validate
 ];

@@ -86,7 +86,6 @@ export const Register = () => {
   };
 
   const roles = [
-    { code: 'SUPER_ADMIN', label: 'Super Admin' },
     { code: 'FLEET_MANAGER', label: 'Fleet Manager' },
     { code: 'DISPATCHER', label: 'Dispatcher' },
     { code: 'SAFETY_OFFICER', label: 'Safety Officer' },
@@ -103,7 +102,7 @@ export const Register = () => {
           Create Account
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Register operational staff credentials for portal access
+          Register operational staff credentials (new registrations require approval from a Super Admin or Fleet Manager)
         </p>
       </div>
 

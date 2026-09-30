@@ -73,6 +73,10 @@ export const authController = {
         userModel.getRoleByName(roleName)
       ]);
 
+      if (roleName === 'SUPER_ADMIN') {
+        throw new AppError('Registration for Super Admin is strictly prohibited. The system root Super Admin account is pre-provisioned.', HttpStatusCodes.FORBIDDEN);
+      }
+
       if (userExists) {
         throw new AppError('Email already registered.', HttpStatusCodes.CONFLICT);
       }
@@ -153,17 +157,18 @@ export const authController = {
       if (userPhoneExists.length > 0) {
         throw new AppError('Mobile number already registered.', HttpStatusCodes.CONFLICT);
       }
-      if (!roleRecord) {
-        throw new AppError('Invalid role specified.', HttpStatusCodes.BAD_REQUEST);
+      if (regData.roleName === 'SUPER_ADMIN') {
+        throw new AppError('Registration for Super Admin is strictly prohibited.', HttpStatusCodes.FORBIDDEN);
       }
 
-      // 3. Provision user account
+      // 3. Provision user account with PENDING_APPROVAL status
       const userId = await userModel.create({
         roleId: roleRecord.id,
         fullName: regData.fullName,
         email: regData.email,
         passwordHash: regData.password,
-        phone: regData.phone
+        phone: regData.phone,
+        status: 'PENDING_APPROVAL'
       });
 
       // Clear any previous failed attempts
@@ -177,14 +182,16 @@ export const authController = {
             id: userId,
             name: regData.fullName,
             email: regData.email,
-            role: regData.roleName
+            role: regData.roleName,
+            status: 'PENDING_APPROVAL'
           },
+          pendingApproval: true,
           securitySignature: securityProof.securitySignature,
           verifiedAt: securityProof.verifiedAt,
           action: securityProof.action,
           identifier: securityProof.identifier
         },
-        'Registration completed successfully.'
+        'Registration submitted successfully! Your account is pending administrative approval by a Super Admin or Fleet Manager before access is granted.'
       );
     } catch (error) {
       if (error.statusCode === HttpStatusCodes.BAD_REQUEST || error.statusCode === HttpStatusCodes.FORBIDDEN) {
@@ -253,6 +260,22 @@ export const authController = {
       }
 
       if (user.status !== 'ACTIVE') {
+        if (user.status === 'PENDING_APPROVAL') {
+          return next(
+            new AppError(
+              'Your registration is currently pending approval by a Super Admin or Fleet Manager. You will be able to sign in once authorized.',
+              HttpStatusCodes.FORBIDDEN
+            )
+          );
+        }
+        if (user.status === 'REJECTED') {
+          return next(
+            new AppError(
+              'Your account registration request has been rejected by administration.',
+              HttpStatusCodes.FORBIDDEN
+            )
+          );
+        }
         return next(
           new AppError(
             `Your account is currently ${user.status}. Please contact support.`,
@@ -662,6 +685,69 @@ export const authController = {
         verifiedAt: timestamp,
         message: 'Authoritative backend signature successfully validated.'
       });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Get all registrations pending approval (Super Admin and Fleet Manager only)
+   */
+  getPendingApprovals: async (req, res, next) => {
+    try {
+      const pendingUsers = await userModel.getPendingUsers();
+      return res.ok(
+        pendingUsers,
+        'Pending registrations retrieved successfully.'
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Approve a pending user account
+   */
+  approveUser: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const targetUser = await userModel.findById(id);
+      if (!targetUser) {
+        throw new AppError('User not found.', HttpStatusCodes.NOT_FOUND);
+      }
+      if (targetUser.status !== 'PENDING_APPROVAL') {
+        throw new AppError(`User account is not pending approval (current status: ${targetUser.status}).`, HttpStatusCodes.BAD_REQUEST);
+      }
+      await userModel.updateStatus(id, 'ACTIVE');
+
+      return res.ok(
+        { id, status: 'ACTIVE', email: targetUser.email },
+        `User account ${targetUser.email} has been approved successfully.`
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Reject a pending user account
+   */
+  rejectUser: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const targetUser = await userModel.findById(id);
+      if (!targetUser) {
+        throw new AppError('User not found.', HttpStatusCodes.NOT_FOUND);
+      }
+      if (targetUser.status !== 'PENDING_APPROVAL') {
+        throw new AppError(`User account is not pending approval (current status: ${targetUser.status}).`, HttpStatusCodes.BAD_REQUEST);
+      }
+      await userModel.updateStatus(id, 'REJECTED');
+
+      return res.ok(
+        { id, status: 'REJECTED', email: targetUser.email },
+        `User account ${targetUser.email} registration has been rejected.`
+      );
     } catch (error) {
       next(error);
     }

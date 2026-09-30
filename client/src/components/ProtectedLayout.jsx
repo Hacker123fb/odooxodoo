@@ -22,9 +22,9 @@ export const ProtectedLayout = () => {
     );
   }
 
-  // Redirect to custom 401 page if user session is invalid
+  // Redirect to login page if user session is invalid
   if (!isAuthenticated) {
-    return <Navigate to="/401" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev);

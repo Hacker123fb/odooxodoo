@@ -14,7 +14,10 @@ export const authService = {
   unblock: () => axiosInstance.post('/auth/unblock', {}, { cache: false }),
   getCsrfToken: () => axiosInstance.get('/auth/csrf-token', { cache: false }),
   deleteAccount: (data) => axiosInstance.delete('/auth/delete-account', { data }),
-  verifySecuritySignature: (data) => axiosInstance.post('/auth/verify-security-signature', data, { cache: false })
+  verifySecuritySignature: (data) => axiosInstance.post('/auth/verify-security-signature', data, { cache: false }),
+  getPendingApprovals: () => axiosInstance.get('/auth/pending-approvals', { cache: false }),
+  approveUser: (id) => axiosInstance.patch(`/auth/pending-approvals/${id}/approve`),
+  rejectUser: (id) => axiosInstance.patch(`/auth/pending-approvals/${id}/reject`)
 };
 
 /**

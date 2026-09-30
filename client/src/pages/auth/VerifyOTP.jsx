@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiMail, FiHash, FiClock } from 'react-icons/fi';
+import { FiMail, FiHash, FiClock, FiShield, FiCheckCircle } from 'react-icons/fi';
 import { authService, verifyBackendSecurityProof } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import Input from '../../components/common/Input.jsx';
@@ -21,6 +21,7 @@ export const VerifyOTP = () => {
 
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
   const [formError, setFormError] = useState(null);
   const [countdown, setCountdown] = useState(60);
 
@@ -63,8 +64,8 @@ export const VerifyOTP = () => {
         await verifyBackendSecurityProof(res, 'REGISTRATION_OTP_VERIFIED', email);
 
         sessionStorage.removeItem('otp_failed_strikes');
-        showToast('Registration verified & completed successfully.', 'success');
-        navigate('/login');
+        setIsPendingApproval(true);
+        showToast('Registration submitted! Account pending administrative approval.', 'info');
       } else {
         setFormError(res?.message || 'Verification failed.');
         showToast(res?.message || 'Verification failed.', 'error');
@@ -124,6 +125,51 @@ export const VerifyOTP = () => {
       setIsResending(false);
     }
   };
+
+  if (isPendingApproval) {
+    return (
+      <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full text-center space-y-5">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto shadow-xs">
+          <FiShield className="w-7 h-7" />
+        </div>
+
+        <div>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-1 rounded-full border border-amber-200/80 dark:border-amber-900/40">
+            Pending Administrative Approval
+          </span>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-sans mt-3">
+            Email Verified Successfully
+          </h2>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed max-w-sm mx-auto">
+            Your email has been authenticated. For enterprise data integrity and role segregation, your staff account must be reviewed and approved by a <strong>Super Admin</strong> or <strong>Fleet Manager</strong> before access is enabled.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0E1422] border border-slate-200/80 dark:border-slate-800 text-left text-xs space-y-2">
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+            <span className="font-semibold">Registered Account:</span>
+            <span className="text-slate-800 dark:text-slate-200 font-mono text-xs">{email}</span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-200/60 dark:border-slate-800">
+            <span className="font-semibold">Status:</span>
+            <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              Awaiting Approval
+            </span>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          variant="primary"
+          className="w-full"
+          onClick={() => navigate('/login', { replace: true })}
+        >
+          Return to Sign In
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full">

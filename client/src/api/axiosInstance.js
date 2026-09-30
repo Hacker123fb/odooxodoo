@@ -52,10 +52,31 @@ const axiosInstance = axios.create({
 // Request Interceptor: Attach JWT Token from sessionStorage, CSRF token, and check GET cache
 axiosInstance.interceptors.request.use(
   (config) => {
-    // 1. Session Storage - cleared when browser is closed, no sensitive leak in localStorage
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+    // 1. Session Storage - check for active auth token
+    const token = typeof window !== 'undefined' ? (sessionStorage.getItem('token') || localStorage.getItem('token')) : null;
+    
+    // Check if the endpoint is public
+    const cleanReqUrl = (config.url || '').toLowerCase();
+    const isPublicAuthEndpoint = 
+      cleanReqUrl.includes('/auth/login') ||
+      cleanReqUrl.includes('/auth/register') ||
+      cleanReqUrl.includes('/auth/verify-otp') ||
+      cleanReqUrl.includes('/auth/resend-otp') ||
+      cleanReqUrl.includes('/auth/forgot-password') ||
+      cleanReqUrl.includes('/auth/reset-password') ||
+      cleanReqUrl.includes('/auth/ip-status') ||
+      cleanReqUrl.includes('/auth/unblock') ||
+      cleanReqUrl.includes('/auth/csrf-token') ||
+      cleanReqUrl.includes('/health');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (!isPublicAuthEndpoint) {
+      // Abort unauthenticated calls to protected routes locally before hitting network
+      const cancelSource = axios.CancelToken.source();
+      config.cancelToken = cancelSource.token;
+      cancelSource.cancel('Authentication required: Unauthenticated request aborted.');
+      return config;
     }
 
     // 2. Anti-CSRF Header
@@ -162,9 +183,18 @@ axiosInstance.interceptors.response.use(
       data: err.response?.data || null
     };
 
-    // Only log error if not a background health probe
+    // Handle locally canceled/aborted requests
+    if (axios.isCancel(err)) {
+      return Promise.reject({
+        message: err.message || 'Request cancelled.',
+        status: 401,
+        isCanceled: true
+      });
+    }
+
+    // Only log error if not a background health probe and not aborted
     const isProbe = err.config?.url?.includes('/auth/ip-status') || err.config?.url?.includes('/health');
-    if (!isProbe || status !== 0) {
+    if (!isProbe && status !== 0) {
       console.error('[API Error Details]:', {
         url: err.config?.url,
         baseURL: err.config?.baseURL,
@@ -179,7 +209,7 @@ axiosInstance.interceptors.response.use(
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
     const isPublicRoute = publicPaths.includes(currentPath);
 
-    // Auto-clean credentials and redirect to /401 on Unauthorized (only on protected routes)
+    // Auto-clean credentials and redirect to /login on Unauthorized (only on protected routes)
     if (customError.status === 401) {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('token');
@@ -187,9 +217,9 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('user');
 
-        if (!isPublicRoute) {
-          // Use replace to prevent polluting the browser history stack, fixing back-button trapping
-          window.location.replace('/401');
+        if (!isPublicRoute && window.location.pathname !== '/login') {
+          // Direct cleanly to /login with replace so back button doesn't bounce back
+          window.location.replace('/login');
         }
       }
     }

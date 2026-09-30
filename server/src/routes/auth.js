@@ -8,7 +8,7 @@ import {
   validateForgotPassword,
   validateResetPassword
 } from '../validators/authValidators.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, restrictTo } from '../middleware/authMiddleware.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { 
   loginLimiter, 
@@ -127,5 +127,38 @@ router.delete('/delete-account', protect, asyncHandler(authController.deleteAcco
  * @desc Verify cryptographic backend signature on security tasks
  */
 router.post('/verify-security-signature', asyncHandler(authController.verifySecuritySignature));
+
+/**
+ * @route GET /api/v1/auth/pending-approvals
+ * @desc Get all pending user registrations (SUPER_ADMIN and FLEET_MANAGER only)
+ */
+router.get(
+  '/pending-approvals',
+  protect,
+  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER'),
+  asyncHandler(authController.getPendingApprovals)
+);
+
+/**
+ * @route PATCH /api/v1/auth/pending-approvals/:id/approve
+ * @desc Approve a pending staff registration (SUPER_ADMIN and FLEET_MANAGER only)
+ */
+router.patch(
+  '/pending-approvals/:id/approve',
+  protect,
+  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER'),
+  asyncHandler(authController.approveUser)
+);
+
+/**
+ * @route PATCH /api/v1/auth/pending-approvals/:id/reject
+ * @desc Reject a pending staff registration (SUPER_ADMIN and FLEET_MANAGER only)
+ */
+router.patch(
+  '/pending-approvals/:id/reject',
+  protect,
+  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER'),
+  asyncHandler(authController.rejectUser)
+);
 
 export default router;

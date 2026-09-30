@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext.jsx';
 import { dashboardService, clearApiCache } from '../api/apiService.js';
 
 // Import child components
@@ -9,6 +10,7 @@ import { FuelCostTrendChart } from './dashboard/Charts/FuelCostTrendChart.jsx';
 import { ExpenseCategoryChart } from './dashboard/Charts/ExpenseCategoryChart.jsx';
 import { StatusDistributionChart } from './dashboard/Charts/StatusDistributionChart.jsx';
 import { ActivityTimeline } from './dashboard/ActivityTimeline.jsx';
+import { PendingStaffApprovals } from './dashboard/PendingStaffApprovals.jsx';
 import LazyOnScroll from '../components/common/LazyOnScroll.jsx';
 
 /**
@@ -17,6 +19,7 @@ import LazyOnScroll from '../components/common/LazyOnScroll.jsx';
  * unless explicitly refreshed or mutated.
  */
 export const Dashboard = () => {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -107,6 +110,11 @@ export const Dashboard = () => {
           </button>
         </div>
       </div>
+
+      {/* Higher Authority Staff Registration Approvals Queue */}
+      {(user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER') && (
+        <PendingStaffApprovals />
+      )}
 
       {/* Global Error Banner */}
       {error && (

@@ -68,6 +68,30 @@ export const userModel = {
     const sql = 'UPDATE users SET password_hash = ? WHERE email = ?';
     const [result] = await pool.query(sql, [passwordHash, email]);
     return result.affectedRows > 0;
+  },
+
+  /**
+   * Fetch all user accounts pending administrative approval
+   */
+  async getPendingUsers() {
+    const sql = `
+      SELECT u.id, u.full_name, u.email, u.phone, u.status, u.created_at, r.name AS role_name
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE u.status = 'PENDING_APPROVAL'
+      ORDER BY u.created_at DESC
+    `;
+    const [rows] = await pool.query(sql);
+    return rows;
+  },
+
+  /**
+   * Update user account status (e.g., ACTIVE, REJECTED)
+   */
+  async updateStatus(id, status) {
+    const sql = 'UPDATE users SET status = ? WHERE id = ?';
+    const [result] = await pool.query(sql, [status, id]);
+    return result.affectedRows > 0;
   }
 };
 

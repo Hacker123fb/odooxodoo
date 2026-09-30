@@ -84,7 +84,7 @@ const RoleRoute = ({ allowedRoles, children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/401" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   // Redirect to custom 403 Forbidden page if role is unauthorized

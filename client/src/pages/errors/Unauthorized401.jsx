@@ -71,9 +71,9 @@ export const Unauthorized401 = () => {
               type="button"
               variant="outline"
               className="w-full flex items-center justify-center gap-2 text-xs py-2.5"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/login', { replace: true })}
             >
-              <FiArrowLeft className="w-4 h-4" /> Go Back
+              <FiArrowLeft className="w-4 h-4" /> Go to Login
             </Button>
 
             <Button

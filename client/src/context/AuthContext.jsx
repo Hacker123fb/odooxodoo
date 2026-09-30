@@ -120,6 +120,11 @@ export const AuthProvider = ({ children }) => {
 
     // Clear client-side API response cache on logout
     clearApiCache();
+
+    // Redirect cleanly to login, replacing browser history entry so back button doesn't loop
+    if (typeof window !== 'undefined') {
+      window.location.replace('/login');
+    }
   };
 
   return (
