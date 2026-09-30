@@ -174,18 +174,23 @@ axiosInstance.interceptors.response.use(
       });
     }
 
-    // Auto-clean credentials and redirect to /401 on Unauthorized (unless already on auth pages)
+    // Public routes that should never be forcefully redirected away during navigation
+    const publicPaths = ['/', '/landing', '/terms', '/privacy', '/login', '/register', '/verify-otp', '/forgot-password', '/blocked', '/401', '/403', '/404'];
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isPublicRoute = publicPaths.includes(currentPath);
+
+    // Auto-clean credentials and redirect to /401 on Unauthorized (only on protected routes)
     if (customError.status === 401) {
-      if (typeof window !== 'undefined' && 
-          window.location.pathname !== '/login' && 
-          window.location.pathname !== '/register' && 
-          window.location.pathname !== '/blocked' &&
-          window.location.pathname !== '/401') {
+      if (typeof window !== 'undefined') {
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/401';
+
+        if (!isPublicRoute) {
+          // Use replace to prevent polluting the browser history stack, fixing back-button trapping
+          window.location.replace('/401');
+        }
       }
     }
 
@@ -213,14 +218,12 @@ axiosInstance.interceptors.response.use(
       } catch (e) {}
       
       if (typeof window !== 'undefined' && window.location.pathname !== '/blocked') {
-        window.location.href = '/blocked';
+        window.location.replace('/blocked');
       }
     } else if (customError.status === 403) {
-      // General 403 Forbidden / Access Denied (not IP lockout) -> Redirect to /403
-      if (typeof window !== 'undefined' && 
-          window.location.pathname !== '/403' && 
-          window.location.pathname !== '/blocked') {
-        window.location.href = '/403';
+      // General 403 Forbidden / Access Denied (not IP lockout) -> Redirect to /403 using replace
+      if (typeof window !== 'undefined' && !isPublicRoute) {
+        window.location.replace('/403');
       }
     }
 

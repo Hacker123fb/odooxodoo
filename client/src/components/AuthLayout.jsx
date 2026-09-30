@@ -63,9 +63,8 @@ export const AuthLayout = () => {
     return <Navigate to="/blocked" replace />;
   }
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // Notice: We do not aggressively bounce with <Navigate to="/dashboard" replace /> here,
+  // allowing browser back-button navigation to work naturally without reload traps.
 
   if (checkingLockout) {
     return (

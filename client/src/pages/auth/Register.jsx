@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { FiUser, FiMail, FiLock, FiPhone, FiSliders, FiHash, FiEye, FiEyeOff } from 'react-icons/fi';
 import { authService } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -257,6 +257,17 @@ export const Register = () => {
         >
           Send Verification OTP
         </Button>
+
+        <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-3 leading-relaxed">
+          By continuing, you agree to our{' '}
+          <Link to="/terms" className="underline hover:text-slate-700 dark:hover:text-slate-300">
+            Terms & Conditions
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy" className="underline hover:text-slate-700 dark:hover:text-slate-300">
+            Privacy Policy
+          </Link>.
+        </p>
 
         <div className="text-center mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
           <p className="text-xs text-slate-500 dark:text-slate-400">

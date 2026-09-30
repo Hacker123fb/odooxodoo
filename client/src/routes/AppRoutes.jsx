@@ -19,6 +19,8 @@ const Unauthorized401 = lazy(() => import('../pages/errors/Unauthorized401.jsx')
 const Forbidden403 = lazy(() => import('../pages/errors/Forbidden403.jsx'));
 const NotFound404 = lazy(() => import('../pages/errors/NotFound404.jsx'));
 const Landing = lazy(() => import('../pages/Landing.jsx'));
+const Terms = lazy(() => import('../pages/legal/Terms.jsx'));
+const Privacy = lazy(() => import('../pages/legal/Privacy.jsx'));
 
 // Vehicles
 const VehicleList = lazy(() => import('../pages/vehicles/VehicleList.jsx'));
@@ -167,6 +169,8 @@ export const AppRoutes = () => {
         {/* Public Landing & Showcase */}
         <Route path="/" element={<Landing />} />
         <Route path="/landing" element={<Landing />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
 
         {/* Standalone Error Routes */}
         <Route path="/401" element={<Unauthorized401 />} />
