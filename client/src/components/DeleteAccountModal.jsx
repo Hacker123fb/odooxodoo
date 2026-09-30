@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiLock, FiEye, FiEyeOff, FiTrash2, FiX } from 'react-icons/fi';
-import { authService } from '../api/apiService.js';
+import { authService, verifyBackendSecurityProof } from '../api/apiService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
@@ -42,7 +42,11 @@ export const DeleteAccountModal = ({ isOpen, onClose }) => {
 
     setIsDeleting(true);
     try {
-      await authService.deleteAccount({ password, confirmText });
+      const res = await authService.deleteAccount({ password, confirmText });
+
+      // Cryptographically verify backend signature proof before accepting deletion in UI
+      await verifyBackendSecurityProof(res, 'ACCOUNT_DELETED_VERIFIED');
+
       showToast('Your account has been permanently deleted.', 'success');
       handleClose();
       logout();

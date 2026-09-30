@@ -13,7 +13,39 @@ export const authService = {
   getIpStatus: () => axiosInstance.get('/auth/ip-status', { cache: false }),
   unblock: () => axiosInstance.post('/auth/unblock', {}, { cache: false }),
   getCsrfToken: () => axiosInstance.get('/auth/csrf-token', { cache: false }),
-  deleteAccount: (data) => axiosInstance.delete('/auth/delete-account', { data })
+  deleteAccount: (data) => axiosInstance.delete('/auth/delete-account', { data }),
+  verifySecuritySignature: (data) => axiosInstance.post('/auth/verify-security-signature', data, { cache: false })
+};
+
+/**
+ * Authoritative Backend Cryptographic Proof Verification
+ * Verifies that a critical security task was legitimately signed by the backend
+ * before permitting the frontend UI to display success.
+ */
+export const verifyBackendSecurityProof = async (result, expectedAction, expectedIdentifier) => {
+  const payload = result?.data || result || {};
+  const signature = payload?.securitySignature;
+  const verifiedAt = payload?.verifiedAt;
+  const action = payload?.action || expectedAction;
+  const identifier = payload?.identifier || expectedIdentifier;
+
+  if (!signature || typeof signature !== 'string' || !signature.startsWith('sec_sig_')) {
+    throw new Error('Security verification failed: authoritative backend signature missing.');
+  }
+
+  // Cryptographic verification with server
+  const verifyRes = await authService.verifySecuritySignature({
+    signature,
+    action,
+    identifier,
+    timestamp: verifiedAt
+  });
+
+  if (!verifyRes || !verifyRes.valid) {
+    throw new Error('Security verification failed: signature integrity check rejected by backend.');
+  }
+
+  return true;
 };
 
 export const vehicleService = {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiMail, FiLock, FiKey, FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
-import { authService } from '../../api/apiService.js';
+import { authService, verifyBackendSecurityProof } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import Input from '../../components/common/Input.jsx';
 import Button from '../../components/common/Button.jsx';
@@ -81,13 +81,17 @@ export const ForgotPassword = () => {
     setFormError(null);
     setIsLoading(true);
     try {
-      await authService.resetPassword({
+      const res = await authService.resetPassword({
         email,
         otp: data.otp,
         newPassword: data.newPassword
       });
+
+      // Authoritative cryptographic verification with backend before granting success
+      await verifyBackendSecurityProof(res, 'PASSWORD_RESET_VERIFIED', email);
+
       sessionStorage.removeItem('reset_otp_failed_strikes');
-      showToast('Password reset successfully! Redirecting to login...', 'success');
+      showToast('Password reset verified & successfully updated! Redirecting to login...', 'success');
       setTimeout(() => {
         navigate('/login');
       }, 1500);

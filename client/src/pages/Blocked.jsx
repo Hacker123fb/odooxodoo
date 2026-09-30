@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiAlertOctagon, FiClock, FiShield, FiLock, FiCheckCircle, FiRefreshCw, FiArrowRight } from 'react-icons/fi';
+import { FiAlertOctagon, FiClock, FiShield, FiLock, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
 import Button from '../components/common/Button.jsx';
 import { authService } from '../api/apiService.js';
 
 /**
  * Enterprise Lockout Portal for Rate Limiting & Brute Force IP Defense
- * Displays real-time live countdown timer and strictly guards against login access
- * until the cooldown timer expires.
+ * Displays real-time live countdown timer.
  */
 export const Blocked = () => {
   const navigate = useNavigate();
 
-  const [lockoutData, setLockoutData] = useState(() => {
+  const [lockoutData] = useState(() => {
     try {
       const saved = sessionStorage.getItem('lockout_info');
       return saved ? JSON.parse(saved) : null;
@@ -32,16 +31,9 @@ export const Blocked = () => {
   };
 
   const [secondsRemaining, setSecondsRemaining] = useState(getInitialSeconds);
-  const [checking, setChecking] = useState(false);
-  const [unblockedMessage, setUnblockedMessage] = useState(null);
   const [isCooldownComplete, setIsCooldownComplete] = useState(() => getInitialSeconds() <= 0);
 
-  // Verify status on mount so unblocked users are instantly released
-  useEffect(() => {
-    handleCheckStatus(true);
-  }, []);
-
-  // Active countdown timer effect
+  // Active countdown timer effect (ticks down cleanly without erratic network redirects)
   useEffect(() => {
     if (secondsRemaining <= 0) {
       setIsCooldownComplete(true);
@@ -53,7 +45,6 @@ export const Blocked = () => {
         if (prev <= 1) {
           clearInterval(interval);
           setIsCooldownComplete(true);
-          handleCheckStatus(true);
           return 0;
         }
         return prev - 1;
@@ -62,49 +53,6 @@ export const Blocked = () => {
 
     return () => clearInterval(interval);
   }, [secondsRemaining]);
-
-  // Query live IP status from the backend
-  const handleCheckStatus = async (autoRedirect = false) => {
-    setChecking(true);
-    setUnblockedMessage(null);
-
-    try {
-      const res = await authService.getIpStatus();
-
-      if (!res?.blocked) {
-        sessionStorage.removeItem('lockout_info');
-        setUnblockedMessage('Your security cooldown has expired! Redirecting to login portal...');
-        setIsCooldownComplete(true);
-
-        setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 1500);
-      } else {
-        const remainingSecs = res.remainingSeconds || ((res.remainingMinutes || 15) * 60);
-        setSecondsRemaining(remainingSecs);
-        setIsCooldownComplete(false);
-
-        // Update stored timestamp
-        sessionStorage.setItem('lockout_info', JSON.stringify({
-          ...lockoutData,
-          remainingMinutes: res.remainingMinutes,
-          remainingSeconds: remainingSecs,
-          blockedUntil: res.blockedUntil || (Date.now() + remainingSecs * 1000)
-        }));
-
-        setUnblockedMessage(`Security cooldown is still active. Please wait ${Math.ceil(remainingSecs / 60)} more minute(s).`);
-      }
-    } catch (err) {
-      if (autoRedirect) {
-        sessionStorage.removeItem('lockout_info');
-        navigate('/login', { replace: true });
-      } else {
-        setUnblockedMessage('Cooldown status active. Please allow the timer to complete.');
-      }
-    } finally {
-      setChecking(false);
-    }
-  };
 
   // Formatter for MM:SS or HH:MM:SS
   const formatCountdown = (totalSeconds) => {
@@ -180,7 +128,7 @@ export const Blocked = () => {
               <FiLock className="w-3 h-3 text-slate-500" />
               {secondsRemaining > 0 
                 ? 'Portal access is locked until the timer expires' 
-                : 'Cooldown complete. Verifying access...'}
+                : 'Cooldown complete. You may now proceed.'}
             </div>
           </div>
 
@@ -207,23 +155,13 @@ export const Blocked = () => {
             </div>
           </div>
 
-          {unblockedMessage && (
-            <div className={`mt-4 p-3 rounded-lg text-xs font-semibold border ${
-              isCooldownComplete 
-                ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-            }`}>
-              {unblockedMessage}
-            </div>
-          )}
-
-          {/* Action Buttons */}
+          {/* Action Buttons / Status */}
           <div className="flex flex-col gap-2.5 mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
             {isCooldownComplete ? (
               <Button
                 type="button"
                 variant="primary"
-                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg shadow-sm"
                 onClick={() => {
                   sessionStorage.removeItem('lockout_info');
                   navigate('/login', { replace: true });
@@ -234,39 +172,15 @@ export const Blocked = () => {
                 <FiArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="w-full flex items-center justify-center gap-2"
-                  onClick={() => handleCheckStatus(false)}
-                  isLoading={checking}
-                >
-                  <FiRefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />
-                  Refresh Cooldown Status
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-2 text-xs border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  onClick={async () => {
-                    setChecking(true);
-                    try {
-                      await authService.unblock();
-                    } catch {}
-                    sessionStorage.removeItem('lockout_info');
-                    navigate('/login', { replace: true });
-                  }}
-                >
-                  Clear Cooldown & Return to Login
-                </Button>
-
-                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 py-1">
-                  <FiLock className="w-3.5 h-3.5" />
-                  <span>Authorized users may clear cooldown to access login</span>
+              <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-center">
+                <div className="flex items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                  <FiLock className="w-4 h-4 shrink-0" />
+                  <span>Access Temporarily Suspended</span>
                 </div>
-              </>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-normal">
+                  The login portal will become accessible automatically when the cooldown timer finishes. Please wait for the timer to reach 00:00.
+                </p>
+              </div>
             )}
           </div>
         </div>

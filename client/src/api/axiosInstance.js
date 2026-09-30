@@ -20,7 +20,7 @@ const formatBaseUrl = () => {
 // CLIENT-SIDE IN-MEMORY API CACHE
 // ============================================================================
 const apiCacheStore = new Map(); // key -> { data, timestamp, ttl }
-const DEFAULT_CLIENT_TTL = 30 * 1000; // 30 seconds
+const DEFAULT_CLIENT_TTL = 15 * 60 * 1000; // 15 minutes (data remains cached unless changed via mutation)
 
 /**
  * Clear cached API responses manually or by resource prefix
@@ -107,8 +107,8 @@ axiosInstance.interceptors.response.use(
 
     // Invalidate relevant cache on mutations
     if (['post', 'put', 'patch', 'delete'].includes(method)) {
-      const pathSegments = (response.config.url || '').split('/').filter(Boolean);
-      const resource = pathSegments[0] || '';
+      const cleanUrl = (response.config.url || '').replace(/^\/?api\/v1\//, '').replace(/^\//, '');
+      const resource = cleanUrl.split('/')[0] || '';
       clearApiCache(resource);
       clearApiCache('dashboard');
       clearApiCache('reports');
@@ -158,9 +158,12 @@ axiosInstance.interceptors.response.use(
       });
     }
 
-    // Auto-clean credentials on 401 Unauthorized
+    // Auto-clean credentials on 401 Unauthorized (do not redirect if already on login, register, or blocked)
     if (customError.status === 401) {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      if (typeof window !== 'undefined' && 
+          window.location.pathname !== '/login' && 
+          window.location.pathname !== '/register' && 
+          window.location.pathname !== '/blocked') {
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
         localStorage.removeItem('token');

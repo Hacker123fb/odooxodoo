@@ -9,6 +9,7 @@ import { FuelCostTrendChart } from './dashboard/Charts/FuelCostTrendChart.jsx';
 import { ExpenseCategoryChart } from './dashboard/Charts/ExpenseCategoryChart.jsx';
 import { StatusDistributionChart } from './dashboard/Charts/StatusDistributionChart.jsx';
 import { ActivityTimeline } from './dashboard/ActivityTimeline.jsx';
+import LazyOnScroll from '../components/common/LazyOnScroll.jsx';
 
 /**
  * Main Operations Dashboard View
@@ -137,42 +138,48 @@ export const Dashboard = () => {
           
           {/* Monthly Trips & Fuel Costs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-              <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
-                Trips per Month
-              </h4>
-              {loading ? renderChartSkeleton() : <TripsPerMonthChart data={data?.charts?.tripsPerMonth} />}
-            </div>
+            <LazyOnScroll minHeight={260} placeholder={renderChartSkeleton()}>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm h-full">
+                <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+                  Trips per Month
+                </h4>
+                {loading ? renderChartSkeleton() : <TripsPerMonthChart data={data?.charts?.tripsPerMonth} />}
+              </div>
+            </LazyOnScroll>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-              <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
-                Fuel Cost Trend
-              </h4>
-              {loading ? renderChartSkeleton() : <FuelCostTrendChart data={data?.charts?.fuelCostTrend} />}
-            </div>
+            <LazyOnScroll minHeight={260} placeholder={renderChartSkeleton()}>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm h-full">
+                <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+                  Fuel Cost Trend
+                </h4>
+                {loading ? renderChartSkeleton() : <FuelCostTrendChart data={data?.charts?.fuelCostTrend} />}
+              </div>
+            </LazyOnScroll>
           </div>
 
           {/* Categorical Status Distributions */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-            <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
-              Status Distributions
-            </h4>
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {renderChartSkeleton()}
-                {renderChartSkeleton()}
-                {renderChartSkeleton()}
-              </div>
-            ) : (
-              <StatusDistributionChart 
-                charts={{
-                  vehicleStatusDistribution: data?.charts?.vehicleStatusDistribution,
-                  tripStatusDistribution: data?.charts?.tripStatusDistribution,
-                  maintenanceStatusDistribution: data?.charts?.maintenanceStatusDistribution
-                }} 
-              />
-            )}
-          </div>
+          <LazyOnScroll minHeight={260} placeholder={renderChartSkeleton()}>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+              <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+                Status Distributions
+              </h4>
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {renderChartSkeleton()}
+                  {renderChartSkeleton()}
+                  {renderChartSkeleton()}
+                </div>
+              ) : (
+                <StatusDistributionChart 
+                  charts={{
+                    vehicleStatusDistribution: data?.charts?.vehicleStatusDistribution,
+                    tripStatusDistribution: data?.charts?.tripStatusDistribution,
+                    maintenanceStatusDistribution: data?.charts?.maintenanceStatusDistribution
+                  }} 
+                />
+              )}
+            </div>
+          </LazyOnScroll>
 
         </div>
 
@@ -180,32 +187,36 @@ export const Dashboard = () => {
         <div className="space-y-6">
           
           {/* Expense Category Distribution */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-            <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
-              Expense Distribution by Category
-            </h4>
-            {loading ? renderChartSkeleton() : <ExpenseCategoryChart data={data?.charts?.expenseCategoryDistribution} />}
-          </div>
+          <LazyOnScroll minHeight={260} placeholder={renderChartSkeleton()}>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+              <h4 className="text-[11px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-4 font-sans">
+                Expense Distribution by Category
+              </h4>
+              {loading ? renderChartSkeleton() : <ExpenseCategoryChart data={data?.charts?.expenseCategoryDistribution} />}
+            </div>
+          </LazyOnScroll>
 
           {/* Activity Timeline */}
-          {loading ? (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm animate-pulse space-y-4">
-              <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-              <div className="space-y-3">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="flex gap-3">
-                    <div className="h-6 w-6 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0"></div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-1/3 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                      <div className="h-2.5 w-5/6 bg-slate-200 dark:bg-slate-800 rounded"></div>
+          <LazyOnScroll minHeight={200}>
+            {loading ? (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm animate-pulse space-y-4">
+                <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="flex gap-3">
+                      <div className="h-6 w-6 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-1/3 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                        <div className="h-2.5 w-5/6 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : (
-            <ActivityTimeline data={data?.recentActivities} />
-          )}
+            ) : (
+              <ActivityTimeline data={data?.recentActivities} />
+            )}
+          </LazyOnScroll>
 
         </div>
 

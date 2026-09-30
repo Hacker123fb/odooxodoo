@@ -10,13 +10,29 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
-    chunkSizeWarningLimit: 600,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-icons': ['react-icons'],
-          'vendor-axios': ['axios']
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('react-icons')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('axios')) {
+              return 'vendor-axios';
+            }
+            if (id.includes('react-hook-form')) {
+              return 'vendor-forms';
+            }
+            if (id.includes('react-router-dom') || id.includes('react-dom') || id.includes('react')) {
+              return 'vendor-react';
+            }
+            return 'vendor-shared';
+          }
         }
       }
     }

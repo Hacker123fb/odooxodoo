@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiMail, FiHash, FiClock } from 'react-icons/fi';
-import { authService } from '../../api/apiService.js';
+import { authService, verifyBackendSecurityProof } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import Input from '../../components/common/Input.jsx';
 import Button from '../../components/common/Button.jsx';
@@ -59,8 +59,11 @@ export const VerifyOTP = () => {
       });
 
       if (res?.success) {
+        // Authoritative cryptographic verification with backend before granting success
+        await verifyBackendSecurityProof(res, 'REGISTRATION_OTP_VERIFIED', email);
+
         sessionStorage.removeItem('otp_failed_strikes');
-        showToast('Registration completed successfully.', 'success');
+        showToast('Registration verified & completed successfully.', 'success');
         navigate('/login');
       } else {
         setFormError(res?.message || 'Verification failed.');

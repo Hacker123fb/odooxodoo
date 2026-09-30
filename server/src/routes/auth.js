@@ -122,4 +122,10 @@ router.get('/me', protect, asyncHandler(authController.getMe));
  */
 router.delete('/delete-account', protect, asyncHandler(authController.deleteAccount));
 
+/**
+ * @route POST /api/v1/auth/verify-security-signature
+ * @desc Verify cryptographic backend signature on security tasks
+ */
+router.post('/verify-security-signature', asyncHandler(authController.verifySecuritySignature));
+
 export default router;

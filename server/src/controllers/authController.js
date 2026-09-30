@@ -29,6 +29,24 @@ const signToken = (userId, roleName) => {
   );
 };
 
+// Cryptographic Backend Signature Generator for Critical Security Operations
+export const createSecuritySignature = (action, identifier, metadata = {}) => {
+  const timestamp = Date.now();
+  const rawPayload = `${action}:${identifier}:${timestamp}`;
+  const hmac = crypto
+    .createHmac('sha256', env.jwt.secret || 'transitops-security-secret')
+    .update(rawPayload)
+    .digest('hex');
+
+  return {
+    securitySignature: `sec_sig_${hmac}`,
+    verifiedAt: timestamp,
+    action,
+    identifier,
+    ...metadata
+  };
+};
+
 /**
  * Authentication Controller with Ultra-Fast OTP Verification and Dual-Layer Brute Force Defense
  */
@@ -151,6 +169,8 @@ export const authController = {
       // Clear any previous failed attempts
       recordSuccessfulLogin(getClientIp(req), email);
 
+      const securityProof = createSecuritySignature('REGISTRATION_OTP_VERIFIED', regData.email, { userId });
+
       return res.ok(
         {
           user: {
@@ -158,7 +178,11 @@ export const authController = {
             name: regData.fullName,
             email: regData.email,
             role: regData.roleName
-          }
+          },
+          securitySignature: securityProof.securitySignature,
+          verifiedAt: securityProof.verifiedAt,
+          action: securityProof.action,
+          identifier: securityProof.identifier
         },
         'Registration completed successfully.'
       );
@@ -481,8 +505,15 @@ export const authController = {
       await userModel.updatePassword(email, newHash);
       recordSuccessfulLogin(getClientIp(req), email);
 
+      const securityProof = createSecuritySignature('PASSWORD_RESET_VERIFIED', email);
+
       return res.ok(
-        null,
+        {
+          securitySignature: securityProof.securitySignature,
+          verifiedAt: securityProof.verifiedAt,
+          action: securityProof.action,
+          identifier: securityProof.identifier
+        },
         'Your password has been successfully reset. You may now log in with your new password.'
       );
     } catch (error) {
@@ -562,10 +593,75 @@ export const authController = {
 
       console.warn(`[SECURITY] User account ${user.email} (ID: ${userId}) permanently deleted upon authorized request.`);
 
+      const securityProof = createSecuritySignature('ACCOUNT_DELETED_VERIFIED', user.email, { userId });
+
       return res.ok(
-        null,
+        {
+          securitySignature: securityProof.securitySignature,
+          verifiedAt: securityProof.verifiedAt,
+          action: securityProof.action,
+          identifier: securityProof.identifier
+        },
         'Your account and associated personal data have been permanently deleted.'
       );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Verify Backend Security Signature
+   * Validates cryptographic HMAC signature issued for critical operations.
+   */
+  verifySecuritySignature: async (req, res, next) => {
+    try {
+      const { signature, action, identifier, timestamp } = req.body;
+      if (!signature || !action || !identifier || !timestamp) {
+        return res.status(HttpStatusCodes.BAD_REQUEST).json({
+          success: false,
+          valid: false,
+          message: 'Missing security signature parameters.'
+        });
+      }
+
+      // Check replay / expiration (valid for 5 minutes)
+      const now = Date.now();
+      const ageMs = Math.abs(now - Number(timestamp));
+      if (ageMs > 5 * 60 * 1000) {
+        return res.status(HttpStatusCodes.FORBIDDEN).json({
+          success: false,
+          valid: false,
+          message: 'Security signature has expired.'
+        });
+      }
+
+      const expectedPayload = `${action}:${identifier}:${timestamp}`;
+      const expectedHmac = `sec_sig_${crypto
+        .createHmac('sha256', env.jwt.secret || 'transitops-security-secret')
+        .update(expectedPayload)
+        .digest('hex')}`;
+
+      // Constant-time comparison
+      const isValid = signature.length === expectedHmac.length && crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedHmac)
+      );
+
+      if (!isValid) {
+        return res.status(HttpStatusCodes.FORBIDDEN).json({
+          success: false,
+          valid: false,
+          message: 'Cryptographic backend signature mismatch. Verification failed.'
+        });
+      }
+
+      return res.status(HttpStatusCodes.OK).json({
+        success: true,
+        valid: true,
+        action,
+        verifiedAt: timestamp,
+        message: 'Authoritative backend signature successfully validated.'
+      });
     } catch (error) {
       next(error);
     }
