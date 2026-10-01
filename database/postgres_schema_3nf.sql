@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20) UNIQUE,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')),
     last_login TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -308,7 +308,7 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_reg_no ON vehicles(registration_number);
 -- 2. User & Auth Lookups (High Read on Every Request Auth Middleware)
 CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_active_email ON users(email, is_active);
+CREATE INDEX IF NOT EXISTS idx_users_status_email ON users(email, status);
 
 -- 3. Driver Lookups & Compliance Filters
 CREATE INDEX IF NOT EXISTS idx_drivers_status_expiry ON drivers(status, license_expiry);
@@ -330,7 +330,7 @@ CREATE INDEX IF NOT EXISTS idx_fuel_fuel_type_id ON fuel_logs(fuel_type_id);
 
 CREATE INDEX IF NOT EXISTS idx_maintenance_vehicle_date ON maintenance_logs(vehicle_id, start_date);
 CREATE INDEX IF NOT EXISTS idx_maintenance_status ON maintenance_logs(status);
-CREATE INDEX IF NOT EXISTS idx_maintenance_service_center ON maintenance_logs(service_center);
+CREATE INDEX IF NOT EXISTS idx_maintenance_vendor_id ON maintenance_logs(vendor_id);
 
 CREATE INDEX IF NOT EXISTS idx_expenses_category_date ON expenses(category, expense_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_vehicle_id ON expenses(vehicle_id);
