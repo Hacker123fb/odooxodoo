@@ -15,6 +15,11 @@ export const DriverList = () => {
   const [drivers, setDrivers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Pagination & Mount State
+  const [page, setPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState(null);
+  const isInitialMount = React.useRef(true);
+
   // Search and status filters
   const [searchVal, setSearchVal] = useState('');
   const [statusVal, setStatusVal] = useState('');
@@ -31,29 +36,40 @@ export const DriverList = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
   // Load driver data from backend
-  const loadDrivers = async () => {
+  const loadDrivers = React.useCallback(async (targetPage = page) => {
     setIsLoading(true);
     try {
       const res = await driverService.getAll({
         search: searchVal,
-        status: statusVal
+        status: statusVal,
+        page: targetPage,
+        limit: 25
       });
       if (res.success) {
         setDrivers(res.data || []);
+        if (res.pagination) {
+          setPaginationMeta(res.pagination);
+        }
       }
     } catch (err) {
       showToast(err.message || 'Failed to retrieve drivers roster.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchVal, statusVal, page, showToast]);
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadDrivers(1);
+      return;
+    }
     const timer = setTimeout(() => {
-      loadDrivers();
+      setPage(1);
+      loadDrivers(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchVal, statusVal]);
+  }, [searchVal, statusVal, loadDrivers]);
 
   const handleDelete = async () => {
     if (!deleteDriverId) return;
@@ -230,6 +246,15 @@ export const DriverList = () => {
         data={drivers}
         isLoading={isLoading}
         emptyMessage="No drivers found matching search criteria."
+        pagination={paginationMeta ? {
+          page: paginationMeta.page,
+          limit: paginationMeta.limit,
+          total: paginationMeta.total,
+          onPageChange: (newPage) => {
+            setPage(newPage);
+            loadDrivers(newPage);
+          }
+        } : null}
       />
 
       {/* Delete Confirmation Modal */}

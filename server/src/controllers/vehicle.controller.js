@@ -7,9 +7,12 @@ export const vehicleController = {
    * List vehicles matching filters
    */
   getAll: asyncHandler(async (req, res) => {
-    const { search = '', status = '', type = '' } = req.query;
-    const vehicles = await vehicleService.getVehicles({ search, status, type });
-    return res.ok(vehicles, 'Vehicles retrieved successfully.');
+    const { search = '', status = '', type = '', page, limit } = req.query;
+    const result = await vehicleService.getVehicles({ search, status, type, page, limit });
+    if (result && result.pagination) {
+      return res.ok(result.data, 'Vehicles retrieved successfully.', result.pagination);
+    }
+    return res.ok(result, 'Vehicles retrieved successfully.');
   }),
 
   /**

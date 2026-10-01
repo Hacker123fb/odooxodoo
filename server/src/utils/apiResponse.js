@@ -6,12 +6,16 @@ export class ApiResponse {
    * @param {any} data Response data payload
    * @param {number} statusCode HTTP status code (default 200)
    */
-  static success(res, message = 'Success', data = null, statusCode = 200) {
-    return res.status(statusCode).json({
+  static success(res, message = 'Success', data = null, statusCode = 200, pagination = null) {
+    const payload = {
       success: true,
       message,
       data
-    });
+    };
+    if (pagination !== null && pagination !== undefined) {
+      payload.pagination = pagination;
+    }
+    return res.status(statusCode).json(payload);
   }
 
   /**

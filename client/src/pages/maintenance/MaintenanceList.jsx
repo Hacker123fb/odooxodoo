@@ -32,7 +32,12 @@ export const MaintenanceList = () => {
   // Role permissions checks: Only SUPER_ADMIN and FLEET_MANAGER can write
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
-  const loadData = async () => {
+  // Pagination & Mount State
+  const [page, setPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState(null);
+  const isInitialMount = React.useRef(true);
+
+  const loadData = React.useCallback(async (targetPage = page) => {
     setIsLoading(true);
     try {
       const res = await maintenanceService.getAll({
@@ -41,24 +46,35 @@ export const MaintenanceList = () => {
         vehicleId: vehicleVal,
         maintenanceType: typeVal,
         startDate,
-        endDate
+        endDate,
+        page: targetPage,
+        limit: 25
       });
       if (res.success) {
         setRecords(res.data || []);
+        if (res.pagination) {
+          setPaginationMeta(res.pagination);
+        }
       }
     } catch (err) {
       showToast(err.message || 'Failed to retrieve maintenance logs.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchVal, statusVal, vehicleVal, typeVal, startDate, endDate, page, showToast]);
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadData(1);
+      return;
+    }
     const timer = setTimeout(() => {
-      loadData();
+      setPage(1);
+      loadData(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchVal, statusVal, vehicleVal, typeVal, startDate, endDate]);
+  }, [searchVal, statusVal, vehicleVal, typeVal, startDate, endDate, loadData]);
 
   useEffect(() => {
     const fetchVehicles = async () => {
@@ -305,6 +321,15 @@ export const MaintenanceList = () => {
         data={records}
         isLoading={isLoading}
         emptyMessage="No vehicle maintenance records found."
+        pagination={paginationMeta ? {
+          page: paginationMeta.page,
+          limit: paginationMeta.limit,
+          total: paginationMeta.total,
+          onPageChange: (newPage) => {
+            setPage(newPage);
+            loadData(newPage);
+          }
+        } : null}
       />
 
       {/* Delete Confirmation Modal */}

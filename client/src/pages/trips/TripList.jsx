@@ -37,7 +37,12 @@ export const TripList = () => {
   // Role permissions: SUPER_ADMIN, FLEET_MANAGER, and DISPATCHER can modify
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER' || user?.role === 'DISPATCHER';
 
-  const loadData = async () => {
+  // Pagination & Mount State
+  const [page, setPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState(null);
+  const isInitialMount = React.useRef(true);
+
+  const loadData = React.useCallback(async (targetPage = page) => {
     setIsLoading(true);
     try {
       const res = await tripService.getAll({
@@ -46,30 +51,43 @@ export const TripList = () => {
         vehicleId: vehicleVal,
         driverId: driverVal,
         startDate,
-        endDate
+        endDate,
+        page: targetPage,
+        limit: 25
       });
       if (res.success) {
         setTrips(res.data || []);
+        if (res.pagination) {
+          setPaginationMeta(res.pagination);
+        }
       }
     } catch (err) {
       showToast(err.message || 'Failed to retrieve trips list.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchVal, statusVal, vehicleVal, driverVal, startDate, endDate, page, showToast]);
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadData(1);
+      return;
+    }
     const timer = setTimeout(() => {
-      loadData();
+      setPage(1);
+      loadData(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchVal, statusVal, vehicleVal, driverVal, startDate, endDate]);
+  }, [searchVal, statusVal, vehicleVal, driverVal, startDate, endDate, loadData]);
 
   useEffect(() => {
     const fetchDropdowns = async () => {
       try {
-        const resVehicles = await vehicleService.getAll();
-        const resDrivers = await driverService.getAll();
+        const [resVehicles, resDrivers] = await Promise.all([
+          vehicleService.getAll(),
+          driverService.getAll()
+        ]);
         if (resVehicles.success) setVehicles(resVehicles.data || []);
         if (resDrivers.success) setDrivers(resDrivers.data || []);
       } catch (err) {
@@ -341,6 +359,15 @@ export const TripList = () => {
         data={trips}
         isLoading={isLoading}
         emptyMessage="No operations dispatches matching search criteria."
+        pagination={paginationMeta ? {
+          page: paginationMeta.page,
+          limit: paginationMeta.limit,
+          total: paginationMeta.total,
+          onPageChange: (newPage) => {
+            setPage(newPage);
+            loadData(newPage);
+          }
+        } : null}
       />
 
       {/* Cancel Confirmation Modal */}

@@ -22,17 +22,42 @@ const formatBaseUrl = () => {
 const apiCacheStore = new Map(); // key -> { data, timestamp, ttl }
 const DEFAULT_CLIENT_TTL = 15 * 60 * 1000; // 15 minutes (data remains cached unless changed via mutation)
 
+// Normalize params by stripping empty/null/undefined attributes for deterministic cache matching
+const normalizeParams = (params) => {
+  if (!params || typeof params !== 'object') return {};
+  const cleaned = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== '' && v !== null && v !== undefined) {
+      cleaned[k] = v;
+    }
+  }
+  return cleaned;
+};
+
+export const getCacheKey = (url = '', params = {}) => {
+  return `${url}_${JSON.stringify(normalizeParams(params))}`;
+};
+
+// In-flight request deduplication store (cacheKey -> Promise)
+const inFlightRequests = new Map();
+
 /**
  * Clear cached API responses manually or by resource prefix
  */
 export const clearApiCache = (resourcePrefix = null) => {
   if (!resourcePrefix) {
     apiCacheStore.clear();
+    inFlightRequests.clear();
     return;
   }
   for (const key of apiCacheStore.keys()) {
     if (key.includes(resourcePrefix) || key.includes('dashboard') || key.includes('reports')) {
       apiCacheStore.delete(key);
+    }
+  }
+  for (const key of inFlightRequests.keys()) {
+    if (key.includes(resourcePrefix) || key.includes('dashboard') || key.includes('reports')) {
+      inFlightRequests.delete(key);
     }
   }
 };
@@ -104,7 +129,7 @@ axiosInstance.interceptors.request.use(
 
     // 4. Client-side GET caching
     if (method === 'get' && config.cache !== false) {
-      const cacheKey = `${config.url}_${JSON.stringify(config.params || {})}`;
+      const cacheKey = getCacheKey(config.url, config.params);
       const cached = apiCacheStore.get(cacheKey);
       const ttl = config.ttl || DEFAULT_CLIENT_TTL;
 
@@ -135,7 +160,7 @@ axiosInstance.interceptors.response.use(
 
     // Cache successful GET responses
     if (method === 'get' && response.config.cache !== false && response.data) {
-      const cacheKey = `${response.config.url}_${JSON.stringify(response.config.params || {})}`;
+      const cacheKey = getCacheKey(response.config.url, response.config.params);
       apiCacheStore.set(cacheKey, {
         data: response.data,
         timestamp: Date.now()
@@ -192,16 +217,10 @@ axiosInstance.interceptors.response.use(
       });
     }
 
-    // Only log error if not a background health probe and not aborted
+    // Only log error in development, omitting any sensitive payloads
     const isProbe = err.config?.url?.includes('/auth/ip-status') || err.config?.url?.includes('/health');
-    if (!isProbe && status !== 0) {
-      console.error('[API Error Details]:', {
-        url: err.config?.url,
-        baseURL: err.config?.baseURL,
-        status: status,
-        message: err.message,
-        data: err.response?.data
-      });
+    if (!isProbe && status !== 0 && import.meta.env?.DEV) {
+      console.warn(`[API ${status}]`, err.config?.url, err.message);
     }
 
     // Public routes that should never be forcefully redirected away during navigation
@@ -250,15 +269,40 @@ axiosInstance.interceptors.response.use(
       if (typeof window !== 'undefined' && window.location.pathname !== '/blocked') {
         window.location.replace('/blocked');
       }
-    } else if (customError.status === 403) {
-      // General 403 Forbidden / Access Denied (not IP lockout) -> Redirect to /403 using replace
-      if (typeof window !== 'undefined' && !isPublicRoute) {
-        window.location.replace('/403');
-      }
     }
 
     return Promise.reject(customError);
   }
 );
+
+// In-Flight Promise Deduplication Wrapper for GET Requests
+const rawGet = axiosInstance.get.bind(axiosInstance);
+axiosInstance.get = function (url, config = {}) {
+  if (config.cache === false) {
+    return rawGet(url, config);
+  }
+
+  const cacheKey = getCacheKey(url, config.params);
+
+  // 1. Check local cache first
+  const cached = apiCacheStore.get(cacheKey);
+  const ttl = config.ttl || DEFAULT_CLIENT_TTL;
+  if (cached && Date.now() - cached.timestamp < ttl) {
+    return Promise.resolve(cached.data);
+  }
+
+  // 2. Return pending in-flight promise if duplicate request is currently executing
+  if (inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey);
+  }
+
+  // 3. Initiate request and register in-flight tracker
+  const promise = rawGet(url, config).finally(() => {
+    inFlightRequests.delete(cacheKey);
+  });
+
+  inFlightRequests.set(cacheKey, promise);
+  return promise;
+};
 
 export default axiosInstance;

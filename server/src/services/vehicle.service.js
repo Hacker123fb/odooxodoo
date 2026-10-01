@@ -27,11 +27,17 @@ export const vehicleService = {
    * Fetches lists of vehicles and resolves UI status labels
    */
   async getVehicles(filters) {
-    const rows = await vehicleModel.findAll(filters);
-    return rows.map(v => ({
+    const result = await vehicleModel.findAll(filters);
+    const rows = Array.isArray(result) ? result : (result.rows || []);
+    const mapped = rows.map(v => ({
       ...v,
       ui_status: mapDbStatusToUi(v.status, v.is_on_trip)
     }));
+
+    if (result && result.pagination) {
+      return { data: mapped, pagination: result.pagination };
+    }
+    return mapped;
   },
 
   /**
@@ -191,9 +197,11 @@ export const vehicleService = {
    * Exposes dropdown options metadata
    */
   async getMetadataOptions() {
-    const models = await vehicleModel.getModels();
-    const fuelTypes = await vehicleModel.getFuelTypes();
-    const types = await vehicleModel.getTypes();
+    const [models, fuelTypes, types] = await Promise.all([
+      vehicleModel.getModels(),
+      vehicleModel.getFuelTypes(),
+      vehicleModel.getTypes()
+    ]);
 
     return { models, fuelTypes, types };
   }

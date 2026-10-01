@@ -23,7 +23,8 @@ export const userModel = {
    */
   async findById(id) {
     const sql = `
-      SELECT u.*, r.name AS role_name 
+      SELECT u.id, u.role_id, u.full_name, u.email, u.phone, u.status, u.last_login, u.created_at, u.updated_at,
+             r.name AS role_name 
       FROM users u
       JOIN roles r ON u.role_id = r.id
       WHERE u.id = ?

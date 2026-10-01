@@ -124,7 +124,6 @@ export const dashboardService = {
       [tripsPerMonthRows],
       [fuelTrendRows],
       [expenseCategoryRows],
-      [vehicleStatusRows],
       [tripStatusRows],
       [maintenanceStatusRows],
       [recentTrips],
@@ -145,7 +144,9 @@ export const dashboardService = {
               SELECT 1 FROM trips t WHERE t.vehicle_id = v.id AND t.status = 'IN_PROGRESS'
             ) THEN 1 ELSE 0
           END) AS vehicles_on_trip,
-          SUM(CASE WHEN v.status = 'IN_MAINTENANCE' THEN 1 ELSE 0 END) AS vehicles_in_maintenance
+          SUM(CASE WHEN v.status = 'IN_MAINTENANCE' THEN 1 ELSE 0 END) AS vehicles_in_maintenance,
+          SUM(CASE WHEN v.status = 'INACTIVE' THEN 1 ELSE 0 END) AS vehicles_inactive,
+          SUM(CASE WHEN v.status = 'RETIRED' THEN 1 ELSE 0 END) AS vehicles_retired
         FROM vehicles v
       `),
       pool.query(`
@@ -220,23 +221,6 @@ export const dashboardService = {
         ORDER BY amount DESC
       `),
       pool.query(`
-        SELECT
-          SUM(CASE
-            WHEN v.status = 'ACTIVE' AND NOT EXISTS (
-              SELECT 1 FROM trips t WHERE t.vehicle_id = v.id AND t.status = 'IN_PROGRESS'
-            ) THEN 1 ELSE 0
-          END) AS available,
-          SUM(CASE
-            WHEN v.status = 'ACTIVE' AND EXISTS (
-              SELECT 1 FROM trips t WHERE t.vehicle_id = v.id AND t.status = 'IN_PROGRESS'
-            ) THEN 1 ELSE 0
-          END) AS on_trip,
-          SUM(CASE WHEN v.status = 'IN_MAINTENANCE' THEN 1 ELSE 0 END) AS in_maintenance,
-          SUM(CASE WHEN v.status = 'INACTIVE' THEN 1 ELSE 0 END) AS inactive,
-          SUM(CASE WHEN v.status = 'RETIRED' THEN 1 ELSE 0 END) AS retired
-        FROM vehicles v
-      `),
-      pool.query(`
         SELECT status, COUNT(*) AS count
         FROM trips
         GROUP BY status
@@ -249,7 +233,8 @@ export const dashboardService = {
         ORDER BY count DESC
       `),
       pool.query(`
-        SELECT t.*, v.registration_number AS vehicle_plate, d.full_name AS driver_name
+        SELECT t.id, t.trip_number, t.source_location, t.destination_location, t.status, t.scheduled_departure, t.created_at,
+               v.registration_number AS vehicle_plate, d.full_name AS driver_name
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.id
         JOIN drivers d ON t.driver_id = d.id
@@ -257,7 +242,8 @@ export const dashboardService = {
         LIMIT 10
       `),
       pool.query(`
-        SELECT f.*, v.registration_number AS vehicle_plate, ft.label AS fuel_type_label
+        SELECT f.id, f.total_cost, f.quantity, f.fueling_date, f.created_at,
+               v.registration_number AS vehicle_plate, ft.label AS fuel_type_label
         FROM fuel_logs f
         JOIN vehicles v ON f.vehicle_id = v.id
         JOIN fuel_types ft ON f.fuel_type_id = ft.id
@@ -265,14 +251,15 @@ export const dashboardService = {
         LIMIT 10
       `),
       pool.query(`
-        SELECT m.*, v.registration_number AS vehicle_plate
+        SELECT m.id, m.description, m.status, m.cost, m.start_date, m.created_at,
+               v.registration_number AS vehicle_plate
         FROM maintenance_logs m
         JOIN vehicles v ON m.vehicle_id = v.id
         ORDER BY m.created_at DESC
         LIMIT 10
       `),
       pool.query(`
-        SELECT e.*
+        SELECT e.id, e.expense_number, e.category, e.amount, e.expense_date, e.status, e.description, e.created_at
         FROM expenses e
         ORDER BY e.created_at DESC
         LIMIT 10
@@ -285,7 +272,13 @@ export const dashboardService = {
     const fuel = fuelRows[0] || {};
     const expenses = expenseRows[0] || {};
     const maintenance = maintenanceRows[0] || {};
-    const vehicleStatus = vehicleStatusRows[0] || {};
+    const vehicleStatus = {
+      available: fleet.available_vehicles,
+      on_trip: fleet.vehicles_on_trip,
+      in_maintenance: fleet.vehicles_in_maintenance,
+      inactive: fleet.vehicles_inactive,
+      retired: fleet.vehicles_retired
+    };
 
     const totalVehicles = toNumber(fleet.total_vehicles);
     const vehiclesOnTrip = toNumber(fleet.vehicles_on_trip);

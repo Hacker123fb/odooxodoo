@@ -1,10 +1,20 @@
 import pool from '../config/db.js';
 
+let lastAlertGenerationTime = 0;
+const ALERT_SCAN_THROTTLE_MS = 2 * 60 * 1000; // Scan at most once every 2 minutes
+
 export const notificationService = {
   /**
    * Scans operations logs, schedules, and inventory to generate alerts.
+   * Throttled to avoid saturating the database pool on frequent polling.
    */
-  async generateSystemAlerts() {
+  async generateSystemAlerts(force = false) {
+    const now = Date.now();
+    if (!force && (now - lastAlertGenerationTime < ALERT_SCAN_THROTTLE_MS)) {
+      return;
+    }
+    lastAlertGenerationTime = now;
+
     let connection;
     try {
       connection = await pool.getConnection();

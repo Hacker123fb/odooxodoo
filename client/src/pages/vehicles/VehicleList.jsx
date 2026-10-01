@@ -16,6 +16,11 @@ export const VehicleList = () => {
   const [types, setTypes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Pagination & Mount State
+  const [page, setPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState(null);
+  const isInitialMount = React.useRef(true);
+
   // Filter settings
   const [searchVal, setSearchVal] = useState('');
   const [statusVal, setStatusVal] = useState('');
@@ -33,31 +38,41 @@ export const VehicleList = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
   // Load vehicles and classification lists
-  const loadData = async () => {
+  const loadData = React.useCallback(async (targetPage = page) => {
     setIsLoading(true);
     try {
       const resVehicles = await vehicleService.getAll({
         search: searchVal,
         status: statusVal,
-        type: typeVal
+        type: typeVal,
+        page: targetPage,
+        limit: 25
       });
       if (resVehicles.success) {
         setVehicles(resVehicles.data || []);
+        if (resVehicles.pagination) {
+          setPaginationMeta(resVehicles.pagination);
+        }
       }
     } catch (err) {
       showToast(err.message || 'Failed to fetch vehicles.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchVal, statusVal, typeVal, page, showToast]);
 
   useEffect(() => {
-    // Debounce/Trigger loads when search or filters update
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadData(1);
+      return;
+    }
     const timer = setTimeout(() => {
-      loadData();
+      setPage(1);
+      loadData(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchVal, statusVal, typeVal]);
+  }, [searchVal, statusVal, typeVal, loadData]);
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -234,6 +249,15 @@ export const VehicleList = () => {
         data={vehicles}
         isLoading={isLoading}
         emptyMessage="No vehicles found matching search criteria."
+        pagination={paginationMeta ? {
+          page: paginationMeta.page,
+          limit: paginationMeta.limit,
+          total: paginationMeta.total,
+          onPageChange: (newPage) => {
+            setPage(newPage);
+            loadData(newPage);
+          }
+        } : null}
       />
 
       {/* Delete Confirmation Modal */}

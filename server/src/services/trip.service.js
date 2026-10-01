@@ -410,9 +410,11 @@ export const tripService = {
    * Retrieves dropdown options lists for vehicles, drivers, and locations
    */
   async getMetadataOptions(excludeTripId = null, targetArrival = null) {
-    const vehicles = await tripModel.getAvailableVehicles(excludeTripId);
-    const drivers = await tripModel.getAvailableDrivers(excludeTripId, targetArrival);
-    const locations = await tripModel.getLocations();
+    const [vehicles, drivers, locations] = await Promise.all([
+      tripModel.getAvailableVehicles(excludeTripId),
+      tripModel.getAvailableDrivers(excludeTripId, targetArrival),
+      tripModel.getLocations()
+    ]);
 
     return { vehicles, drivers, locations };
   }

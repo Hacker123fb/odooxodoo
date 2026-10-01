@@ -45,18 +45,25 @@ export const apiCache = (ttlMs = DEFAULT_TTL_MS) => {
       const originalEnd = res.end;
       res.end = function (...args) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          const pathSegments = req.path.split('/').filter(Boolean);
-          const resource = pathSegments[pathSegments.length - 1] || pathSegments[1] || '';
+          const cleanPath = req.path.replace(/^\/api\/v1\//, '').replace(/^\//, '');
+          const resource = cleanPath.split('/')[0] || '';
           invalidateCache(resource);
+          invalidateCache('dashboard');
+          invalidateCache('reports');
         }
         return originalEnd.apply(this, args);
       };
       return next();
     }
 
-    // Skip cache for auth status or live ping endpoints
+    // Skip cache for auth status, pending approvals, notifications, or health checks
     const url = req.originalUrl || req.url;
-    if (url.includes('/auth/ip-status') || url.includes('/health/ping') || req.headers['cache-control'] === 'no-cache') {
+    if (
+      url.includes('/auth/') ||
+      url.includes('/health') ||
+      url.includes('/notifications') ||
+      req.headers['cache-control'] === 'no-cache'
+    ) {
       return next();
     }
 

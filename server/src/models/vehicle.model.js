@@ -61,11 +61,41 @@ export const vehicleModel = {
       }
     }
 
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+    if (page !== undefined && limit !== undefined) {
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
+      const offset = (pageNum - 1) * limitNum;
+
+      const countSql = `
+        SELECT COUNT(*) AS total
+        FROM vehicles v
+        JOIN vehicle_models vm ON v.model_id = vm.id
+        JOIN vehicle_makes vma ON vm.make_id = vma.id
+        JOIN vehicle_types vt ON vm.vehicle_type_id = vt.id
+        JOIN fuel_types ft ON v.fuel_type_id = ft.id
+        ${whereClause}
+      `;
+      const [countRows] = await pool.query(countSql, params);
+      const total = parseInt(countRows[0]?.total || 0, 10);
+      const totalPages = Math.ceil(total / limitNum) || 1;
+
+      sql += whereClause + ' ORDER BY v.created_at DESC LIMIT ? OFFSET ?';
+      const [rows] = await pool.query(sql, [...params, limitNum, offset]);
+
+      return {
+        rows,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages
+        }
+      };
     }
 
-    sql += ' ORDER BY v.created_at DESC';
+    sql += whereClause + ' ORDER BY v.created_at DESC';
 
     const [rows] = await pool.query(sql, params);
     return rows;

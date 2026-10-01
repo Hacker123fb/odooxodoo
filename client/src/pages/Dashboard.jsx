@@ -26,8 +26,13 @@ export const Dashboard = () => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  const isFetchingRef = React.useRef(false);
+
   // Fetch API callback
   const fetchDashboardData = useCallback(async (isManualRefresh = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     if (isManualRefresh) {
       setRefreshing(true);
       clearApiCache('dashboard');
@@ -38,7 +43,7 @@ export const Dashboard = () => {
     setError(null);
 
     try {
-      // Pass cache: false only when user explicitly clicks Refresh
+      // Pass cache: false only when user explicitly clicks Refresh or timer triggers fresh data
       const response = await dashboardService.getDashboard(isManualRefresh ? { cache: false } : {});
       if (response && response.success) {
         setData(response.data);
@@ -47,17 +52,26 @@ export const Dashboard = () => {
         setError(response?.message || 'Failed to retrieve dashboard information.');
       }
     } catch (err) {
-      console.error('Error fetching dashboard statistics:', err);
+      if (import.meta.env?.DEV) console.error('Error fetching dashboard statistics:', err);
       setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
+      isFetchingRef.current = false;
     }
   }, []);
 
-  // Initial Fetch - cached across views until data changes or user refreshes
+  // Initial Fetch & Single Active Timer with Unmount Cleanup & Overlap Prevention
   useEffect(() => {
     fetchDashboardData(false);
+
+    const timer = setInterval(() => {
+      if (!isFetchingRef.current) {
+        fetchDashboardData(true);
+      }
+    }, 60000);
+
+    return () => clearInterval(timer);
   }, [fetchDashboardData]);
 
   const handleManualRefresh = () => {

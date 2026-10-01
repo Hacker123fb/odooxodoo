@@ -206,15 +206,7 @@ const dispatchEmail = async ({ to, subject, html, text, type = 'NOTIFICATION' })
     console.log(`[EMAIL] ${type} successfully dispatched via SMTP to ${to}`);
     return info;
   } catch (smtpErr) {
-    console.warn(`[EMAIL] SMTP delivery failed for ${type}: ${smtpErr.message}. Fallback to server debug file.`);
-    try {
-      const otpPath = path.resolve(__dirname, '../../otp-debug.txt');
-      const content = `Timestamp: ${new Date().toISOString()}\nType: ${type}\nEmail: ${to}\nSubject: ${subject}\nText: ${text}\n`;
-      fs.appendFileSync(otpPath, content, 'utf8');
-      console.log(`[EMAIL] ${type} backup written to: server/otp-debug.txt`);
-    } catch (fsErr) {
-      console.error('[EMAIL] Failed to write backup email debug file:', fsErr.message);
-    }
+    console.warn(`[EMAIL] SMTP delivery failed for ${type} to ${to}: ${smtpErr.message}`);
   }
 };
 

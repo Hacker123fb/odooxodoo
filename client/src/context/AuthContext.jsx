@@ -61,7 +61,26 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+
+    // Wipe session and local storage
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // Clear client-side API response cache on logout
+    clearApiCache();
+
+    // Redirect cleanly to login, replacing browser history entry so back button doesn't loop
+    if (typeof window !== 'undefined') {
+      window.location.replace('/login');
+    }
+  }, []);
+
+  const login = useCallback(async (email, password) => {
     setIsLoading(true);
 
     try {
@@ -106,38 +125,19 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-
-    // Wipe session and local storage
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    // Clear client-side API response cache on logout
-    clearApiCache();
-
-    // Redirect cleanly to login, replacing browser history entry so back button doesn't loop
-    if (typeof window !== 'undefined') {
-      window.location.replace('/login');
-    }
-  };
+  const contextValue = React.useMemo(() => ({
+    user,
+    token,
+    isLoading,
+    isAuthenticated: !!token,
+    login,
+    logout,
+  }), [user, token, isLoading, login, logout]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading,
-        isAuthenticated: !!token,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

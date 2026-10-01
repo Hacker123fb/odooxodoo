@@ -5,8 +5,8 @@ import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
  * Middleware to attach convenient, standardized formatting methods to the Express response object
  */
 export const responseFormatter = (req, res, next) => {
-  res.ok = (data = null, message = 'Success') => {
-    return ApiResponse.success(res, message, data, HttpStatusCodes.OK);
+  res.ok = (data = null, message = 'Success', pagination = null) => {
+    return ApiResponse.success(res, message, data, HttpStatusCodes.OK, pagination);
   };
 
   res.created = (data = null, message = 'Created successfully') => {
