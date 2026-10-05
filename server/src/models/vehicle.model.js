@@ -7,7 +7,7 @@ export const vehicleModel = {
   /**
    * Retrieves all vehicles matching optional filters and search patterns
    */
-  async findAll({ search = '', status = '', type = '' } = {}) {
+  async findAll({ search = '', status = '', type = '', page, limit } = {}) {
     let sql = `
       SELECT v.*, 
              vm.name AS model_name, 

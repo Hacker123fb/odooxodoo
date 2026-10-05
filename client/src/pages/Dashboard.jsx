@@ -140,7 +140,7 @@ export const Dashboard = () => {
             </h4>
             <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{error}</p>
             <button
-              onClick={() => fetchDashboardData()}
+              onClick={() => fetchDashboardData(true)}
               className="text-[10px] font-bold text-rose-700 dark:text-rose-450 underline mt-2 hover:text-rose-900 dark:hover:text-rose-350"
             >
               Retry Connection

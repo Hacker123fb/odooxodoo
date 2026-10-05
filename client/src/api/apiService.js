@@ -52,71 +52,71 @@ export const verifyBackendSecurityProof = async (result, expectedAction, expecte
 };
 
 export const vehicleService = {
-  getAll: (params) => axiosInstance.get('/vehicles', { params }),
-  getById: (id) => axiosInstance.get(`/vehicles/${id}`),
+  getAll: (params = {}, config = {}) => axiosInstance.get('/vehicles', { params, ...config }),
+  getById: (id, config = {}) => axiosInstance.get(`/vehicles/${id}`, config),
   create: (data) => axiosInstance.post('/vehicles', data),
   update: (id, data) => axiosInstance.put(`/vehicles/${id}`, data),
   delete: (id) => axiosInstance.delete(`/vehicles/${id}`),
-  getOptions: () => axiosInstance.get('/vehicles/meta/options')
+  getOptions: (config = {}) => axiosInstance.get('/vehicles/meta/options', config)
 };
 
 export const driverService = {
-  getAll: (params) => axiosInstance.get('/drivers', { params }),
-  getById: (id) => axiosInstance.get(`/drivers/${id}`),
+  getAll: (params = {}, config = {}) => axiosInstance.get('/drivers', { params, ...config }),
+  getById: (id, config = {}) => axiosInstance.get(`/drivers/${id}`, config),
   create: (data) => axiosInstance.post('/drivers', data),
   update: (id, data) => axiosInstance.put(`/drivers/${id}`, data),
   delete: (id) => axiosInstance.delete(`/drivers/${id}`)
 };
 
 export const tripService = {
-  getAll: (params) => axiosInstance.get('/trips', { params }),
-  getById: (id) => axiosInstance.get(`/trips/${id}`),
+  getAll: (params = {}, config = {}) => axiosInstance.get('/trips', { params, ...config }),
+  getById: (id, config = {}) => axiosInstance.get(`/trips/${id}`, config),
   create: (data) => axiosInstance.post('/trips', data),
   update: (id, data) => axiosInstance.put(`/trips/${id}`, data),
   delete: (id) => axiosInstance.delete(`/trips/${id}`),
-  getOptions: (params) => axiosInstance.get('/trips/meta/options', { params })
+  getOptions: (params = {}, config = {}) => axiosInstance.get('/trips/meta/options', { params, ...config })
 };
 
 export const maintenanceService = {
-  getAll: (params) => axiosInstance.get('/maintenance', { params }),
-  getById: (id) => axiosInstance.get(`/maintenance/${id}`),
+  getAll: (params = {}, config = {}) => axiosInstance.get('/maintenance', { params, ...config }),
+  getById: (id, config = {}) => axiosInstance.get(`/maintenance/${id}`, config),
   create: (data) => axiosInstance.post('/maintenance', data),
   update: (id, data) => axiosInstance.put(`/maintenance/${id}`, data),
   delete: (id) => axiosInstance.delete(`/maintenance/${id}`)
 };
 
 export const fuelService = {
-  getAll: (params) => axiosInstance.get('/fuel', { params }),
-  getById: (id) => axiosInstance.get(`/fuel/${id}`),
+  getAll: (params = {}, config = {}) => axiosInstance.get('/fuel', { params, ...config }),
+  getById: (id, config = {}) => axiosInstance.get(`/fuel/${id}`, config),
   create: (data) => axiosInstance.post('/fuel', data),
   update: (id, data) => axiosInstance.put(`/fuel/${id}`, data),
   delete: (id) => axiosInstance.delete(`/fuel/${id}`),
-  getOptions: () => axiosInstance.get('/fuel/meta/options')
+  getOptions: (config = {}) => axiosInstance.get('/fuel/meta/options', config)
 };
 
 export const expenseService = {
-  getAll: (params) => axiosInstance.get('/expenses', { params }),
-  getById: (id) => axiosInstance.get(`/expenses/${id}`),
+  getAll: (params = {}, config = {}) => axiosInstance.get('/expenses', { params, ...config }),
+  getById: (id, config = {}) => axiosInstance.get(`/expenses/${id}`, config),
   create: (data) => axiosInstance.post('/expenses', data),
   update: (id, data) => axiosInstance.put(`/expenses/${id}`, data),
   delete: (id) => axiosInstance.delete(`/expenses/${id}`),
-  getOptions: () => axiosInstance.get('/expenses/meta/options')
+  getOptions: (config = {}) => axiosInstance.get('/expenses/meta/options', config)
 };
 
 export const dashboardService = {
-  getDashboard: () => axiosInstance.get('/dashboard')
+  getDashboard: (config = {}) => axiosInstance.get('/dashboard', config)
 };
 
 export const reportService = {
-  getReport: (params) => axiosInstance.get('/reports', { params })
+  getReport: (params = {}, config = {}) => axiosInstance.get('/reports', { params, ...config })
 };
 
 export const notificationService = {
-  getAll: () => axiosInstance.get('/notifications'),
+  getAll: (config = {}) => axiosInstance.get('/notifications', config),
   markAsRead: (id) => axiosInstance.put(`/notifications/${id}/read`),
   markAllAsRead: () => axiosInstance.put('/notifications/read-all')
 };
 
 export const healthService = {
-  check: () => axiosInstance.get('/health')
+  check: (config = {}) => axiosInstance.get('/health', config)
 };

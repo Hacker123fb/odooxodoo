@@ -259,7 +259,7 @@ export const dashboardService = {
         LIMIT 10
       `),
       pool.query(`
-        SELECT e.id, e.expense_number, e.category, e.amount, e.expense_date, e.status, e.description, e.created_at
+        SELECT e.id, e.expense_number, e.category, e.amount, e.expense_date, e.description, e.created_at
         FROM expenses e
         ORDER BY e.created_at DESC
         LIMIT 10

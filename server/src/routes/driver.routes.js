@@ -14,7 +14,7 @@ router.use(protect);
  */
 router.get(
   '/',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'SAFETY_OFFICER'),
+  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER', 'SAFETY_OFFICER'),
   driverController.getAll
 );
 
@@ -24,7 +24,7 @@ router.get(
  */
 router.get(
   '/:id',
-  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'SAFETY_OFFICER'),
+  restrictTo('SUPER_ADMIN', 'FLEET_MANAGER', 'DISPATCHER', 'SAFETY_OFFICER'),
   driverController.getById
 );
 

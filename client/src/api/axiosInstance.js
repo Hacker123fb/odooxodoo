@@ -20,7 +20,7 @@ const formatBaseUrl = () => {
 // CLIENT-SIDE IN-MEMORY API CACHE
 // ============================================================================
 const apiCacheStore = new Map(); // key -> { data, timestamp, ttl }
-const DEFAULT_CLIENT_TTL = 15 * 60 * 1000; // 15 minutes (data remains cached unless changed via mutation)
+const DEFAULT_CLIENT_TTL = 30 * 1000; // 30 seconds (short-lived deduplication, prevents stale traps)
 
 // Normalize params by stripping empty/null/undefined attributes for deterministic cache matching
 const normalizeParams = (params) => {
@@ -96,12 +96,6 @@ axiosInstance.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    } else if (!isPublicAuthEndpoint) {
-      // Abort unauthenticated calls to protected routes locally before hitting network
-      const cancelSource = axios.CancelToken.source();
-      config.cancelToken = cancelSource.token;
-      cancelSource.cancel('Authentication required: Unauthenticated request aborted.');
-      return config;
     }
 
     // 2. Anti-CSRF Header
@@ -133,16 +127,20 @@ axiosInstance.interceptors.request.use(
       const cached = apiCacheStore.get(cacheKey);
       const ttl = config.ttl || DEFAULT_CLIENT_TTL;
 
-      if (cached && Date.now() - cached.timestamp < ttl) {
-        // Return resolved cached response without performing network roundtrip
-        config.adapter = () => Promise.resolve({
-          data: cached.data,
-          status: 200,
-          statusText: 'OK (Cached)',
-          headers: { 'x-client-cache': 'HIT' },
-          config,
-          request: {}
-        });
+      if (cached) {
+        if (Date.now() - cached.timestamp < ttl) {
+          // Return resolved cached response without performing network roundtrip
+          config.adapter = () => Promise.resolve({
+            data: cached.data,
+            status: 200,
+            statusText: 'OK (Cached)',
+            headers: { 'x-client-cache': 'HIT' },
+            config,
+            request: {}
+          });
+        } else {
+          apiCacheStore.delete(cacheKey);
+        }
       }
     }
 
@@ -158,13 +156,25 @@ axiosInstance.interceptors.response.use(
   (response) => {
     const method = (response.config.method || 'get').toLowerCase();
 
-    // Cache successful GET responses
-    if (method === 'get' && response.config.cache !== false && response.data) {
+    // Cache ONLY valid successful GET responses from network; never cache failures or refresh on cache hits
+    const isCacheHit = response.headers?.['x-client-cache'] === 'HIT';
+    if (method === 'get' && response.config.cache !== false && !isCacheHit) {
       const cacheKey = getCacheKey(response.config.url, response.config.params);
-      apiCacheStore.set(cacheKey, {
-        data: response.data,
-        timestamp: Date.now()
-      });
+      const isSuccess = response.data && (
+        response.data.success === true ||
+        (Array.isArray(response.data) && response.status === 200) ||
+        (response.data.data !== undefined && response.status === 200)
+      );
+
+      if (isSuccess && response.data.success !== false) {
+        apiCacheStore.set(cacheKey, {
+          data: response.data,
+          timestamp: Date.now()
+        });
+      } else {
+        // Never cache failed or invalid data
+        apiCacheStore.delete(cacheKey);
+      }
     }
 
     // Invalidate relevant cache on mutations
@@ -179,15 +189,22 @@ axiosInstance.interceptors.response.use(
     return response.data;
   },
   async (err) => {
+    // Purge cache and in-flight tracker on ANY error immediately so subsequent attempts hit network
+    if (err.config) {
+      const cacheKey = getCacheKey(err.config.url, err.config.params);
+      apiCacheStore.delete(cacheKey);
+      inFlightRequests.delete(cacheKey);
+    }
+
     const status = err.response?.status || (err.code === 'ECONNABORTED' ? 408 : 0);
     const serverMessage = err.response?.data?.message;
 
-    // 1. Automatic Retry for Transient Network Glitches / Render Sleep Spin-up
+    // 1. Fast Retry for Transient Network Glitches
     const config = err.config;
     const isTransientError = !err.response && (status === 0 || err.code === 'ECONNABORTED' || err.message === 'Network Error');
     if (config && isTransientError && (config.__retryCount || 0) < 2) {
       config.__retryCount = (config.__retryCount || 0) + 1;
-      const delayMs = config.__retryCount * 1200;
+      const delayMs = config.__retryCount * 200; // Snappy retry without artificial delays
       await new Promise((res) => setTimeout(res, delayMs));
       return axiosInstance(config);
     }
@@ -285,17 +302,23 @@ axiosInstance.interceptors.response.use(
 // In-Flight Promise Deduplication Wrapper for GET Requests
 const rawGet = axiosInstance.get.bind(axiosInstance);
 axiosInstance.get = function (url, config = {}) {
+  const cacheKey = getCacheKey(url, config.params);
+
   if (config.cache === false) {
+    apiCacheStore.delete(cacheKey);
+    inFlightRequests.delete(cacheKey);
     return rawGet(url, config);
   }
-
-  const cacheKey = getCacheKey(url, config.params);
 
   // 1. Check local cache first
   const cached = apiCacheStore.get(cacheKey);
   const ttl = config.ttl || DEFAULT_CLIENT_TTL;
-  if (cached && Date.now() - cached.timestamp < ttl) {
-    return Promise.resolve(cached.data);
+  if (cached) {
+    if (Date.now() - cached.timestamp < ttl) {
+      return Promise.resolve(cached.data);
+    } else {
+      apiCacheStore.delete(cacheKey);
+    }
   }
 
   // 2. Return pending in-flight promise if duplicate request is currently executing
@@ -304,9 +327,14 @@ axiosInstance.get = function (url, config = {}) {
   }
 
   // 3. Initiate request and register in-flight tracker
-  const promise = rawGet(url, config).finally(() => {
-    inFlightRequests.delete(cacheKey);
-  });
+  const promise = rawGet(url, config)
+    .catch((err) => {
+      apiCacheStore.delete(cacheKey);
+      return Promise.reject(err);
+    })
+    .finally(() => {
+      inFlightRequests.delete(cacheKey);
+    });
 
   inFlightRequests.set(cacheKey, promise);
   return promise;
