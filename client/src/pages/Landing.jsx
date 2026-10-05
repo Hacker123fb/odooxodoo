@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { authService } from '../api/apiService.js';
 import Button from '../components/common/Button.jsx';
 import Modal from '../components/common/Modal.jsx';
@@ -18,7 +19,11 @@ import {
   FiActivity,
   FiFileText,
   FiHelpCircle,
-  FiChevronRight
+  FiChevronRight,
+  FiSun,
+  FiMoon,
+  FiTrendingUp,
+  FiDroplet
 } from 'react-icons/fi';
 import { FaIndianRupeeSign } from 'react-icons/fa6';
 
@@ -30,6 +35,7 @@ import { FaIndianRupeeSign } from 'react-icons/fa6';
 export const Landing = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   // Evaluate isBlocked immediately from session/local storage
   const [isBlocked, setIsBlocked] = useState(() => {
@@ -232,8 +238,19 @@ export const Landing = () => {
             <a href="#faq" className="hover:text-slate-950 dark:hover:text-white transition-colors">FAQ</a>
           </nav>
 
-          {/* Action CTAs */}
-          <div className="flex items-center gap-3">
+          {/* Action CTAs & Theme Toggle */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Dark / Light Mode Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              type="button"
+              aria-label="Toggle visual theme"
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? <FiSun className="w-4 h-4 text-amber-400" /> : <FiMoon className="w-4 h-4 text-slate-700" />}
+            </button>
+
             {isAuthenticated ? (
               <Button
                 variant="primary"
@@ -336,6 +353,93 @@ export const Landing = () => {
             <span className="flex items-center gap-1.5">
               <FiCheckCircle className="text-emerald-500 w-4 h-4" /> Bank-Grade Data Protection
             </span>
+          </div>
+
+          {/* Live Operations Telemetry Showcase */}
+          <div className="mt-14 max-w-5xl mx-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/80 dark:bg-[#0E131F]/90 backdrop-blur-md shadow-xl overflow-hidden text-left">
+            <div className="px-5 py-3.5 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/70 dark:bg-[#0B0F19]/70">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-2 font-mono">
+                  transitops://live-telematics-hub
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Operational Network
+                </span>
+              </div>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              {/* Card 1: Active Dispatches */}
+              <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Freight Dispatch</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400">In Transit</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                  Tata Prima 4028.S
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                  MH-12-RN-4821 • Mumbai ➔ Pune
+                </div>
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                  <span>Assigned Operator</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">Rajesh Sharma</span>
+                </div>
+              </div>
+
+              {/* Card 2: Fuel Intelligence */}
+              <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fuel Transaction</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">Audited</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                  BPCL Highway Fuel Hub
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                  140.0 L @ ₹91.20/L • Total ₹12,768.00
+                </div>
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                  <span>Consumption Index</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">4.2 Km/L</span>
+                </div>
+              </div>
+
+              {/* Card 3: Conflict Prevention Engine */}
+              <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Safety Guard</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">0 Overlaps</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                  Intelligent Conflict Shield
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  Real-time validation blocks double-booked vehicles and expired licenses.
+                </div>
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                  <span>Active Roster</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">25 Vehicles • 18 Drivers</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Bottom summary strip */}
+            <div className="px-6 py-3 border-t border-slate-200/70 dark:border-slate-800/80 bg-slate-50/50 dark:bg-[#080C14]/50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
+              <span className="flex items-center gap-1.5">
+                <FiCheckCircle className="text-emerald-500 w-3.5 h-3.5" /> 550+ Live Database Records Initialized
+              </span>
+              <span>Currency: INR (₹)</span>
+              <span>Security: Zero-Trust RBAC & Lockout Guard</span>
+            </div>
           </div>
 
         </div>

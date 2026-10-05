@@ -16,7 +16,6 @@ export const Register = () => {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
@@ -165,24 +164,12 @@ export const Register = () => {
           })}
         />
 
-        {/* Password */}
+        {/* Password (Hidden, no toggle) */}
         <Input
           label="Password *"
-          type={showPassword ? 'text' : 'password'}
+          type="password"
           placeholder="Min 8 chars, 1 Upper, 1 Lower, 1 Num, 1 Spec"
           icon={FiLock}
-          rightElement={
-            <button
-              type="button"
-              onClick={() => setShowPassword(prev => !prev)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 focus:outline-none"
-              title={showPassword ? 'Hide password' : 'Show password'}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              tabIndex="-1"
-            >
-              {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
-            </button>
-          }
           error={errors.password}
           {...register('password', {
             required: 'Password is required',
@@ -197,7 +184,7 @@ export const Register = () => {
           })}
         />
 
-        {/* Confirm Password */}
+        {/* Confirm Password (With toggle to see typed password) */}
         <Input
           label="Confirm Password *"
           type={showConfirmPassword ? 'text' : 'password'}
@@ -207,9 +194,9 @@ export const Register = () => {
             <button
               type="button"
               onClick={() => setShowConfirmPassword(prev => !prev)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 focus:outline-none"
-              title={showConfirmPassword ? 'Hide password' : 'Show password'}
-              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 focus:outline-none cursor-pointer"
+              title={showConfirmPassword ? 'Hide confirm password' : 'Show typed confirm password'}
+              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show typed confirm password'}
               tabIndex="-1"
             >
               {showConfirmPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
@@ -245,6 +232,37 @@ export const Register = () => {
           </select>
           {errors.roleName && (
             <span className="text-xs font-medium text-rose-500 mt-0.5">{errors.roleName.message}</span>
+          )}
+        </div>
+
+        {/* Mandatory Terms & Conditions / Privacy Policy Agreement Checkbox */}
+        <div className="flex flex-col gap-1 w-full mt-3 p-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg">
+          <div className="flex items-start gap-2.5">
+            <input
+              type="checkbox"
+              id="agreeTerms"
+              className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:ring-slate-800 dark:focus:ring-slate-200 cursor-pointer"
+              {...register('agreeTerms', {
+                required: 'You must agree to the Terms & Conditions and Privacy Policy to proceed.'
+              })}
+            />
+            <label htmlFor="agreeTerms" className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed cursor-pointer select-none">
+              I have read, understood, and agree to the{' '}
+              <Link to="/terms" target="_blank" className="font-semibold text-slate-900 dark:text-white underline hover:opacity-80">
+                Terms and Conditions
+              </Link>{' '}
+              and{' '}
+              <Link to="/privacy" target="_blank" className="font-semibold text-slate-900 dark:text-white underline hover:opacity-80">
+                Privacy Policy
+              </Link>
+              .{' '}
+              <Link to="/terms" target="_blank" className="font-semibold text-primary-600 dark:text-primary-400 underline ml-0.5">
+                Learn more &rarr;
+              </Link>
+            </label>
+          </div>
+          {errors.agreeTerms && (
+            <span className="text-xs font-medium text-rose-500 pl-6.5 mt-0.5">{errors.agreeTerms.message}</span>
           )}
         </div>
 
