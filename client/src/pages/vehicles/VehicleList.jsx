@@ -119,7 +119,7 @@ export const VehicleList = () => {
     { header: 'Type', accessor: 'type_name' },
     { header: 'Max Capacity', accessor: 'capacity', cell: (row) => `${row.capacity.toLocaleString()} kg` },
     { header: 'Odometer', accessor: 'current_odometer', cell: (row) => `${row.current_odometer.toLocaleString()} km` },
-    { header: 'Acquisition Cost', accessor: 'purchase_price', cell: (row) => `$${parseFloat(row.purchase_price).toLocaleString()}` },
+    { header: 'Acquisition Cost', accessor: 'purchase_price', cell: (row) => `₹${parseFloat(row.purchase_price || 0).toLocaleString('en-IN')}` },
     {
       header: 'Status',
       cell: (row) => {

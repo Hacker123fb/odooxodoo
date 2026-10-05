@@ -177,6 +177,15 @@ export const BlockedCard = ({ onCooldownComplete = null }) => {
             </p>
           </div>
         )}
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full flex items-center justify-center gap-2 text-xs py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          onClick={() => navigate('/')}
+        >
+          Return to Landing Page
+        </Button>
       </div>
     </div>
   );

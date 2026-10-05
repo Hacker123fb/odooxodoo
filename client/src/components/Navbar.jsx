@@ -10,9 +10,9 @@ import {
   FiFileText, 
   FiNavigation, 
   FiDroplet, 
-  FiDollarSign, 
   FiCheck 
 } from 'react-icons/fi';
+import { FaIndianRupeeSign } from 'react-icons/fa6';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { notificationService } from '../api/apiService.js';
@@ -86,7 +86,7 @@ export const Navbar = ({ toggleSidebar }) => {
       case 'LOW_FUEL_EFFICIENCY':
         return <FiDroplet className="w-4 h-4 text-orange-500" />;
       case 'HIGH_MAINTENANCE_COST':
-        return <FiDollarSign className="w-4 h-4 text-purple-500" />;
+        return <FaIndianRupeeSign className="w-4 h-4 text-purple-500" />;
       default:
         return <FiBell className="w-4 h-4 text-slate-450" />;
     }

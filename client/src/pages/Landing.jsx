@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { authService } from '../api/apiService.js';
 import Button from '../components/common/Button.jsx';
 import Modal from '../components/common/Modal.jsx';
 import {
   FiTruck,
   FiMapPin,
-  FiDollarSign,
   FiTool,
   FiUserCheck,
   FiPieChart,
@@ -20,6 +20,7 @@ import {
   FiHelpCircle,
   FiChevronRight
 } from 'react-icons/fi';
+import { FaIndianRupeeSign } from 'react-icons/fa6';
 
 /**
  * Modern Executive Fleet Management Landing Page
@@ -29,6 +30,60 @@ import {
 export const Landing = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+
+  // Evaluate isBlocked immediately from session/local storage
+  const [isBlocked, setIsBlocked] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('lockout_info') || localStorage.getItem('lockout_info');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return !!(parsed?.blockedUntil && Date.now() < parsed.blockedUntil);
+    } catch {
+      return false;
+    }
+  });
+
+  // Verify IP status asynchronously on Landing Page mount to immediately catch blocked IPs
+  useEffect(() => {
+    let isMounted = true;
+    const verifyIp = async () => {
+      try {
+        const res = await authService.getIpStatus();
+        if (isMounted && res?.blocked) {
+          const remainingSeconds = res.remainingSeconds || ((res.remainingMinutes || 15) * 60);
+          const lockData = {
+            message: res.message || 'Access Denied: Your IP has been temporarily blocked.',
+            remainingMinutes: res.remainingMinutes || 15,
+            remainingSeconds,
+            blockedUntil: res.blockedUntil || (Date.now() + remainingSeconds * 1000),
+            reason: res.reason || 'IP_BLOCKED',
+            timestamp: Date.now()
+          };
+          sessionStorage.setItem('lockout_info', JSON.stringify(lockData));
+          localStorage.setItem('lockout_info', JSON.stringify(lockData));
+          setIsBlocked(true);
+        } else if (isMounted && res && !res.blocked) {
+          sessionStorage.removeItem('lockout_info');
+          localStorage.removeItem('lockout_info');
+          setIsBlocked(false);
+        }
+      } catch (e) {
+        if (e.status === 403 && isMounted) {
+          setIsBlocked(true);
+        }
+      }
+    };
+    verifyIp();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleAuthNavigation = (targetPath = '/login') => {
+    if (isBlocked) {
+      navigate('/blocked');
+    } else {
+      navigate(targetPath);
+    }
+  };
 
   // Legal Modal states for quick preview without leaving the page
   const [activeModal, setActiveModal] = useState(null); // 'terms' | 'privacy' | null
@@ -51,11 +106,11 @@ export const Landing = () => {
       color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
     },
     {
-      icon: FiDollarSign,
+      icon: FaIndianRupeeSign,
       title: 'Fuel & Expense Control',
       tagline: 'Lower Operating Costs',
       description:
-        'Log refills, calculate cost-per-kilometer, and audit route expenses. Multi-tier approval workflows ensure every rupee or dollar spent is verified and transparent.',
+        'Log refills, calculate cost-per-kilometer, and audit route expenses. Multi-tier approval workflows ensure every rupee spent is verified and transparent.',
       color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
     },
     {
@@ -130,6 +185,24 @@ export const Landing = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F19] text-slate-800 dark:text-slate-100 font-sans selection:bg-primary-500 selection:text-white transition-colors duration-200">
       
       {/* ─────────────────────────────────────────────────────────────
+          SECURITY NOTICE BANNER FOR BLOCKED IP
+      ───────────────────────────────────────────────────────────── */}
+      {isBlocked && (
+        <div className="bg-rose-600 text-white px-4 py-3 sticky top-0 z-60 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
+          <div className="flex items-center gap-2">
+            <FiShield className="w-5 h-5 shrink-0 text-rose-200 animate-pulse" />
+            <span>Security Notice: Your IP address is temporarily blocked due to security policies. Portal sign-in is disabled.</span>
+          </div>
+          <button
+            onClick={() => navigate('/blocked')}
+            className="px-3.5 py-1.5 rounded-lg bg-white text-rose-700 hover:bg-rose-50 text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+          >
+            View Lockout Details &rarr;
+          </button>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
           1. TOP NAVIGATION BAR
       ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 dark:bg-[#0B0F19]/90 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
@@ -164,7 +237,7 @@ export const Landing = () => {
             {isAuthenticated ? (
               <Button
                 variant="primary"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => handleAuthNavigation('/dashboard')}
                 className="flex items-center gap-2 text-xs font-semibold px-4 py-2"
                 id="landing-goto-dashboard-btn"
               >
@@ -175,7 +248,7 @@ export const Landing = () => {
               <>
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/login')}
+                  onClick={() => handleAuthNavigation('/login')}
                   className="text-xs font-semibold px-3.5 py-2 hidden sm:inline-flex"
                   id="landing-signin-outline-btn"
                 >
@@ -183,7 +256,7 @@ export const Landing = () => {
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={() => navigate('/login')}
+                  onClick={() => handleAuthNavigation('/login')}
                   className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2"
                   id="landing-portal-access-btn"
                 >
@@ -229,7 +302,7 @@ export const Landing = () => {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               variant="primary"
-              onClick={() => navigate('/login')}
+              onClick={() => handleAuthNavigation('/login')}
               className="w-full sm:w-auto px-8 py-3.5 text-sm font-semibold flex items-center justify-center gap-2.5 shadow-md"
               id="hero-launch-portal-btn"
             >
@@ -240,7 +313,7 @@ export const Landing = () => {
 
             <Button
               variant="outline"
-              onClick={() => navigate('/register')}
+              onClick={() => handleAuthNavigation('/register')}
               className="w-full sm:w-auto px-7 py-3.5 text-sm font-semibold flex items-center justify-center gap-2"
               id="hero-register-btn"
             >
@@ -475,7 +548,7 @@ export const Landing = () => {
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button
                   variant="primary"
-                  onClick={() => navigate('/login')}
+                  onClick={() => handleAuthNavigation('/login')}
                   className="w-full sm:w-auto px-8 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 shadow-lg"
                   id="cta-bottom-signin-btn"
                 >
@@ -486,7 +559,7 @@ export const Landing = () => {
 
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/register')}
+                  onClick={() => handleAuthNavigation('/register')}
                   className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-white border-slate-700 hover:bg-slate-800"
                   id="cta-bottom-register-btn"
                 >
@@ -527,7 +600,7 @@ export const Landing = () => {
               </Link>
               <button
                 type="button"
-                onClick={() => navigate('/login')}
+                onClick={() => handleAuthNavigation('/login')}
                 className="hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 Staff Login

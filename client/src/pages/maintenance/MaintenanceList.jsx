@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
-import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2, FiCalendar, FiDollarSign } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2, FiCalendar } from 'react-icons/fi';
 
 export const MaintenanceList = () => {
   const [records, setRecords] = useState([]);

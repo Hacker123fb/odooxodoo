@@ -6,7 +6,6 @@ import {
   FiDroplet, 
   FiActivity, 
   FiTool, 
-  FiDollarSign,
   FiFilter,
   FiDownload,
   FiCalendar,
@@ -14,6 +13,7 @@ import {
   FiBarChart2,
   FiTable
 } from 'react-icons/fi';
+import { FaIndianRupeeSign } from 'react-icons/fa6';
 import { 
   reportService, 
   vehicleService, 
@@ -52,7 +52,7 @@ const REPORT_TYPES = [
   { id: 'fuel-consumption', name: 'Fuel Consumption', icon: FiDroplet, desc: 'Aggregates liters consumed and overall fueling costs.' },
   { id: 'fuel-efficiency', name: 'Fuel Efficiency', icon: FiTrendingUp, desc: 'Correlates distance vs fuel quantity (Km per Litre).' },
   { id: 'maintenance-cost', name: 'Maintenance Cost', icon: FiTool, desc: 'Summarizes maintenance logs, repair expenses, and types.' },
-  { id: 'expense-summary', name: 'Expense Summary', icon: FiDollarSign, desc: 'Monitors operational expenses, payment statuses, and categories.' }
+  { id: 'expense-summary', name: 'Expense Summary', icon: FaIndianRupeeSign, desc: 'Monitors operational expenses, payment statuses, and categories.' }
 ];
 
 const TRIP_STATUSES = [

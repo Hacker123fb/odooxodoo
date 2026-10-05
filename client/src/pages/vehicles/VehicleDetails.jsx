@@ -178,7 +178,7 @@ export const VehicleDetails = () => {
               Acquisition Value
             </span>
             <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              ${parseFloat(vehicle.purchase_price).toLocaleString()}
+              ₹{parseFloat(vehicle.purchase_price || 0).toLocaleString('en-IN')}
             </span>
           </div>
 

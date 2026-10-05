@@ -28,7 +28,14 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const hasToken = !!sessionStorage.getItem("token");
+    const hasCachedUser = !!sessionStorage.getItem("user");
+    // If no token or if user profile is already cached in session, render immediately without blocking spinner
+    if (!hasToken || hasCachedUser) return false;
+    return true;
+  });
 
   useEffect(() => {
     const initializeAuth = async () => {

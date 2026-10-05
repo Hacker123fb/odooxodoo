@@ -303,12 +303,12 @@ export const VehicleForm = () => {
 
           {/* Acquisition Cost */}
           <Input
-            label="Acquisition Cost ($)"
+            label="Acquisition Cost (₹)"
             type="number"
             step="0.01"
             disabled={isRetired}
             error={errors.purchase_price}
-            placeholder="e.g. 45000.00"
+            placeholder="e.g. 1500000.00"
             {...register('purchase_price', {
               required: 'Purchase price / cost is required.',
               min: { value: 0, message: 'Cost cannot be negative.' }

@@ -4,7 +4,7 @@ import { maintenanceService } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Button from '../../components/common/Button.jsx';
-import { FiArrowLeft, FiEdit, FiInfo, FiCalendar, FiTruck, FiSettings, FiUser, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit, FiInfo, FiCalendar, FiTruck, FiSettings, FiUser } from 'react-icons/fi';
 
 export const MaintenanceDetails = () => {
   const { id } = useParams();

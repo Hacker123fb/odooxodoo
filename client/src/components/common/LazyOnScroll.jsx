@@ -4,8 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
  * High-performance viewport intersection wrapper
  * Defers rendering and heavy DOM layout calculations of child elements until scrolled near view.
  */
-export const LazyOnScroll = ({ children, minHeight = 140, placeholder = null, rootMargin = '250px' }) => {
-  const [isVisible, setIsVisible] = useState(false);
+export const LazyOnScroll = ({ children, minHeight = 140, placeholder = null, rootMargin = '400px' }) => {
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof window !== 'undefined' && window.scrollY < 200) {
+      return true;
+    }
+    return false;
+  });
   const containerRef = useRef(null);
 
   useEffect(() => {

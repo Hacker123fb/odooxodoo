@@ -3,10 +3,10 @@ import {
   FiNavigation, 
   FiDroplet, 
   FiTool, 
-  FiDollarSign, 
   FiClock, 
   FiMapPin 
 } from 'react-icons/fi';
+import { FaIndianRupeeSign } from 'react-icons/fa6';
 
 export const ActivityTimeline = ({ data = {} }) => {
   const [activeTab, setActiveTab] = useState('ALL');
@@ -98,7 +98,7 @@ export const ActivityTimeline = ({ data = {} }) => {
       case 'MAINTENANCE':
         return <FiTool className="w-4 h-4 text-amber-500" />;
       case 'EXPENSE':
-        return <FiDollarSign className="w-4 h-4 text-rose-500" />;
+        return <FaIndianRupeeSign className="w-4 h-4 text-rose-500" />;
       default:
         return <FiClock className="w-4 h-4 text-slate-400" />;
     }

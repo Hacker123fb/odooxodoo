@@ -4,12 +4,12 @@ import {
   FiUsers, 
   FiNavigation, 
   FiTrendingUp, 
-  FiDollarSign, 
   FiDroplet, 
   FiActivity, 
   FiTool, 
   FiAlertTriangle 
 } from 'react-icons/fi';
+import { FaIndianRupeeSign } from 'react-icons/fa6';
 import { StatCard } from './StatCard.jsx';
 
 /**
@@ -169,13 +169,13 @@ export const DashboardCards = ({ data, loading }) => {
           <StatCard
             title="Today's Expenses"
             value={formatCurrency(expenses.todayExpenses)}
-            icon={FiDollarSign}
+            icon={FaIndianRupeeSign}
             loading={loading}
           />
           <StatCard
             title="This Month Expenses"
             value={formatCurrency(expenses.thisMonthExpenses)}
-            icon={FiDollarSign}
+            icon={FaIndianRupeeSign}
             loading={loading}
           />
         </div>

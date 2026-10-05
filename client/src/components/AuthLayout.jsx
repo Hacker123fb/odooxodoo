@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { FiSun, FiMoon } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -9,14 +9,13 @@ import BlockedCard from './common/BlockedCard.jsx';
 /**
  * Executive Enterprise Layout for Auth Portals
  * Clean, authoritative corporate aesthetic with active IP lockout gatekeeper.
- * If IP is blocked, it shows the Blocked lockout interface directly in the login portal
- * without redirecting away or altering the URL path.
+ * If IP is blocked, immediately redirects to /blocked so login page is never accessible.
  */
 export const AuthLayout = () => {
   const { isAuthenticated } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
-  // Evaluate isBlocked SYNCHRONOUSLY from session/local storage so there is ZERO flicker or delay
+  // Evaluate isBlocked SYNCHRONOUSLY from session/local storage
   const [isBlocked, setIsBlocked] = useState(() => {
     try {
       const raw = sessionStorage.getItem('lockout_info') || localStorage.getItem('lockout_info');
@@ -30,8 +29,6 @@ export const AuthLayout = () => {
       return false;
     }
   });
-
-  const [checkingLockout, setCheckingLockout] = useState(() => !isBlocked);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,9 +67,7 @@ export const AuthLayout = () => {
           if (isMounted) setIsBlocked(false);
         }
       } finally {
-        if (isMounted) {
-          setCheckingLockout(false);
-        }
+        // Verification complete
       }
     };
 
@@ -103,12 +98,8 @@ export const AuthLayout = () => {
     };
   }, []);
 
-  if (checkingLockout && !isBlocked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100/90 dark:bg-[#0B0F17]">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 dark:border-slate-700 border-t-slate-900 dark:border-t-white" />
-      </div>
-    );
+  if (isBlocked) {
+    return <Navigate to="/blocked" replace />;
   }
 
   return (

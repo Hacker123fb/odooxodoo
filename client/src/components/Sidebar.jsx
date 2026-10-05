@@ -7,13 +7,13 @@ import {
   FiNavigation,
   FiTool,
   FiDroplet,
-  FiDollarSign,
   FiBarChart2,
   FiLogOut,
   FiTrash2,
   FiChevronLeft,
   FiChevronRight
 } from 'react-icons/fi';
+import { FaIndianRupeeSign } from 'react-icons/fa6';
 import { useAuth } from '../context/AuthContext.jsx';
 
 /**
@@ -35,7 +35,7 @@ export const Sidebar = ({
     { name: 'Trips', path: '/trips', icon: FiNavigation },
     { name: 'Maintenance', path: '/maintenance', icon: FiTool },
     { name: 'Fuel Logs', path: '/fuel', icon: FiDroplet },
-    { name: 'Expenses', path: '/expenses', icon: FiDollarSign },
+    { name: 'Expenses', path: '/expenses', icon: FaIndianRupeeSign },
     { name: 'Reports', path: '/reports', icon: FiBarChart2 }
   ];
 

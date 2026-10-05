@@ -4,7 +4,7 @@ import { expenseService } from '../../api/apiService.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Button from '../../components/common/Button.jsx';
-import { FiArrowLeft, FiEdit, FiInfo, FiTruck, FiDollarSign, FiFileText, FiCheckCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit, FiInfo, FiTruck, FiFileText, FiCheckCircle } from 'react-icons/fi';
 
 export const ExpenseDetails = () => {
   const { id } = useParams();
