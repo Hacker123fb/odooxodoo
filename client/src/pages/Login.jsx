@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { FiMail, FiLock, FiAlertCircle, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import Input from '../components/common/Input.jsx';
 import Button from '../components/common/Button.jsx';
 import FormWrapper from '../components/common/FormWrapper.jsx';
+import { prefetchRoute } from '../utils/prefetch.js';
 
 /**
  * Executive Corporate Login Portal for TransitOps
@@ -18,6 +19,11 @@ export const Login = () => {
   const navigate = useNavigate();
   const [formError, setFormError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Preload dashboard bundle immediately on login page mount so redirect is instantaneous
+  useEffect(() => {
+    prefetchRoute('/dashboard');
+  }, []);
 
   const {
     register,
@@ -37,8 +43,7 @@ export const Login = () => {
     
     if (result.success) {
       sessionStorage.removeItem('login_failed_strikes');
-      showToast('Authentication verified. Welcome to TransitOps.', 'success');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } else {
       // Track consecutive failed logins
       const currentStrikes = parseInt(sessionStorage.getItem('login_failed_strikes') || '0', 10) + 1;
@@ -93,34 +98,7 @@ export const Login = () => {
   };
 
   if (isAuthenticated && user) {
-    return (
-      <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full text-center space-y-5">
-        <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
-          <FiCheckCircle className="w-6 h-6" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Active Session Detected</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            You are signed in as <span className="font-semibold text-slate-800 dark:text-slate-200">{user.full_name || user.email}</span> ({user.role?.replace('_', ' ')}).
-          </p>
-        </div>
-        <div className="flex flex-col gap-2.5 pt-2">
-          <Button variant="primary" onClick={() => navigate('/dashboard')} className="w-full">
-            Continue to Operations Dashboard
-          </Button>
-          <Button variant="outline" onClick={() => navigate('/')} className="w-full">
-            Back to Home Page
-          </Button>
-          <button
-            type="button"
-            onClick={logout}
-            className="text-xs text-slate-400 hover:text-rose-500 mt-2 transition-colors underline underline-offset-4"
-          >
-            Sign out of this session
-          </button>
-        </div>
-      </div>
-    );
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (
