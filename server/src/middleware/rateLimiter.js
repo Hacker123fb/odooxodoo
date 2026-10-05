@@ -1,7 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
-import { getClientIp } from './ipBlocker.js';
+import { getClientIp, blockIpProgressive, getBlockDetails } from './ipBlocker.js';
 
 /**
  * Standardized rate limit rejection handler
@@ -29,8 +29,8 @@ export const globalLimiter = rateLimit({
 });
 
 /**
- * Login rate limiter to prevent brute-force credential stuffing
- * 10 attempts per 15 minutes per true client IP
+ * Strict Login rate limiter to prevent brute-force credential stuffing
+ * Exceeding this immediately triggers progressive IP blocking
  */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -39,7 +39,24 @@ export const loginLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Only count failed login attempts against the limit
   keyGenerator: (req) => getClientIp(req),
-  handler: rateLimitHandler('Too many failed login attempts. Please wait 15 minutes before trying again.')
+  handler: (req, res, next, options) => {
+    const clientIp = getClientIp(req);
+    blockIpProgressive(clientIp, 'EXCESSIVE_LOGIN_ATTEMPTS');
+    const details = getBlockDetails(clientIp);
+    const mins = details ? details.remainingMinutes : 15;
+    const remainingSeconds = details ? details.remainingSeconds : mins * 60;
+    return res.status(HttpStatusCodes.FORBIDDEN).json({
+      success: false,
+      blocked: true,
+      message: `You have tried too many times. Your IP is blocked for ${details?.formattedDuration || `${mins} min`}. Please try again later.`,
+      code: 'IP_BLOCKED',
+      reason: 'EXCESSIVE_LOGIN_ATTEMPTS',
+      remainingMinutes: mins,
+      remainingSeconds,
+      blockedUntil: details?.blockedUntil || (Date.now() + mins * 60 * 1000),
+      tier: details?.tier || 1
+    });
+  }
 });
 
 /**

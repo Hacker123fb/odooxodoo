@@ -14,7 +14,9 @@ import {
   recordSuccessfulLogin,
   recordFailedOtp,
   getAccountLockDetails,
-  getClientIp
+  getClientIp,
+  isIpBlocked,
+  getBlockDetails
 } from '../middleware/ipBlocker.js';
 
 // Fast memory cache for password reset OTPs to achieve sub-millisecond response
@@ -231,13 +233,33 @@ export const authController = {
   login: async (req, res, next) => {
     try {
       const { email, password } = req.body;
+      const clientIp = getClientIp(req);
 
-      // 1. Anti-IP-Hopping Defense: Check if this target account is locked across IPs
+      // 1. Strict IP Defense: Check if IP is currently locked out
+      if (isIpBlocked(clientIp)) {
+        const details = getBlockDetails(clientIp);
+        const mins = details ? details.remainingMinutes : 15;
+        const remainingSeconds = details ? details.remainingSeconds : mins * 60;
+        return res.status(HttpStatusCodes.FORBIDDEN).json({
+          success: false,
+          blocked: true,
+          message: `You have tried too many times. Your IP is blocked for ${details?.formattedDuration || `${mins} min`}. Please try again later.`,
+          code: 'IP_BLOCKED',
+          reason: details?.reason || 'BRUTE_FORCE_PREVENTION',
+          remainingMinutes: mins,
+          remainingSeconds,
+          blockedUntil: details?.blockedUntil || (Date.now() + mins * 60 * 1000),
+          tier: details?.tier || 1
+        });
+      }
+
+      // 2. Anti-IP-Hopping Defense: Check if this target account is locked across IPs
       if (email) {
         const lockDetails = getAccountLockDetails(email);
         if (lockDetails) {
           return res.status(HttpStatusCodes.FORBIDDEN).json({
             success: false,
+            blocked: true,
             message: `Account Locked: This account has been temporarily locked for ${lockDetails.formattedDuration} due to repeated failed attempts across multiple locations. Please try again later.`,
             code: 'ACCOUNT_LOCKED',
             reason: lockDetails.reason,
@@ -250,7 +272,23 @@ export const authController = {
       const user = await userModel.findByEmail(email);
 
       if (!user) {
-        recordFailedLogin(getClientIp(req), email);
+        recordFailedLogin(clientIp, email);
+        if (isIpBlocked(clientIp)) {
+          const details = getBlockDetails(clientIp);
+          const mins = details ? details.remainingMinutes : 15;
+          const remainingSeconds = details ? details.remainingSeconds : mins * 60;
+          return res.status(HttpStatusCodes.FORBIDDEN).json({
+            success: false,
+            blocked: true,
+            message: `You have tried too many times. Your IP is blocked for ${details?.formattedDuration || `${mins} min`}. Please try again later.`,
+            code: 'IP_BLOCKED',
+            reason: details?.reason || 'BRUTE_FORCE_PREVENTION',
+            remainingMinutes: mins,
+            remainingSeconds,
+            blockedUntil: details?.blockedUntil || (Date.now() + mins * 60 * 1000),
+            tier: details?.tier || 1
+          });
+        }
         return next(
           new AppError(
             'No account found with this email address.',
@@ -288,7 +326,23 @@ export const authController = {
 
       if (!passwordMatched) {
         // Record failed attempt on both IP and Target Account!
-        recordFailedLogin(getClientIp(req), email);
+        recordFailedLogin(clientIp, email);
+        if (isIpBlocked(clientIp)) {
+          const details = getBlockDetails(clientIp);
+          const mins = details ? details.remainingMinutes : 15;
+          const remainingSeconds = details ? details.remainingSeconds : mins * 60;
+          return res.status(HttpStatusCodes.FORBIDDEN).json({
+            success: false,
+            blocked: true,
+            message: `You have tried too many times. Your IP is blocked for ${details?.formattedDuration || `${mins} min`}. Please try again later.`,
+            code: 'IP_BLOCKED',
+            reason: details?.reason || 'BRUTE_FORCE_PREVENTION',
+            remainingMinutes: mins,
+            remainingSeconds,
+            blockedUntil: details?.blockedUntil || (Date.now() + mins * 60 * 1000),
+            tier: details?.tier || 1
+          });
+        }
         return next(
           new AppError(
             'Wrong password. Please check your password and try again.',

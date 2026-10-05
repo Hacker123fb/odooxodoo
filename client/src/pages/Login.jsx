@@ -51,15 +51,17 @@ export const Login = () => {
                              (typeof result.error === 'string' && result.error.toLowerCase().includes('ip is blocked'));
 
       if (isExplicitBlock) {
-        sessionStorage.setItem('lockout_info', JSON.stringify({
+        const lockData = {
           message: result.error || 'You have tried too many times. Your IP is blocked.',
           remainingMinutes: result.remainingMinutes || 15,
           remainingSeconds: result.remainingSeconds || 900,
           blockedUntil: result.blockedUntil || (Date.now() + 15 * 60 * 1000),
           reason: result.reason || 'BRUTE_FORCE_PREVENTION',
           timestamp: Date.now()
-        }));
-        navigate('/blocked');
+        };
+        sessionStorage.setItem('lockout_info', JSON.stringify(lockData));
+        localStorage.setItem('lockout_info', JSON.stringify(lockData));
+        window.dispatchEvent(new Event('lockout_changed'));
         return;
       }
 

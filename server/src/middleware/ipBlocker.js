@@ -47,22 +47,21 @@ export const getClientIp = (req) => {
 };
 
 /**
- * Checks if an IP is a private loopback, local development, or cloud internal proxy gateway IP.
- * Crucial: Localhost and internal reverse proxy IPs MUST NEVER be blocked globally!
+ * Checks if an IP is exempted from IP blocking.
+ * Strict Mode: By default, ALL IPs (including localhost/local dev) are strictly defended.
+ * An environment override BYPASS_LOCAL_IP_BLOCKING=true can be provided if needed.
  */
 export const isPrivateOrLoopbackIp = (ip) => {
-  if (!ip) return true;
-  const cleanIp = ip.replace(/^::ffff:/, '').trim();
-  return (
-    cleanIp === '127.0.0.1' ||
-    cleanIp === '::1' ||
-    cleanIp === 'localhost' ||
-    cleanIp.startsWith('10.') ||
-    cleanIp.startsWith('192.168.') ||
-    cleanIp.startsWith('fc00:') ||
-    cleanIp.startsWith('fe80:') ||
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(cleanIp)
-  );
+  if (!ip) return false;
+  if (process.env.BYPASS_LOCAL_IP_BLOCKING === 'true') {
+    const cleanIp = ip.replace(/^::ffff:/, '').trim();
+    return (
+      cleanIp === '127.0.0.1' ||
+      cleanIp === '::1' ||
+      cleanIp === 'localhost'
+    );
+  }
+  return false;
 };
 
 /**

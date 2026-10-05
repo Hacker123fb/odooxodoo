@@ -264,10 +264,17 @@ axiosInstance.interceptors.response.use(
 
       try {
         sessionStorage.setItem('lockout_info', JSON.stringify(lockoutData));
+        localStorage.setItem('lockout_info', JSON.stringify(lockoutData));
       } catch (e) {}
       
-      if (typeof window !== 'undefined' && window.location.pathname !== '/blocked') {
-        window.location.replace('/blocked');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('lockout_changed'));
+
+        // If caller is currently on a protected route, route them to /login (which directly displays the blocked UI)
+        const publicAuthPaths = ['/login', '/register', '/verify-otp', '/forgot-password', '/blocked'];
+        if (!publicAuthPaths.includes(window.location.pathname)) {
+          window.location.replace('/login');
+        }
       }
     }
 

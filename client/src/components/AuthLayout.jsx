@@ -1,43 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { FiSun, FiMoon } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { authService } from '../api/apiService.js';
+import BlockedCard from './common/BlockedCard.jsx';
 
 /**
  * Executive Enterprise Layout for Auth Portals
  * Clean, authoritative corporate aesthetic with active IP lockout gatekeeper.
- * Blocked IPs are prohibited from accessing login/register views completely.
+ * If IP is blocked, it shows the Blocked lockout interface directly in the login portal
+ * without redirecting away or altering the URL path.
  */
 export const AuthLayout = () => {
   const { isAuthenticated } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const [checkingLockout, setCheckingLockout] = useState(true);
-  const [isBlocked, setIsBlocked] = useState(false);
+
+  // Evaluate isBlocked SYNCHRONOUSLY from session/local storage so there is ZERO flicker or delay
+  const [isBlocked, setIsBlocked] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('lockout_info') || localStorage.getItem('lockout_info');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      if (parsed?.blockedUntil && Date.now() < parsed.blockedUntil) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
+  const [checkingLockout, setCheckingLockout] = useState(() => !isBlocked);
 
   useEffect(() => {
     let isMounted = true;
+
     const verifyIpLockout = async () => {
-      // Query backend to verify if client IP is currently blocked
       try {
         const res = await authService.getIpStatus();
         if (isMounted) {
           if (res?.blocked) {
             const remainingSeconds = res.remainingSeconds || ((res.remainingMinutes || 15) * 60);
             const blockedUntil = res.blockedUntil || (Date.now() + remainingSeconds * 1000);
-            sessionStorage.setItem('lockout_info', JSON.stringify({
+            const lockData = {
               message: res.message || 'You have tried too many times. Your IP is blocked.',
               remainingMinutes: res.remainingMinutes || 15,
               remainingSeconds,
               blockedUntil,
               reason: res.reason || 'BRUTE_FORCE_PREVENTION',
               timestamp: Date.now()
-            }));
+            };
+            sessionStorage.setItem('lockout_info', JSON.stringify(lockData));
+            localStorage.setItem('lockout_info', JSON.stringify(lockData));
             setIsBlocked(true);
           } else {
-            // Not blocked! Clear any lingering local lockout data
+            // Server confirms not blocked
             sessionStorage.removeItem('lockout_info');
+            localStorage.removeItem('lockout_info');
             setIsBlocked(false);
           }
         }
@@ -46,6 +66,7 @@ export const AuthLayout = () => {
           if (isMounted) setIsBlocked(true);
         } else {
           sessionStorage.removeItem('lockout_info');
+          localStorage.removeItem('lockout_info');
           if (isMounted) setIsBlocked(false);
         }
       } finally {
@@ -56,17 +77,33 @@ export const AuthLayout = () => {
     };
 
     verifyIpLockout();
-    return () => { isMounted = false; };
+
+    // Listen for lockout status changes dispatched within the app or other tabs
+    const handleLockoutChange = () => {
+      const raw = sessionStorage.getItem('lockout_info') || localStorage.getItem('lockout_info');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed?.blockedUntil && Date.now() < parsed.blockedUntil) {
+            setIsBlocked(true);
+            return;
+          }
+        } catch {}
+      }
+      setIsBlocked(false);
+    };
+
+    window.addEventListener('lockout_changed', handleLockoutChange);
+    window.addEventListener('storage', handleLockoutChange);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('lockout_changed', handleLockoutChange);
+      window.removeEventListener('storage', handleLockoutChange);
+    };
   }, []);
 
-  if (isBlocked) {
-    return <Navigate to="/blocked" replace />;
-  }
-
-  // Notice: We do not aggressively bounce with <Navigate to="/dashboard" replace /> here,
-  // allowing browser back-button navigation to work naturally without reload traps.
-
-  if (checkingLockout) {
+  if (checkingLockout && !isBlocked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100/90 dark:bg-[#0B0F17]">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 dark:border-slate-700 border-t-slate-900 dark:border-t-white" />
@@ -94,10 +131,17 @@ export const AuthLayout = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            System Operational
-          </div>
+          {isBlocked ? (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+              Access Restricted
+            </div>
+          ) : (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              System Operational
+            </div>
+          )}
 
           <button
             onClick={toggleTheme}
@@ -110,10 +154,20 @@ export const AuthLayout = () => {
         </div>
       </header>
 
-      {/* Main Centered Authentication Content Area */}
+      {/* Main Centered Content Area: Directly displays BlockedCard on /login when IP is blocked */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-auto">
-        <div className="w-full max-w-[460px]">
-          <Outlet />
+        <div className="w-full max-w-[500px]">
+          {isBlocked ? (
+            <BlockedCard 
+              onCooldownComplete={() => {
+                sessionStorage.removeItem('lockout_info');
+                localStorage.removeItem('lockout_info');
+                setIsBlocked(false);
+              }}
+            />
+          ) : (
+            <Outlet />
+          )}
         </div>
       </main>
 
