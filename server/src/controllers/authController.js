@@ -253,21 +253,7 @@ export const authController = {
         });
       }
 
-      // 2. Anti-IP-Hopping Defense: Check if this target account is locked across IPs
-      if (email) {
-        const lockDetails = getAccountLockDetails(email);
-        if (lockDetails) {
-          return res.status(HttpStatusCodes.FORBIDDEN).json({
-            success: false,
-            blocked: true,
-            message: `Account Locked: This account has been temporarily locked for ${lockDetails.formattedDuration} due to repeated failed attempts across multiple locations. Please try again later.`,
-            code: 'ACCOUNT_LOCKED',
-            reason: lockDetails.reason,
-            remainingMinutes: lockDetails.remainingMinutes,
-            tier: lockDetails.tier
-          });
-        }
-      }
+
 
       const user = await userModel.findByEmail(email);
 

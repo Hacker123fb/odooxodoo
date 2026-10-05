@@ -145,26 +145,26 @@ export const Landing = () => {
     }
   ];
 
-  const benefits = [
+  const coreCapabilities = [
     {
-      metric: '25%',
-      label: 'Average Fuel Cost Reduction',
-      desc: 'Through optimized trip routing and accurate consumption auditing.'
+      icon: FiShield,
+      title: 'Automated Conflict Shield',
+      desc: 'Real-time booking validation prevents vehicle double-allocation and blocks assigning drivers who are already en route or on rest periods.'
     },
     {
-      metric: '40%',
-      label: 'Faster Dispatch Turnaround',
-      desc: 'Automated vehicle and driver readiness checks eliminate manual phone calls.'
+      icon: FiTool,
+      title: 'Proactive Service Scheduling',
+      desc: 'Prevent breakdowns with automated maintenance reminders based on live odometer intervals and calendar service due dates.'
     },
     {
-      metric: '99.9%',
-      label: 'On-Time Service Schedules',
-      desc: 'Proactive maintenance alerts keep vehicles safe and operational on the road.'
+      icon: FaIndianRupeeSign,
+      title: 'Audited Expense Approvals',
+      desc: 'Multi-tier verification for toll receipts, FASTag recharges, and route incidentals with digital document attachments.'
     },
     {
-      metric: '100%',
-      label: 'Paperless Compliance',
-      desc: 'Centralized digital logs for expenses, fuel receipts, and operator licenses.'
+      icon: FiClock,
+      title: 'Tamper-Resistant Odometers',
+      desc: 'Synchronized departure and return mileage logging ensures complete trip distance integrity and accurate fuel efficiency metrics.'
     }
   ];
 
@@ -214,14 +214,14 @@ export const Landing = () => {
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 dark:bg-[#0B0F19]/90 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           
-          {/* Logo & Operational Status */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-slate-900 shadow-md">
-              <FiTruck className="w-5 h-5" />
+          {/* Unified Brand Logo matching Dashboard */}
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 bg-slate-900 dark:bg-white rounded-md flex items-center justify-center font-black text-white dark:text-slate-950 text-xs tracking-wider shadow-xs select-none">
+              TO
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white font-sans">
-                Transit<span className="text-primary-600 dark:text-primary-400">Ops</span>
+              <span className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight font-sans">
+                Transit<span className="text-slate-500 dark:text-slate-400">Ops</span>
               </span>
               <span className="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -233,7 +233,7 @@ export const Landing = () => {
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-400">
             <a href="#features" className="hover:text-slate-950 dark:hover:text-white transition-colors">Features</a>
-            <a href="#benefits" className="hover:text-slate-950 dark:hover:text-white transition-colors">Why TransitOps</a>
+            <a href="#capabilities" className="hover:text-slate-950 dark:hover:text-white transition-colors">Capabilities</a>
             <a href="#security" className="hover:text-slate-950 dark:hover:text-white transition-colors">Security & Trust</a>
             <a href="#faq" className="hover:text-slate-950 dark:hover:text-white transition-colors">FAQ</a>
           </nav>
@@ -435,7 +435,7 @@ export const Landing = () => {
             {/* Bottom summary strip */}
             <div className="px-6 py-3 border-t border-slate-200/70 dark:border-slate-800/80 bg-slate-50/50 dark:bg-[#080C14]/50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
               <span className="flex items-center gap-1.5">
-                <FiCheckCircle className="text-emerald-500 w-3.5 h-3.5" /> 550+ Live Database Records Initialized
+                <FiCheckCircle className="text-emerald-500 w-3.5 h-3.5" /> End-to-End Fleet Management Platform
               </span>
               <span>Currency: INR (₹)</span>
               <span>Security: Zero-Trust RBAC & Lockout Guard</span>
@@ -503,40 +503,43 @@ export const Landing = () => {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          4. MEASURABLE BUSINESS BENEFITS
+          4. OPERATIONAL CAPABILITIES & WORKFLOWS
       ───────────────────────────────────────────────────────────── */}
-      <section id="benefits" className="py-20">
+      <section id="capabilities" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="max-w-3xl mx-auto text-center mb-16">
             <span className="text-xs font-bold uppercase tracking-widest text-primary-600 dark:text-primary-400">
-              Why Logistics Teams Choose Us
+              Operations Architecture
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white mt-2">
-              Deliver More, Spend Less, Stay Compliant
+              Engineered for Real-World Fleet Logistics
             </h2>
             <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400">
-              Real results that make an immediate impact on your bottom line.
+              Reliable, automated workflows that keep vehicles moving, operators compliant, and operational costs transparent.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {benefits.map((b, i) => (
-              <div
-                key={i}
-                className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center space-y-2 shadow-xs"
-              >
-                <div className="text-4xl font-extrabold text-primary-600 dark:text-primary-400 font-mono">
-                  {b.metric}
+            {coreCapabilities.map((c, i) => {
+              const Icon = c.icon;
+              return (
+                <div
+                  key={i}
+                  className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-left space-y-3 shadow-xs hover:border-primary-500/40 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    {c.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {c.desc}
+                  </p>
                 </div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white">
-                  {b.label}
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {b.desc}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
         </div>
@@ -545,49 +548,49 @@ export const Landing = () => {
       {/* ─────────────────────────────────────────────────────────────
           5. GENERAL, REASSURING SECURITY CALLOUT (NON-TECHNICAL)
       ───────────────────────────────────────────────────────────── */}
-      <section id="security" className="py-16 bg-slate-900 text-white relative overflow-hidden">
+      <section id="security" className="py-16 bg-slate-100 dark:bg-slate-900/90 text-slate-900 dark:text-white border-y border-slate-200 dark:border-slate-800 relative overflow-hidden transition-colors">
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-2xl mx-auto text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
               Enterprise Trust & Reliability
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-2 text-white">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-2 text-slate-900 dark:text-white">
               Bank-Grade Security for Your Operations
             </h2>
-            <p className="mt-3 text-slate-300 text-sm sm:text-base leading-relaxed">
+            <p className="mt-3 text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
               We know your fleet data and financial transactions are critical. TransitOps protects your business with multi-layer safeguards so you can operate with total peace of mind.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl p-6 space-y-3 shadow-xs transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <FiLock className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-white">Private & Encrypted</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Private & Encrypted</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 All passwords, receipts, and vehicle telemetry are encrypted with industry-standard protocols. Your operational data is strictly private and never shared.
               </p>
             </div>
 
-            <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl p-6 space-y-3 shadow-xs transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                 <FiShield className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-white">Staff Access Controls</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Staff Access Controls</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 Assign customized roles to your team. Ensure drivers, dispatchers, mechanics, and accountants only see the records relevant to their daily responsibilities.
               </p>
             </div>
 
-            <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl p-6 space-y-3 shadow-xs transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <FiActivity className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-white">24/7 Cloud Reliability</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">24/7 Cloud Reliability</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 Engineered for continuous uptime with automatic backups and cloud failover, guaranteeing your dispatch board is always accessible when your trucks are moving.
               </p>
             </div>
@@ -636,16 +639,16 @@ export const Landing = () => {
       ───────────────────────────────────────────────────────────── */}
       <section className="pb-24 pt-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-slate-900 dark:bg-slate-950 border border-slate-800 rounded-3xl p-8 sm:p-12 text-center text-white relative overflow-hidden shadow-xl">
+          <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center text-slate-900 dark:text-white relative overflow-hidden shadow-xl transition-colors">
             
             <div className="relative z-10 max-w-2xl mx-auto">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary-500/20 text-primary-300 border border-primary-500/30 inline-block mb-4">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary-500/10 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300 border border-primary-500/20 dark:border-primary-500/30 inline-block mb-4">
                 Enterprise Operations Portal
               </span>
-              <h3 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
+              <h3 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                 Ready to Upgrade Your Fleet Management?
               </h3>
-              <p className="mt-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="mt-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                 Sign in with your staff credentials or register your organization to experience intuitive, automated fleet logistics today.
               </p>
 
@@ -664,7 +667,7 @@ export const Landing = () => {
                 <Button
                   variant="outline"
                   onClick={() => handleAuthNavigation('/register')}
-                  className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-white border-slate-700 hover:bg-slate-800"
+                  className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-slate-700 dark:text-white border-slate-300 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors"
                   id="cta-bottom-register-btn"
                 >
                   Create Staff Account
@@ -683,18 +686,18 @@ export const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 bg-slate-900 dark:bg-white rounded-md flex items-center justify-center font-black text-white dark:text-slate-950 text-xs tracking-wider shadow-xs select-none">
                 TO
               </div>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">
-                TransitOps Smart Logistics
+              <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight font-sans">
+                Transit<span className="text-slate-500 dark:text-slate-400">Ops</span>
               </span>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-6 text-xs">
               <a href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">Features</a>
-              <a href="#benefits" className="hover:text-slate-900 dark:hover:text-white transition-colors">Benefits</a>
+              <a href="#capabilities" className="hover:text-slate-900 dark:hover:text-white transition-colors">Capabilities</a>
               <a href="#security" className="hover:text-slate-900 dark:hover:text-white transition-colors">Security</a>
               <Link to="/terms" className="font-semibold text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white transition-colors underline underline-offset-4">
                 Terms and Conditions

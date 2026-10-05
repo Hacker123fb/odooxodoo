@@ -11,7 +11,7 @@ import { authService } from '../../api/apiService.js';
 export const BlockedCard = ({ onCooldownComplete = null }) => {
   const navigate = useNavigate();
 
-  const [lockoutData] = useState(() => {
+  const [lockoutData, setLockoutData] = useState(() => {
     try {
       const saved = sessionStorage.getItem('lockout_info') || localStorage.getItem('lockout_info');
       return saved ? JSON.parse(saved) : null;
@@ -20,21 +20,88 @@ export const BlockedCard = ({ onCooldownComplete = null }) => {
     }
   });
 
-  // Calculate initial seconds remaining
+  // Calculate initial seconds remaining strictly from blockedUntil timestamp
   const getInitialSeconds = () => {
-    if (lockoutData?.blockedUntil) {
-      const diffSecs = Math.ceil((lockoutData.blockedUntil - Date.now()) / 1000);
-      return Math.max(0, diffSecs);
+    try {
+      const raw = sessionStorage.getItem('lockout_info') || localStorage.getItem('lockout_info');
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data?.blockedUntil) {
+          const until = typeof data.blockedUntil === 'number' ? data.blockedUntil : new Date(data.blockedUntil).getTime();
+          if (!isNaN(until)) {
+            const diffSecs = Math.ceil((until - Date.now()) / 1000);
+            return Math.max(0, diffSecs);
+          }
+        }
+        if (typeof data?.remainingSeconds === 'number') {
+          return Math.max(0, data.remainingSeconds);
+        }
+        if (typeof data?.remainingMinutes === 'number') {
+          return Math.max(0, data.remainingMinutes * 60);
+        }
+      }
+    } catch {
+      // fallback
     }
-    const mins = lockoutData?.remainingMinutes || 15;
-    return mins * 60;
+    return 15 * 60;
   };
 
   const [secondsRemaining, setSecondsRemaining] = useState(getInitialSeconds);
   const [isCooldownComplete, setIsCooldownComplete] = useState(() => getInitialSeconds() <= 0);
   const [isUnblocking, setIsUnblocking] = useState(false);
 
-  // Active countdown timer effect (ticks down cleanly without erratic network redirects)
+  // Sync strictly with authoritative server IP status on component mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchFreshStatus = async () => {
+      try {
+        const res = await authService.getIpStatus();
+        if (isMounted) {
+          if (res?.blocked) {
+            let diffSecs = 0;
+            if (res.blockedUntil) {
+              const until = typeof res.blockedUntil === 'number' ? res.blockedUntil : new Date(res.blockedUntil).getTime();
+              if (!isNaN(until)) {
+                diffSecs = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+              }
+            }
+            if (!diffSecs && res.remainingSeconds) {
+              diffSecs = Math.max(0, res.remainingSeconds);
+            }
+            if (!diffSecs && res.remainingMinutes) {
+              diffSecs = Math.max(0, res.remainingMinutes * 60);
+            }
+
+            setSecondsRemaining(diffSecs);
+            setIsCooldownComplete(diffSecs <= 0);
+            const lockData = {
+              message: res.message || 'You have tried too many times. Your IP is blocked.',
+              remainingMinutes: Math.max(1, Math.ceil(diffSecs / 60)),
+              remainingSeconds: diffSecs,
+              blockedUntil: res.blockedUntil || (Date.now() + diffSecs * 1000),
+              reason: res.reason || 'BRUTE_FORCE_PREVENTION',
+              timestamp: Date.now()
+            };
+            setLockoutData(lockData);
+            sessionStorage.setItem('lockout_info', JSON.stringify(lockData));
+            localStorage.setItem('lockout_info', JSON.stringify(lockData));
+          } else if (res && !res.blocked) {
+            sessionStorage.removeItem('lockout_info');
+            localStorage.removeItem('lockout_info');
+            setIsCooldownComplete(true);
+            setSecondsRemaining(0);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync lockout status from server:', err.message);
+      }
+    };
+
+    fetchFreshStatus();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Active countdown timer effect (ticks down cleanly second by second)
   useEffect(() => {
     if (secondsRemaining <= 0) {
       setIsCooldownComplete(true);
@@ -69,6 +136,7 @@ export const BlockedCard = ({ onCooldownComplete = null }) => {
     return `${pad(mins)}:${pad(secs)}`;
   };
 
+  const currentWindowMinutes = Math.max(1, Math.ceil(secondsRemaining / 60));
   const customMessage = lockoutData?.message || 'You have tried too many times. Your IP address is temporarily blocked.';
 
   const handleProceed = async () => {
@@ -129,7 +197,7 @@ export const BlockedCard = ({ onCooldownComplete = null }) => {
         </div>
       </div>
 
-      {/* Details Card */}
+      {/* Synchronized Details Card */}
       <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-[#0E1422] border border-slate-200 dark:border-slate-800 text-left text-xs space-y-2">
         <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
           <span className="font-semibold flex items-center gap-1.5">
@@ -137,7 +205,7 @@ export const BlockedCard = ({ onCooldownComplete = null }) => {
             Cooldown Window:
           </span>
           <span className="font-bold text-slate-900 dark:text-white">
-            ~{lockoutData?.remainingMinutes || 15} minutes
+            ~{currentWindowMinutes} minute{currentWindowMinutes === 1 ? '' : 's'}
           </span>
         </div>
 
@@ -177,15 +245,6 @@ export const BlockedCard = ({ onCooldownComplete = null }) => {
             </p>
           </div>
         )}
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full flex items-center justify-center gap-2 text-xs py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-          onClick={() => navigate('/')}
-        >
-          Return to Landing Page
-        </Button>
       </div>
     </div>
   );

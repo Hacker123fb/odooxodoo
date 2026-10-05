@@ -257,24 +257,9 @@ export const recordFailedLogin = (ip, email = null) => {
   const now = Date.now();
   const cleanIp = ip ? ip.replace(/^::ffff:/, '').trim() : null;
 
-  // 1. Record on IP (never track or block loopback/internal proxy IPs)
-  if (cleanIp && !isPrivateOrLoopbackIp(cleanIp)) {
-    const ipEntry = ipFailedLoginsMap.get(cleanIp) || { count: 0, windowStart: now };
-    if (now - ipEntry.windowStart > CONFIG.FAILED_WINDOW_MS) {
-      ipEntry.count = 1;
-      ipEntry.windowStart = now;
-    } else {
-      ipEntry.count += 1;
-    }
-    ipFailedLoginsMap.set(cleanIp, ipEntry);
-    console.warn(`[SECURITY] Failed login for IP ${cleanIp} (${ipEntry.count}/${CONFIG.MAX_FAILED_ATTEMPTS})`);
+  let isDistributedIpHopping = false;
 
-    if (ipEntry.count >= CONFIG.MAX_FAILED_ATTEMPTS) {
-      blockIpProgressive(cleanIp, 'BRUTE_FORCE_FAILED_LOGINS');
-    }
-  }
-
-  // 2. Record on Account (Regardless of what IP was used)
+  // 1. Detect Distributed Brute Force / IP-Hopping against target account
   if (email) {
     const cleanEmail = email.toLowerCase().trim();
     const acctEntry = accountFailedLoginsMap.get(cleanEmail) || { count: 0, windowStart: now, ips: new Set() };
@@ -287,10 +272,38 @@ export const recordFailedLogin = (ip, email = null) => {
       if (cleanIp) acctEntry.ips.add(cleanIp);
     }
     accountFailedLoginsMap.set(cleanEmail, acctEntry);
-    console.warn(`[SECURITY] Failed login for Account ${cleanEmail} (${acctEntry.count}/${CONFIG.MAX_FAILED_ATTEMPTS}) from ${acctEntry.ips.size} IP(s)`);
+    console.warn(`[SECURITY] Failed login for Account ${cleanEmail} (Total fails: ${acctEntry.count}, Unique IPs: ${acctEntry.ips.size})`);
 
-    if (acctEntry.count >= CONFIG.MAX_FAILED_ATTEMPTS) {
-      lockAccountProgressive(cleanEmail, `FAILED_ATTEMPTS_EXCEEDED_ACROSS_${acctEntry.ips.size}_IPS`);
+    // If 2 or more distinct IPs fail passwords on this account within the window,
+    // trigger immediate defense against IP-hopping attackers!
+    if (acctEntry.ips.size >= 2 || acctEntry.count >= 4) {
+      isDistributedIpHopping = true;
+      console.warn(`[SECURITY] Distributed IP-hopping attack detected targeting ${cleanEmail}! Aggressive IP blocking engaged across ${acctEntry.ips.size} IPs.`);
+      // Proactively block all IPs that attempted attacks on this account
+      for (const attackingIp of acctEntry.ips) {
+        if (!isPrivateOrLoopbackIp(attackingIp)) {
+          blockIpProgressive(attackingIp, 'DISTRIBUTED_IP_HOPPING_ATTACK');
+        }
+      }
+    }
+  }
+
+  // 2. Defend and Block Attacking IP (block IP, not account)
+  if (cleanIp && !isPrivateOrLoopbackIp(cleanIp)) {
+    const ipEntry = ipFailedLoginsMap.get(cleanIp) || { count: 0, windowStart: now };
+    if (now - ipEntry.windowStart > CONFIG.FAILED_WINDOW_MS) {
+      ipEntry.count = 1;
+      ipEntry.windowStart = now;
+    } else {
+      ipEntry.count += 1;
+    }
+    ipFailedLoginsMap.set(cleanIp, ipEntry);
+    console.warn(`[SECURITY] Failed login for IP ${cleanIp} (${ipEntry.count}/${CONFIG.MAX_FAILED_ATTEMPTS})`);
+
+    // Block if standard threshold reached OR if participating in an IP-hopping attack
+    if (ipEntry.count >= CONFIG.MAX_FAILED_ATTEMPTS || (isDistributedIpHopping && ipEntry.count >= 1)) {
+      const reason = isDistributedIpHopping ? 'DISTRIBUTED_IP_HOPPING_ATTACK' : 'BRUTE_FORCE_FAILED_LOGINS';
+      blockIpProgressive(cleanIp, reason);
     }
   }
 };
