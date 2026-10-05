@@ -2,6 +2,7 @@ import vehicleModel from '../models/vehicle.model.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import pool from '../config/db.js';
+import { invalidateDashboardCache } from './dashboard.service.js';
 
 // Maps UI status to DB status ENUM
 const mapUiStatusToDb = (uiStatus) => {
@@ -82,6 +83,7 @@ export const vehicleService = {
       createdBy: creatorId
     });
 
+    invalidateDashboardCache();
     return this.getVehicleById(vehicleId);
   },
 
@@ -161,6 +163,7 @@ export const vehicleService = {
       status: dbStatus
     });
 
+    invalidateDashboardCache();
     return this.getVehicleById(id);
   },
 
@@ -190,6 +193,7 @@ export const vehicleService = {
     }
 
     await vehicleModel.delete(id);
+    invalidateDashboardCache();
     return true;
   },
 

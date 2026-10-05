@@ -46,6 +46,21 @@ export const pgDbInit = async () => {
       console.warn('[DATABASE] Status constraint check note:', migErr.message);
     }
 
+    // Ensure read-heavy search indexes are created (write-prone columns like odometer are deliberately unindexed)
+    try {
+      await connection.query(`
+        CREATE INDEX IF NOT EXISTS idx_drivers_full_name ON drivers(full_name);
+        CREATE INDEX IF NOT EXISTS idx_trips_locations ON trips(source_location, destination_location);
+        CREATE INDEX IF NOT EXISTS idx_expenses_receipt_number ON expenses(receipt_number);
+        CREATE INDEX IF NOT EXISTS idx_fuel_receipt_number ON fuel_logs(receipt_number);
+        CREATE INDEX IF NOT EXISTS idx_vehicle_models_name ON vehicle_models(name);
+        CREATE INDEX IF NOT EXISTS idx_vehicle_makes_name ON vehicle_makes(name);
+      `);
+      console.log('[DATABASE] Verified read-heavy search indexes.');
+    } catch (idxErr) {
+      console.warn('[DATABASE] Search indexes note:', idxErr.message);
+    }
+
     if (fs.existsSync(seedPath)) {
       const seedSql = fs.readFileSync(seedPath, 'utf8');
       try {

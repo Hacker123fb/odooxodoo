@@ -7,7 +7,7 @@ export const driverModel = {
   /**
    * Retrieves all drivers matching optional filters and search patterns
    */
-  async findAll({ search = '', status = '' } = {}) {
+  async findAll({ search = '', status = '', page, limit } = {}) {
     let sql = `
       SELECT d.*, 
              u.full_name AS creator_name
@@ -29,11 +29,33 @@ export const driverModel = {
       params.push(status);
     }
 
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+    if (page !== undefined || limit !== undefined) {
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
+      const offset = (pageNum - 1) * limitNum;
+
+      const countSql = `SELECT COUNT(*) AS total FROM drivers d ${whereClause}`;
+      const [countRows] = await pool.query(countSql, params);
+      const total = parseInt(countRows[0]?.total || 0, 10);
+      const totalPages = Math.ceil(total / limitNum) || 1;
+
+      sql += whereClause + ' ORDER BY d.created_at DESC LIMIT ? OFFSET ?';
+      const [rows] = await pool.query(sql, [...params, limitNum, offset]);
+
+      return {
+        rows,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages
+        }
+      };
     }
 
-    sql += ' ORDER BY d.created_at DESC';
+    sql += whereClause + ' ORDER BY d.created_at DESC LIMIT 100';
 
     const [rows] = await pool.query(sql, params);
     return rows;

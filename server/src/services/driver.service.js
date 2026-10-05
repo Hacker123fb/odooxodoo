@@ -2,6 +2,7 @@ import driverModel from '../models/driver.model.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import pool from '../config/db.js';
+import { invalidateDashboardCache } from './dashboard.service.js';
 
 // Maps UI status labels to DB ENUM values
 const mapUiStatusToDb = (uiStatus) => {
@@ -55,8 +56,9 @@ export const driverService = {
    * Fetches lists of drivers and deserializes notes/safety scores
    */
   async getDrivers(filters) {
-    const rows = await driverModel.findAll(filters);
-    return rows.map(d => {
+    const result = await driverModel.findAll(filters);
+    const rows = Array.isArray(result) ? result : (result.rows || []);
+    const mapped = rows.map(d => {
       const { safetyScore, userNotes } = deserializeNotes(d.notes);
       return {
         ...d,
@@ -65,6 +67,11 @@ export const driverService = {
         ui_status: mapDbStatusToUi(d.status)
       };
     });
+
+    if (result && result.pagination) {
+      return { data: mapped, pagination: result.pagination };
+    }
+    return mapped;
   },
 
   /**
@@ -138,6 +145,7 @@ export const driverService = {
       createdBy: creatorId
     });
 
+    invalidateDashboardCache();
     return this.getDriverById(driverId);
   },
 
@@ -215,6 +223,7 @@ export const driverService = {
       notes: serializedNotes
     });
 
+    invalidateDashboardCache();
     return this.getDriverById(id);
   },
 
@@ -239,6 +248,7 @@ export const driverService = {
     }
 
     await driverModel.delete(id);
+    invalidateDashboardCache();
     return true;
   }
 };

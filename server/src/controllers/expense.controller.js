@@ -6,12 +6,15 @@ import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 export const expenseController = {
   /**
    * GET /api/v1/expenses
-   * List all expenses with filters
+   * List all expenses with filters and pagination
    */
   getAll: asyncHandler(async (req, res) => {
-    const { search = '', category = '', status = '', paymentMethod = '', vehicleId = '', tripId = '', startDate = '', endDate = '' } = req.query;
-    const records = await expenseService.getRecords({ search, category, status, paymentMethod, vehicleId, tripId, startDate, endDate });
-    return res.ok(records, 'Expense records retrieved successfully.');
+    const { search = '', category = '', status = '', paymentMethod = '', vehicleId = '', tripId = '', startDate = '', endDate = '', page = 1, limit = 25 } = req.query;
+    const result = await expenseService.getRecords({ search, category, status, paymentMethod, vehicleId, tripId, startDate, endDate, page, limit });
+    if (result && result.pagination) {
+      return res.ok(result.data, 'Expense records retrieved successfully.', result.pagination);
+    }
+    return res.ok(result, 'Expense records retrieved successfully.');
   }),
 
   /**

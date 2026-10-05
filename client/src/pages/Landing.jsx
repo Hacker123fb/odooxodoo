@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { authService } from '../api/apiService.js';
+import { prefetchRoute, prefetchOnHover } from '../utils/prefetch.js';
 import Button from '../components/common/Button.jsx';
 import Modal from '../components/common/Modal.jsx';
 import {
@@ -80,8 +81,21 @@ export const Landing = () => {
       }
     };
     verifyIp();
-    return () => { isMounted = false; };
-  }, []);
+
+    // Idle background prefetch for zero-delay navigation when user clicks portal or register
+    const prefetchTimer = setTimeout(() => {
+      prefetchRoute('/login');
+      prefetchRoute('/register');
+      if (isAuthenticated) {
+        prefetchRoute('/dashboard');
+      }
+    }, 150);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(prefetchTimer);
+    };
+  }, [isAuthenticated]);
 
   const handleAuthNavigation = (targetPath = '/login') => {
     if (isBlocked) {
@@ -255,6 +269,7 @@ export const Landing = () => {
               <Button
                 variant="primary"
                 onClick={() => handleAuthNavigation('/dashboard')}
+                {...prefetchOnHover('/dashboard')}
                 className="flex items-center gap-2 text-xs font-semibold px-4 py-2"
                 id="landing-goto-dashboard-btn"
               >
@@ -266,6 +281,7 @@ export const Landing = () => {
                 <Button
                   variant="outline"
                   onClick={() => handleAuthNavigation('/login')}
+                  {...prefetchOnHover('/login')}
                   className="text-xs font-semibold px-3.5 py-2 hidden sm:inline-flex"
                   id="landing-signin-outline-btn"
                 >
@@ -274,6 +290,7 @@ export const Landing = () => {
                 <Button
                   variant="primary"
                   onClick={() => handleAuthNavigation('/login')}
+                  {...prefetchOnHover('/login')}
                   className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2"
                   id="landing-portal-access-btn"
                 >
@@ -320,6 +337,7 @@ export const Landing = () => {
             <Button
               variant="primary"
               onClick={() => handleAuthNavigation('/login')}
+              {...prefetchOnHover('/login')}
               className="w-full sm:w-auto px-8 py-3.5 text-sm font-semibold flex items-center justify-center gap-2.5 shadow-md"
               id="hero-launch-portal-btn"
             >
@@ -331,6 +349,7 @@ export const Landing = () => {
             <Button
               variant="outline"
               onClick={() => handleAuthNavigation('/register')}
+              {...prefetchOnHover('/register')}
               className="w-full sm:w-auto px-7 py-3.5 text-sm font-semibold flex items-center justify-center gap-2"
               id="hero-register-btn"
             >
@@ -656,6 +675,7 @@ export const Landing = () => {
                 <Button
                   variant="primary"
                   onClick={() => handleAuthNavigation('/login')}
+                  {...prefetchOnHover('/login')}
                   className="w-full sm:w-auto px-8 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 shadow-lg"
                   id="cta-bottom-signin-btn"
                 >
@@ -667,6 +687,7 @@ export const Landing = () => {
                 <Button
                   variant="outline"
                   onClick={() => handleAuthNavigation('/register')}
+                  {...prefetchOnHover('/register')}
                   className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-slate-700 dark:text-white border-slate-300 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors"
                   id="cta-bottom-register-btn"
                 >

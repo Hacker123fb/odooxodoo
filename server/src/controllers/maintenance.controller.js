@@ -6,12 +6,15 @@ import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 export const maintenanceController = {
   /**
    * GET /api/v1/maintenance
-   * List all maintenance logs with filters
+   * List all maintenance logs with filters and pagination
    */
   getAll: asyncHandler(async (req, res) => {
-    const { search = '', status = '', vehicleId = '', maintenanceType = '', startDate = '', endDate = '' } = req.query;
-    const records = await maintenanceService.getRecords({ search, status, vehicleId, maintenanceType, startDate, endDate });
-    return res.ok(records, 'Maintenance records retrieved successfully.');
+    const { search = '', status = '', vehicleId = '', maintenanceType = '', startDate = '', endDate = '', page = 1, limit = 25 } = req.query;
+    const result = await maintenanceService.getRecords({ search, status, vehicleId, maintenanceType, startDate, endDate, page, limit });
+    if (result && result.pagination) {
+      return res.ok(result.data, 'Maintenance records retrieved successfully.', result.pagination);
+    }
+    return res.ok(result, 'Maintenance records retrieved successfully.');
   }),
 
   /**

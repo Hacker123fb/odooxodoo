@@ -2,6 +2,7 @@ import expenseModel from '../models/expense.model.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import pool from '../config/db.js';
+import { invalidateDashboardCache } from './dashboard.service.js';
 
 // Maps UI category labels to database ENUM values
 const mapCategoryToDb = (uiCategory) => {
@@ -156,7 +157,14 @@ export const expenseService = {
    * Fetches lists of expense records
    */
   async getRecords(filters) {
-    const rows = await expenseModel.findAll(filters);
+    const res = await expenseModel.findAll(filters);
+    if (res && res.rows && res.pagination) {
+      return {
+        data: res.rows.map(formatRow),
+        pagination: res.pagination
+      };
+    }
+    const rows = Array.isArray(res) ? res : (res?.rows || []);
     return rows.map(formatRow);
   },
 
@@ -252,6 +260,7 @@ export const expenseService = {
       );
     }
 
+    invalidateDashboardCache();
     return this.getRecordById(recordId);
   },
 
@@ -345,6 +354,7 @@ export const expenseService = {
       notes: serializedNotes
     });
 
+    invalidateDashboardCache();
     return this.getRecordById(id);
   },
 
@@ -358,6 +368,7 @@ export const expenseService = {
     }
 
     await expenseModel.delete(id);
+    invalidateDashboardCache();
     return true;
   },
 

@@ -352,6 +352,11 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_active ON vehicles(id, registration_numb
 CREATE INDEX IF NOT EXISTS idx_drivers_available ON drivers(id, full_name, phone) WHERE status = 'AVAILABLE';
 -- Managers reviewing pending expenses
 CREATE INDEX IF NOT EXISTS idx_expenses_pending ON expenses(id, amount, expense_date) WHERE payment_status = 'PENDING';
--- Open maintenance logs requiring attention
-CREATE INDEX IF NOT EXISTS idx_maintenance_open ON maintenance_logs(vehicle_id, status) WHERE status IN ('SCHEDULED', 'IN_PROGRESS');
+-- 8. Read-Heavy Search Indexes (Write-Prone Columns like current_odometer Intentionally Excluded)
+CREATE INDEX IF NOT EXISTS idx_drivers_full_name ON drivers(full_name);
+CREATE INDEX IF NOT EXISTS idx_trips_locations ON trips(source_location, destination_location);
+CREATE INDEX IF NOT EXISTS idx_expenses_receipt_number ON expenses(receipt_number);
+CREATE INDEX IF NOT EXISTS idx_fuel_receipt_number ON fuel_logs(receipt_number);
+CREATE INDEX IF NOT EXISTS idx_vehicle_models_name ON vehicle_models(name);
+CREATE INDEX IF NOT EXISTS idx_vehicle_makes_name ON vehicle_makes(name);
 

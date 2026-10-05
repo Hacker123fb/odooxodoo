@@ -2,6 +2,7 @@ import tripModel from '../models/trip.model.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import pool from '../config/db.js';
+import { invalidateDashboardCache } from './dashboard.service.js';
 
 // JSON serializer for estimated fuel and passenger/cargo text inside notes
 const serializeNotes = (estimatedFuel = null, cargoDesc = '', userNotes = '') => {
@@ -132,13 +133,14 @@ export const tripService = {
    * Fetches lists of trips and deserializes notes to camelCase
    */
   async getTrips(filters) {
-    const rows = await tripModel.findAll(filters);
-    return rows.map(t => {
+    const result = await tripModel.findAll(filters);
+    const rows = Array.isArray(result) ? result : (result.rows || []);
+    const mapped = rows.map(t => {
       const parsedNotes = deserializeNotes(t.notes);
-      const departureDate = new Date(t.scheduled_departure).toISOString().split('T')[0];
-      const departureTime = new Date(t.scheduled_departure).toTimeString().slice(0, 5);
-      const expectedArrivalDate = new Date(t.scheduled_arrival).toISOString().split('T')[0];
-      const expectedArrivalTime = new Date(t.scheduled_arrival).toTimeString().slice(0, 5);
+      const departureDate = t.scheduled_departure ? new Date(t.scheduled_departure).toISOString().split('T')[0] : '';
+      const departureTime = t.scheduled_departure ? new Date(t.scheduled_departure).toTimeString().slice(0, 5) : '';
+      const expectedArrivalDate = t.scheduled_arrival ? new Date(t.scheduled_arrival).toISOString().split('T')[0] : '';
+      const expectedArrivalTime = t.scheduled_arrival ? new Date(t.scheduled_arrival).toTimeString().slice(0, 5) : '';
 
       return {
         ...t,
@@ -154,6 +156,11 @@ export const tripService = {
         distanceKm: t.distance_km
       };
     });
+
+    if (result && result.pagination) {
+      return { data: mapped, pagination: result.pagination };
+    }
+    return mapped;
   },
 
   /**
@@ -239,6 +246,7 @@ export const tripService = {
       }
 
       await connection.commit();
+      invalidateDashboardCache();
       return this.getTripById(tripId);
 
     } catch (err) {
@@ -364,6 +372,7 @@ export const tripService = {
       });
 
       await connection.commit();
+      invalidateDashboardCache();
       return this.getTripById(id);
 
     } catch (err) {
@@ -396,6 +405,7 @@ export const tripService = {
       await tripModel.delete(id);
 
       await connection.commit();
+      invalidateDashboardCache();
       return true;
 
     } catch (err) {

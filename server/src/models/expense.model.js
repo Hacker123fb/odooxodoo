@@ -7,7 +7,7 @@ export const expenseModel = {
   /**
    * Retrieves all expense records matching optional filters and search patterns
    */
-  async findAll({ search = '', category = '', status = '', paymentMethod = '', vehicleId = '', tripId = '', startDate = '', endDate = '' } = {}) {
+  async findAll({ search = '', category = '', status = '', paymentMethod = '', vehicleId = '', tripId = '', startDate = '', endDate = '', page, limit } = {}) {
     let sql = `
       SELECT e.*,
              v.registration_number AS vehicle_plate,
@@ -49,12 +49,12 @@ export const expenseModel = {
       params.push(paymentMethod);
     }
 
-    if (vehicleId.trim() !== '') {
+    if (vehicleId && vehicleId.toString().trim() !== '') {
       conditions.push('e.vehicle_id = ?');
       params.push(parseInt(vehicleId, 10));
     }
 
-    if (tripId.trim() !== '') {
+    if (tripId && tripId.toString().trim() !== '') {
       conditions.push('e.trip_id = ?');
       params.push(parseInt(tripId, 10));
     }
@@ -69,11 +69,38 @@ export const expenseModel = {
       params.push(endDate);
     }
 
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+    if (page !== undefined || limit !== undefined) {
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
+      const offset = (pageNum - 1) * limitNum;
+
+      const countSql = `
+        SELECT COUNT(*) AS total
+        FROM expenses e
+        LEFT JOIN vehicles v ON e.vehicle_id = v.id
+        ${whereClause}
+      `;
+      const [countRows] = await pool.query(countSql, params);
+      const total = parseInt(countRows[0]?.total || 0, 10);
+      const totalPages = Math.ceil(total / limitNum) || 1;
+
+      sql += whereClause + ' ORDER BY e.expense_date DESC, e.created_at DESC LIMIT ? OFFSET ?';
+      const [rows] = await pool.query(sql, [...params, limitNum, offset]);
+
+      return {
+        rows,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages
+        }
+      };
     }
 
-    sql += ' ORDER BY e.expense_date DESC, e.created_at DESC';
+    sql += whereClause + ' ORDER BY e.expense_date DESC, e.created_at DESC LIMIT 100';
 
     const [rows] = await pool.query(sql, params);
     return rows;

@@ -15,6 +15,7 @@ import {
 } from 'react-icons/fi';
 import { FaIndianRupeeSign } from 'react-icons/fa6';
 import { useAuth } from '../context/AuthContext.jsx';
+import { prefetchRoute } from '../utils/prefetch.js';
 
 /**
  * Responsive Sidebar Navigation with RBAC filtering
@@ -111,6 +112,8 @@ export const Sidebar = ({
             <NavLink
               key={item.name}
               to={item.path}
+              onMouseEnter={() => prefetchRoute(item.path)}
+              onTouchStart={() => prefetchRoute(item.path)}
               onClick={() => {
                 if (window.innerWidth < 768) {
                   toggleSidebar();

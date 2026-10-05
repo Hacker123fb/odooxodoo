@@ -9,9 +9,12 @@ export const tripController = {
    * List trips matching filters
    */
   getAll: asyncHandler(async (req, res) => {
-    const { search = '', status = '', vehicleId = '', driverId = '', startDate = '', endDate = '' } = req.query;
-    const trips = await tripService.getTrips({ search, status, vehicleId, driverId, startDate, endDate });
-    return res.ok(trips, 'Trips retrieved successfully.');
+    const { search = '', status = '', vehicleId = '', driverId = '', startDate = '', endDate = '', page, limit } = req.query;
+    const result = await tripService.getTrips({ search, status, vehicleId, driverId, startDate, endDate, page, limit });
+    if (result && result.pagination) {
+      return res.ok(result.data, 'Trips retrieved successfully.', result.pagination);
+    }
+    return res.ok(result, 'Trips retrieved successfully.');
   }),
 
   /**

@@ -6,12 +6,15 @@ import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 export const fuelController = {
   /**
    * GET /api/v1/fuel
-   * List all fuel logs with filters
+   * List all fuel logs with filters and pagination
    */
   getAll: asyncHandler(async (req, res) => {
-    const { search = '', vehicleId = '', fuelTypeId = '', startDate = '', endDate = '', paymentMethod = '' } = req.query;
-    const records = await fuelService.getRecords({ search, vehicleId, fuelTypeId, startDate, endDate, paymentMethod });
-    return res.ok(records, 'Fuel records retrieved successfully.');
+    const { search = '', vehicleId = '', fuelTypeId = '', startDate = '', endDate = '', paymentMethod = '', page = 1, limit = 25 } = req.query;
+    const result = await fuelService.getRecords({ search, vehicleId, fuelTypeId, startDate, endDate, paymentMethod, page, limit });
+    if (result && result.pagination) {
+      return res.ok(result.data, 'Fuel records retrieved successfully.', result.pagination);
+    }
+    return res.ok(result, 'Fuel records retrieved successfully.');
   }),
 
   /**

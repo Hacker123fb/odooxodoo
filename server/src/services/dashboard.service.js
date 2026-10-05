@@ -109,11 +109,25 @@ const mapExpenseRecord = (row) => ({
   createdAt: row.created_at
 });
 
+// Fast In-Memory Aggregations Cache (5s TTL eliminates heavy multi-query latency on tab navigation)
+let cachedDashboardData = null;
+let lastDashboardFetch = 0;
+const DASHBOARD_CACHE_TTL_MS = 5000;
+
+export const invalidateDashboardCache = () => {
+  cachedDashboardData = null;
+  lastDashboardFetch = 0;
+};
+
 /**
  * Aggregates live fleet, trip, fuel, expense, and maintenance data for the dashboard.
  */
 export const dashboardService = {
-  async getDashboardData() {
+  async getDashboardData(forceFresh = false) {
+    const now = Date.now();
+    if (!forceFresh && cachedDashboardData && (now - lastDashboardFetch < DASHBOARD_CACHE_TTL_MS)) {
+      return cachedDashboardData;
+    }
     const [
       [fleetRows],
       [driverRows],
@@ -363,6 +377,10 @@ export const dashboardService = {
         expenses: recentExpenses.map(mapExpenseRecord)
       }
     };
+
+    cachedDashboardData = result;
+    lastDashboardFetch = Date.now();
+    return result;
   }
 };
 

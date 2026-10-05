@@ -2,6 +2,7 @@ import maintenanceModel from '../models/maintenance.model.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import pool from '../config/db.js';
+import { invalidateDashboardCache } from './dashboard.service.js';
 
 // Maps UI maintenance types to database ENUM values
 const mapUiTypeToDb = (uiType) => {
@@ -99,7 +100,14 @@ export const maintenanceService = {
    * Fetches lists of maintenance records
    */
   async getRecords(filters) {
-    const rows = await maintenanceModel.findAll(filters);
+    const res = await maintenanceModel.findAll(filters);
+    if (res && res.rows && res.pagination) {
+      return {
+        data: res.rows.map(formatRow),
+        pagination: res.pagination
+      };
+    }
+    const rows = Array.isArray(res) ? res : (res?.rows || []);
     return rows.map(formatRow);
   },
 
@@ -224,6 +232,7 @@ export const maintenanceService = {
       }
 
       await connection.commit();
+      invalidateDashboardCache();
       return this.getRecordById(recordId);
 
     } catch (err) {
@@ -356,6 +365,7 @@ export const maintenanceService = {
       }
 
       await connection.commit();
+      invalidateDashboardCache();
       return this.getRecordById(id);
 
     } catch (err) {
@@ -388,6 +398,7 @@ export const maintenanceService = {
       await maintenanceModel.delete(id);
 
       await connection.commit();
+      invalidateDashboardCache();
       return true;
 
     } catch (err) {

@@ -14,7 +14,7 @@ export const Button = ({
   onClick,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.99] cursor-pointer';
+  const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-lg transition-transform duration-75 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.96] active:brightness-90 select-none touch-manipulation cursor-pointer will-change-transform';
   
   const variants = {
     primary: 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-950 focus:ring-slate-900 dark:focus:ring-white shadow-sm',

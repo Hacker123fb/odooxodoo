@@ -9,9 +9,12 @@ export const driverController = {
    * List drivers matching filters
    */
   getAll: asyncHandler(async (req, res) => {
-    const { search = '', status = '' } = req.query;
-    const drivers = await driverService.getDrivers({ search, status });
-    return res.ok(drivers, 'Drivers retrieved successfully.');
+    const { search = '', status = '', page, limit } = req.query;
+    const result = await driverService.getDrivers({ search, status, page, limit });
+    if (result && result.pagination) {
+      return res.ok(result.data, 'Drivers retrieved successfully.', result.pagination);
+    }
+    return res.ok(result, 'Drivers retrieved successfully.');
   }),
 
   /**

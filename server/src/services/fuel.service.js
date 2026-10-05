@@ -2,6 +2,7 @@ import fuelModel from '../models/fuel.model.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import pool from '../config/db.js';
+import { invalidateDashboardCache } from './dashboard.service.js';
 
 // JSON serializer for notes
 const serializeNotes = (fuelStation = '', paymentMethod = 'Cash', remarks = '') => {
@@ -69,7 +70,14 @@ export const fuelService = {
    * Fetches lists of fuel log records
    */
   async getRecords(filters) {
-    const rows = await fuelModel.findAll(filters);
+    const res = await fuelModel.findAll(filters);
+    if (res && res.rows && res.pagination) {
+      return {
+        data: res.rows.map(formatRow),
+        pagination: res.pagination
+      };
+    }
+    const rows = Array.isArray(res) ? res : (res?.rows || []);
     return rows.map(formatRow);
   },
 
@@ -166,6 +174,7 @@ export const fuelService = {
       }
 
       await connection.commit();
+      invalidateDashboardCache();
       return this.getRecordById(recordId);
 
     } catch (err) {
@@ -262,6 +271,7 @@ export const fuelService = {
       }
 
       await connection.commit();
+      invalidateDashboardCache();
       return this.getRecordById(id);
 
     } catch (err) {
@@ -282,6 +292,7 @@ export const fuelService = {
     }
 
     await fuelModel.delete(id);
+    invalidateDashboardCache();
     return true;
   },
 
