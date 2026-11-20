@@ -13,15 +13,19 @@ const Register = lazy(() => import('../pages/auth/Register.jsx'));
 const VerifyOTP = lazy(() => import('../pages/auth/VerifyOTP.jsx'));
 const ForgotPassword = lazy(() => import('../pages/auth/ForgotPassword.jsx'));
 const Blocked = lazy(() => import('../pages/Blocked.jsx'));
-const Dashboard = lazy(() => import('../pages/Dashboard.jsx'));
+import { Dashboard } from '../pages/Dashboard.jsx';
+const AuditLogs = lazy(() => import('../pages/admin/AuditLogs.jsx'));
+
+import { Landing } from '../pages/Landing.jsx';
 
 // Custom Error Pages
 const Unauthorized401 = lazy(() => import('../pages/errors/Unauthorized401.jsx'));
 const Forbidden403 = lazy(() => import('../pages/errors/Forbidden403.jsx'));
 const NotFound404 = lazy(() => import('../pages/errors/NotFound404.jsx'));
-const Landing = lazy(() => import('../pages/Landing.jsx'));
+const TooManyRequests429 = lazy(() => import('../pages/errors/TooManyRequests429.jsx'));
 const Terms = lazy(() => import('../pages/legal/Terms.jsx'));
 const Privacy = lazy(() => import('../pages/legal/Privacy.jsx'));
+const LearnMore = lazy(() => import('../pages/legal/LearnMore.jsx'));
 
 // Vehicles
 const VehicleList = lazy(() => import('../pages/vehicles/VehicleList.jsx'));
@@ -149,7 +153,7 @@ const BlockedIpGuard = ({ children }) => {
 
   // Blocked IP can ONLY see landing page, blocked page, and terms/privacy
   if (isBlocked) {
-    const allowedPaths = ['/', '/landing', '/blocked', '/terms', '/privacy'];
+    const allowedPaths = ['/', '/landing', '/blocked', '/terms', '/privacy', '/learn-more', '/429'];
     if (!allowedPaths.includes(location.pathname)) {
       return <Navigate to="/blocked" replace />;
     }
@@ -253,6 +257,9 @@ export const AppRoutes = () => {
             {/* Reports */}
             <Route path="/reports" element={<RoleRoute allowedRoles={['SUPER_ADMIN', 'FINANCIAL_ANALYST']}><Reports /></RoleRoute>} />
 
+            {/* Admin Audit & Security Activity Logs */}
+            <Route path="/audit-logs" element={<RoleRoute allowedRoles={['SUPER_ADMIN']}><AuditLogs /></RoleRoute>} />
+
             {/* Account Management Danger Zone */}
             <Route path="/delete-account" element={<DeleteAccount />} />
             <Route path="/settings/delete-account" element={<DeleteAccount />} />
@@ -263,11 +270,13 @@ export const AppRoutes = () => {
           <Route path="/landing" element={<Landing />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/learn-more" element={<LearnMore />} />
 
           {/* Standalone Error Routes */}
           <Route path="/401" element={<Unauthorized401 />} />
           <Route path="/403" element={<Forbidden403 />} />
           <Route path="/404" element={<NotFound404 />} />
+          <Route path="/429" element={<TooManyRequests429 />} />
 
           {/* Unmatched fallback */}
           <Route path="*" element={<NotFound404 />} />

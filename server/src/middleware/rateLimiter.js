@@ -4,28 +4,55 @@ import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
 import { getClientIp, blockIpProgressive, getBlockDetails } from './ipBlocker.js';
 
 /**
- * Standardized rate limit rejection handler
+ * Standardized rate limit rejection handler with fast 429 response
  */
 const rateLimitHandler = (message) => (req, res, next, options) => {
-  return ApiResponse.error(
-    res,
-    message || 'Too many requests. Please slow down and try again later.',
-    null,
-    HttpStatusCodes.TOO_MANY_REQUESTS
-  );
+  const retrySecs = options?.windowMs ? Math.ceil(options.windowMs / 1000) : 60;
+  return res.status(HttpStatusCodes.TOO_MANY_REQUESTS).json({
+    success: false,
+    code: 'TOO_MANY_REQUESTS',
+    message: message || 'Too many requests. Please slow down and try again later.',
+    retryAfter: retrySecs
+  });
 };
 
 /**
  * Global API rate limiter to protect against denial-of-service (DoS)
- * 3000 requests per 15 minutes per true client IP (generous for active fleet dashboard SPAs)
+ * 1500 requests per 15 minutes per true client IP
  */
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 3000,
+  max: 1500,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => getClientIp(req),
   handler: rateLimitHandler('Too many requests from this IP. Please try again after a few minutes.')
+});
+
+/**
+ * Rapid Mutation Limiter for state-modifying requests (POST, PUT, PATCH, DELETE)
+ * 120 writes per minute per true client IP
+ */
+export const apiMutationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req),
+  handler: rateLimitHandler('Too many write submissions. Please wait a moment before sending more data.')
+});
+
+/**
+ * Query & Read Limiter for queries, searches, and lookups
+ * 240 requests per minute per true client IP
+ */
+export const apiQueryLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req),
+  handler: rateLimitHandler('Too many search and read queries. Please slow down and try again shortly.')
 });
 
 /**

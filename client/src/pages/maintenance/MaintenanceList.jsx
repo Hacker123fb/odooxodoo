@@ -7,6 +7,8 @@ import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2, FiCalendar } from 'react-icons/fi';
+import { useDebounce } from '../../hooks/useDebounce.js';
+import { encodeId } from '../../utils/idCodec.js';
 
 export const MaintenanceList = () => {
   const [records, setRecords] = useState([]);
@@ -15,6 +17,7 @@ export const MaintenanceList = () => {
 
   // Filters
   const [searchVal, setSearchVal] = useState('');
+  const debouncedSearch = useDebounce(searchVal, 300);
   const [statusVal, setStatusVal] = useState('');
   const [vehicleVal, setVehicleVal] = useState('');
   const [typeVal, setTypeVal] = useState('');
@@ -37,11 +40,11 @@ export const MaintenanceList = () => {
   const [paginationMeta, setPaginationMeta] = useState(null);
   const isInitialMount = React.useRef(true);
 
-  const loadData = React.useCallback(async (targetPage = page) => {
+  const loadData = React.useCallback(async (targetPage = page, querySearch = debouncedSearch) => {
     setIsLoading(true);
     try {
       const res = await maintenanceService.getAll({
-        search: searchVal,
+        search: querySearch,
         status: statusVal,
         vehicleId: vehicleVal,
         maintenanceType: typeVal,
@@ -61,20 +64,17 @@ export const MaintenanceList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchVal, statusVal, vehicleVal, typeVal, startDate, endDate, page, showToast]);
+  }, [debouncedSearch, statusVal, vehicleVal, typeVal, startDate, endDate, page, showToast]);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      loadData(1);
+      loadData(1, debouncedSearch);
       return;
     }
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadData(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchVal, statusVal, vehicleVal, typeVal, startDate, endDate, loadData]);
+    setPage(1);
+    loadData(1, debouncedSearch);
+  }, [debouncedSearch, statusVal, vehicleVal, typeVal, startDate, endDate]);
 
   useEffect(() => {
     const fetchVehicles = async () => {
@@ -90,21 +90,28 @@ export const MaintenanceList = () => {
     fetchVehicles();
   }, []);
 
-  const handleDeleteRecord = async () => {
+  const handleDeleteRecord = () => {
     if (!deleteId) return;
-    setIsDeleting(true);
-    try {
-      const res = await maintenanceService.delete(deleteId);
-      if (res.success) {
-        showToast('Maintenance record deleted successfully.', 'success');
-        setDeleteId(null);
-        loadData();
-      }
-    } catch (err) {
-      showToast(err.message || 'Failed to delete record.', 'error');
-    } finally {
-      setIsDeleting(false);
-    }
+    const targetId = deleteId;
+    const prevRecords = [...records];
+
+    // Optimistic UI: Close modal immediately and remove record from table view
+    setDeleteId(null);
+    setRecords(prev => prev.filter(r => r.id !== targetId));
+    showToast('Maintenance record deleted successfully.', 'success');
+
+    // Execute deletion in background without UI blocking
+    maintenanceService.delete(targetId)
+      .then((res) => {
+        if (!res || !res.success) {
+          setRecords(prevRecords);
+          showToast(res?.message || 'Failed to delete record.', 'error');
+        }
+      })
+      .catch((err) => {
+        setRecords(prevRecords);
+        showToast(err.message || 'Failed to delete record.', 'error');
+      });
   };
 
   const columns = [
@@ -153,37 +160,40 @@ export const MaintenanceList = () => {
     },
     {
       header: 'Actions',
-      cell: (row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/maintenance/${row.id}`)}
-            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
-            title="View Details"
-          >
-            <FiEye className="w-4 h-4" />
-          </button>
-          
-          {canModify && (
-            <>
-              <button
-                onClick={() => navigate(`/maintenance/edit/${row.id}`)}
-                className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
-                title="Edit Log"
-              >
-                <FiEdit className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDeleteId(row.id)}
-                className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
-                title="Delete Log"
-              >
-                <FiTrash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
-      )
+      cell: (row) => {
+        const publicId = row.publicId || encodeId('MNT', row.id);
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/maintenance/${publicId}`)}
+              className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
+              title="View Details"
+            >
+              <FiEye className="w-4 h-4" />
+            </button>
+            
+            {canModify && (
+              <>
+                <button
+                  onClick={() => navigate(`/maintenance/edit/${publicId}`)}
+                  className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
+                  title="Edit Log"
+                >
+                  <FiEdit className="w-4 h-4" />
+                </button>
+                
+                <button
+                  onClick={() => setDeleteId(row.id)}
+                  className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
+                  title="Delete Log"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      }
     }
   ];
 

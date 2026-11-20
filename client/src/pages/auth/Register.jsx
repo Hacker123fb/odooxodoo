@@ -256,8 +256,8 @@ export const Register = () => {
                 Privacy Policy
               </Link>
               .{' '}
-              <Link to="/terms" target="_blank" className="font-semibold text-primary-600 dark:text-primary-400 underline ml-0.5">
-                Learn more &rarr;
+              <Link to="/learn-more" target="_blank" className="font-semibold text-primary-600 dark:text-primary-400 underline ml-0.5">
+                Learn more →
               </Link>
             </label>
           </div>

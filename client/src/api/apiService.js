@@ -4,6 +4,7 @@ export { clearApiCache };
 
 export const authService = {
   login: (credentials) => axiosInstance.post('/auth/login', credentials),
+  logout: () => axiosInstance.post('/auth/logout'),
   register: (data) => axiosInstance.post('/auth/register', data),
   verifyOtp: (data) => axiosInstance.post('/auth/verify-otp', data),
   resendOtp: (data) => axiosInstance.post('/auth/resend-otp', data),
@@ -119,4 +120,13 @@ export const notificationService = {
 
 export const healthService = {
   check: (config = {}) => axiosInstance.get('/health', config)
+};
+
+export const auditLogService = {
+  getLogs: (params = {}, config = {}) => axiosInstance.get('/admin/audit-logs', { params, ...config }),
+  getStats: (config = {}) => axiosInstance.get('/admin/audit-logs/stats', config),
+  getDownloadUrl: () => {
+    const baseURL = axiosInstance.defaults.baseURL || '/api/v1';
+    return `${baseURL}/admin/audit-logs/download`;
+  }
 };

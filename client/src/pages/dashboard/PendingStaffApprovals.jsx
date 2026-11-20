@@ -38,41 +38,47 @@ export const PendingStaffApprovals = () => {
     fetchPending(false);
   }, [fetchPending]);
 
-  const handleApprove = async (id, name, email) => {
-    setProcessingId(id);
-    try {
-      const res = await authService.approveUser(id);
-      if (res && res.success) {
-        showToast(`Staff member ${name} (${email}) has been authorized.`, 'success');
-        setPendingUsers(prev => prev.filter(u => u.id !== id));
-      } else {
-        showToast(res?.message || 'Failed to approve staff member.', 'error');
-      }
-    } catch (err) {
-      showToast(err.message || 'Error authorizing user.', 'error');
-    } finally {
-      setProcessingId(null);
-    }
+  const handleApprove = (id, name, email) => {
+    // Optimistic UI: snapshot previous state, remove immediately from UI
+    const prevList = [...pendingUsers];
+    setPendingUsers(prev => prev.filter(u => u.id !== id));
+    showToast(`Staff member ${name} (${email}) has been authorized.`, 'success');
+
+    // Run heavy API authorization process in background
+    authService.approveUser(id)
+      .then((res) => {
+        if (!res || !res.success) {
+          setPendingUsers(prevList);
+          showToast(res?.message || 'Failed to approve staff member.', 'error');
+        }
+      })
+      .catch((err) => {
+        setPendingUsers(prevList);
+        showToast(err.message || 'Error authorizing user.', 'error');
+      });
   };
 
-  const handleReject = async (id, name, email) => {
+  const handleReject = (id, name, email) => {
     if (!window.confirm(`Are you sure you want to reject the registration for ${name} (${email})?`)) {
       return;
     }
-    setProcessingId(id);
-    try {
-      const res = await authService.rejectUser(id);
-      if (res && res.success) {
-        showToast(`Registration for ${name} has been rejected.`, 'info');
-        setPendingUsers(prev => prev.filter(u => u.id !== id));
-      } else {
-        showToast(res?.message || 'Failed to reject registration.', 'error');
-      }
-    } catch (err) {
-      showToast(err.message || 'Error rejecting user.', 'error');
-    } finally {
-      setProcessingId(null);
-    }
+    // Optimistic UI: snapshot previous state, remove immediately from UI
+    const prevList = [...pendingUsers];
+    setPendingUsers(prev => prev.filter(u => u.id !== id));
+    showToast(`Registration for ${name} has been rejected.`, 'info');
+
+    // Run heavy API rejection in background
+    authService.rejectUser(id)
+      .then((res) => {
+        if (!res || !res.success) {
+          setPendingUsers(prevList);
+          showToast(res?.message || 'Failed to reject registration.', 'error');
+        }
+      })
+      .catch((err) => {
+        setPendingUsers(prevList);
+        showToast(err.message || 'Error rejecting user.', 'error');
+      });
   };
 
   const getRoleBadge = (roleName) => {

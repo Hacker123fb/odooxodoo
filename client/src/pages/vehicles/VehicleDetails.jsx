@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Button from '../../components/common/Button.jsx';
 import { FiArrowLeft, FiEdit, FiInfo, FiTruck, FiAlertTriangle } from 'react-icons/fi';
+import { encodeId } from '../../utils/idCodec.js';
 
 /**
  * Page displaying detailed profile info for a single vehicle rig
@@ -104,7 +105,7 @@ export const VehicleDetails = () => {
         {canModify && (
           <Button
             variant="primary"
-            onClick={() => navigate(`/vehicles/edit/${vehicle.id}`)}
+            onClick={() => navigate(`/vehicles/edit/${vehicle.publicId || encodeId('VEH', vehicle.id)}`)}
             className="flex items-center gap-2"
           >
             <FiEdit className="w-4 h-4" /> Edit Profile

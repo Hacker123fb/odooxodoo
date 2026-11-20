@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # 1. PostgreSQL Database Service
+  # ==============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: transitops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-transitops}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/postgres_schema_3nf.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/postgres_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-transitops}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - transitops-net
+
+  # ==============================================================================
+  # 2. Redis In-Memory Cache Service
+  # ==============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: transitops-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - transitops-net
+
+  # ==============================================================================
+  # 3. TransitOps Backend API Service (Node.js Express)
+  # ==============================================================================
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: transitops-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-transitops}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-transitops_production_jwt_secret_2026_super_secure}
+      JWT_EXPIRES_IN: 24h
+      CORS_ORIGIN: "*"
+    ports:
+      - "5000:5000"
+    volumes:
+      - server_logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/v1/health/ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - transitops-net
+
+  # ==============================================================================
+  # 4. TransitOps Frontend Web Service (Vite React + Nginx)
+  # ==============================================================================
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: transitops-frontend
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+      - "3000:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - transitops-net
+
+# ==============================================================================
+# Persistent Volumes and Shared Network
+# ==============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  server_logs:
+    driver: local
+
+networks:
+  transitops-net:
+    driver: bridge

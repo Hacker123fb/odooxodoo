@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Button from '../../components/common/Button.jsx';
 import { FiArrowLeft, FiEdit, FiInfo, FiMapPin, FiCalendar, FiUser, FiTruck, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
+import { encodeId } from '../../utils/idCodec.js';
 
 /**
  * Detailed profile overview screen for a single operations trip
@@ -108,7 +109,7 @@ export const TripDetails = () => {
         {canModify && !isEnded && (
           <Button
             variant="primary"
-            onClick={() => navigate(`/trips/edit/${trip.id}`)}
+            onClick={() => navigate(`/trips/edit/${trip.publicId || encodeId('TRP', trip.id)}`)}
             className="flex items-center gap-2"
           >
             <FiEdit className="w-4 h-4" /> Edit Details

@@ -19,7 +19,8 @@ const routeLoaders = {
   '/reports': () => import('../pages/Reports.jsx'),
   '/blocked': () => import('../pages/Blocked.jsx'),
   '/terms': () => import('../pages/legal/Terms.jsx'),
-  '/privacy': () => import('../pages/legal/Privacy.jsx')
+  '/privacy': () => import('../pages/legal/Privacy.jsx'),
+  '/learn-more': () => import('../pages/legal/LearnMore.jsx')
 };
 
 const preloadedSet = new Set();

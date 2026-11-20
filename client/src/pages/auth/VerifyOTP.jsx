@@ -197,22 +197,28 @@ export const VerifyOTP = () => {
           className="opacity-80"
         />
 
-        {/* OTP Input - Exactly 6 digits */}
-        <Input
-          label="Verification Code (OTP) *"
-          type="text"
-          placeholder="e.g. 123456"
-          icon={FiHash}
-          error={errors.otp}
-          maxLength={6}
-          {...register('otp', {
-            required: 'Verification code is required.',
-            pattern: {
-              value: /^\d{6}$/,
-              message: 'OTP must be exactly 6 numeric digits.'
-            }
-          })}
-        />
+        {/* OTP Input - High-contrast, clean 6-digit input */}
+        <div className="space-y-1">
+          <Input
+            label="Verification Code (OTP) *"
+            type="text"
+            placeholder="······"
+            icon={FiHash}
+            error={errors.otp}
+            maxLength={6}
+            inputClassName="text-center font-mono text-2xl tracking-[0.55em] font-bold text-slate-900 dark:text-white"
+            {...register('otp', {
+              required: 'Verification code is required.',
+              pattern: {
+                value: /^\d{6}$/,
+                message: 'OTP must be exactly 6 numeric digits.'
+              }
+            })}
+          />
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+            Enter the 6-digit numerical security code sent to your inbox
+          </p>
+        </div>
 
         {/* Verification and Timer row */}
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-1 mb-2">

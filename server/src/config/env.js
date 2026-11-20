@@ -32,6 +32,7 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   isPostgres: true,
   databaseUrl,
+  redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
   db: {
     host: process.env.PGHOST || process.env.DB_HOST || parsedHost,
     port: parseInt(process.env.PGPORT || process.env.DB_PORT, 10) || parsedPort,

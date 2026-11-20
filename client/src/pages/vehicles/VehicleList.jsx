@@ -7,6 +7,8 @@ import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { useDebounce } from '../../hooks/useDebounce.js';
+import { encodeId } from '../../utils/idCodec.js';
 
 /**
  * Page displaying the responsive list of fleet vehicles with search and filters
@@ -23,6 +25,7 @@ export const VehicleList = () => {
 
   // Filter settings
   const [searchVal, setSearchVal] = useState('');
+  const debouncedSearch = useDebounce(searchVal, 300);
   const [statusVal, setStatusVal] = useState('');
   const [typeVal, setTypeVal] = useState('');
 
@@ -38,11 +41,11 @@ export const VehicleList = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
   // Load vehicles and classification lists
-  const loadData = React.useCallback(async (targetPage = page) => {
+  const loadData = React.useCallback(async (targetPage = page, querySearch = debouncedSearch) => {
     setIsLoading(true);
     try {
       const resVehicles = await vehicleService.getAll({
-        search: searchVal,
+        search: querySearch,
         status: statusVal,
         type: typeVal,
         page: targetPage,
@@ -59,20 +62,17 @@ export const VehicleList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchVal, statusVal, typeVal, page, showToast]);
+  }, [debouncedSearch, statusVal, typeVal, page, showToast]);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      loadData(1);
+      loadData(1, debouncedSearch);
       return;
     }
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadData(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchVal, statusVal, typeVal, loadData]);
+    setPage(1);
+    loadData(1, debouncedSearch);
+  }, [debouncedSearch, statusVal, typeVal]);
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -88,21 +88,28 @@ export const VehicleList = () => {
     fetchMetadata();
   }, []);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteVehicleId) return;
-    setIsDeleting(true);
-    try {
-      const res = await vehicleService.delete(deleteVehicleId);
-      if (res.success) {
-        showToast('Vehicle deleted successfully.', 'success');
-        setDeleteVehicleId(null);
-        loadData();
-      }
-    } catch (err) {
-      showToast(err.message || 'Failed to delete vehicle.', 'error');
-    } finally {
-      setIsDeleting(false);
-    }
+    const targetId = deleteVehicleId;
+    const prevVehicles = [...vehicles];
+
+    // Optimistic UI: Close modal immediately and remove record from table view
+    setDeleteVehicleId(null);
+    setVehicles(prev => prev.filter(v => v.id !== targetId));
+    showToast('Vehicle deleted successfully.', 'success');
+
+    // Execute deletion in background without UI blocking
+    vehicleService.delete(targetId)
+      .then((res) => {
+        if (!res || !res.success) {
+          setVehicles(prevVehicles);
+          showToast(res?.message || 'Failed to delete vehicle.', 'error');
+        }
+      })
+      .catch((err) => {
+        setVehicles(prevVehicles);
+        showToast(err.message || 'Failed to delete vehicle.', 'error');
+      });
   };
 
   const columns = [
@@ -138,37 +145,40 @@ export const VehicleList = () => {
     },
     {
       header: 'Actions',
-      cell: (row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/vehicles/${row.id}`)}
-            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
-            title="View Details"
-          >
-            <FiEye className="w-4 h-4" />
-          </button>
-          
-          {canModify && (
-            <>
-              <button
-                onClick={() => navigate(`/vehicles/edit/${row.id}`)}
-                className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
-                title="Edit Vehicle"
-              >
-                <FiEdit className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDeleteVehicleId(row.id)}
-                className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
-                title="Delete Vehicle"
-              >
-                <FiTrash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
-      )
+      cell: (row) => {
+        const publicId = row.publicId || encodeId('VEH', row.id);
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/vehicles/${publicId}`)}
+              className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
+              title="View Details"
+            >
+              <FiEye className="w-4 h-4" />
+            </button>
+            
+            {canModify && (
+              <>
+                <button
+                  onClick={() => navigate(`/vehicles/edit/${publicId}`)}
+                  className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
+                  title="Edit Vehicle"
+                >
+                  <FiEdit className="w-4 h-4" />
+                </button>
+                
+                <button
+                  onClick={() => setDeleteVehicleId(row.id)}
+                  className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
+                  title="Delete Vehicle"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      }
     }
   ];
 

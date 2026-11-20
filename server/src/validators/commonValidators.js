@@ -1,13 +1,19 @@
 import { param, query } from 'express-validator';
 import { validate } from '../middleware/validationMiddleware.js';
+import { decodeId } from '../utils/idCodec.js';
 
 /**
- * Validates that the request path parameter ':id' is a positive integer
+ * Validates that the request path parameter ':id' is a valid alphanumeric identifier or positive integer
  */
 export const validateId = [
   param('id')
-    .isInt({ min: 1 })
-    .withMessage('ID must be a positive integer'),
+    .custom((val) => {
+      const decoded = decodeId(val);
+      if (!decoded || decoded <= 0) {
+        throw new Error('ID must be a valid alphanumeric identifier or positive integer');
+      }
+      return true;
+    }),
   validate
 ];
 
@@ -25,3 +31,8 @@ export const validatePagination = [
     .withMessage('Limit must be an integer between 1 and 100'),
   validate
 ];
+
+export default {
+  validateId,
+  validatePagination
+};

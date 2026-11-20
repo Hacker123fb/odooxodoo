@@ -218,22 +218,28 @@ export const ForgotPassword = () => {
           </div>
 
           {/* OTP Input */}
-          <Input
-            id="otp"
-            label="6-Digit Verification Code *"
-            type="text"
-            placeholder="123456"
-            maxLength={6}
-            icon={FiKey}
-            error={errorsStep2.otp}
-            {...registerStep2('otp', {
-              required: 'Verification code is required',
-              pattern: {
-                value: /^\d{6}$/,
-                message: 'Must be exactly 6 numeric digits'
-              }
-            })}
-          />
+          <div className="space-y-1">
+            <Input
+              id="otp"
+              label="6-Digit Verification Code *"
+              type="text"
+              placeholder="······"
+              maxLength={6}
+              icon={FiKey}
+              error={errorsStep2.otp}
+              inputClassName="text-center font-mono text-xl tracking-[0.55em] font-bold text-slate-900 dark:text-white"
+              {...registerStep2('otp', {
+                required: 'Verification code is required',
+                pattern: {
+                  value: /^\d{6}$/,
+                  message: 'Must be exactly 6 numeric digits'
+                }
+              })}
+            />
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+              Enter the 6-digit recovery code dispatched to your email
+            </p>
+          </div>
 
           {/* New Password */}
           <Input

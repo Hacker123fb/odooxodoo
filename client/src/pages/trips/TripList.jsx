@@ -7,6 +7,8 @@ import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import { FiSearch, FiPlus, FiEye, FiEdit, FiMapPin, FiCalendar, FiXCircle } from 'react-icons/fi';
+import { useDebounce } from '../../hooks/useDebounce.js';
+import { encodeId } from '../../utils/idCodec.js';
 
 /**
  * Lists all trips with options to filter, search, cancel, and edit
@@ -19,6 +21,7 @@ export const TripList = () => {
 
   // Filters
   const [searchVal, setSearchVal] = useState('');
+  const debouncedSearch = useDebounce(searchVal, 300);
   const [statusVal, setStatusVal] = useState('');
   const [vehicleVal, setVehicleVal] = useState('');
   const [driverVal, setDriverVal] = useState('');
@@ -42,11 +45,11 @@ export const TripList = () => {
   const [paginationMeta, setPaginationMeta] = useState(null);
   const isInitialMount = React.useRef(true);
 
-  const loadData = React.useCallback(async (targetPage = page) => {
+  const loadData = React.useCallback(async (targetPage = page, querySearch = debouncedSearch) => {
     setIsLoading(true);
     try {
       const res = await tripService.getAll({
-        search: searchVal,
+        search: querySearch,
         status: statusVal,
         vehicleId: vehicleVal,
         driverId: driverVal,
@@ -66,20 +69,17 @@ export const TripList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchVal, statusVal, vehicleVal, driverVal, startDate, endDate, page, showToast]);
+  }, [debouncedSearch, statusVal, vehicleVal, driverVal, startDate, endDate, page, showToast]);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      loadData(1);
+      loadData(1, debouncedSearch);
       return;
     }
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadData(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchVal, statusVal, vehicleVal, driverVal, startDate, endDate, loadData]);
+    setPage(1);
+    loadData(1, debouncedSearch);
+  }, [debouncedSearch, statusVal, vehicleVal, driverVal, startDate, endDate]);
 
   useEffect(() => {
     const fetchDropdowns = async () => {
@@ -97,30 +97,41 @@ export const TripList = () => {
     fetchDropdowns();
   }, []);
 
-  const handleCancelTrip = async () => {
+  const handleCancelTrip = () => {
     if (!cancelTripId) return;
-    setIsCancelling(true);
-    try {
-      const tripRes = await tripService.getById(cancelTripId);
-      if (tripRes.success) {
-        const updatedPayload = {
-          ...tripRes.data,
-          status: 'CANCELLED',
-          cancellation_reason: cancellationReason || 'Cancelled by dispatcher.'
-        };
-        const res = await tripService.update(cancelTripId, updatedPayload);
-        if (res.success) {
-          showToast('Trip cancelled successfully.', 'success');
-          setCancelTripId(null);
-          setCancellationReason('');
-          loadData();
+    const targetId = cancelTripId;
+    const reason = cancellationReason || 'Cancelled by dispatcher.';
+    const prevTrips = [...trips];
+
+    // Optimistic UI: Immediately close modal and update trip status locally
+    setCancelTripId(null);
+    setCancellationReason('');
+    setTrips(prev => prev.map(t => t.id === targetId ? { ...t, status: 'CANCELLED' } : t));
+    showToast('Trip cancelled successfully.', 'success');
+
+    // Run heavy update in background
+    tripService.getById(targetId)
+      .then((tripRes) => {
+        if (tripRes.success) {
+          const payload = {
+            ...tripRes.data,
+            status: 'CANCELLED',
+            cancellation_reason: reason
+          };
+          return tripService.update(targetId, payload);
         }
-      }
-    } catch (err) {
-      showToast(err.message || 'Failed to cancel trip.', 'error');
-    } finally {
-      setIsCancelling(false);
-    }
+        throw new Error('Trip not found.');
+      })
+      .then((res) => {
+        if (!res || !res.success) {
+          setTrips(prevTrips);
+          showToast(res?.message || 'Failed to cancel trip.', 'error');
+        }
+      })
+      .catch((err) => {
+        setTrips(prevTrips);
+        showToast(err.message || 'Failed to cancel trip.', 'error');
+      });
   };
 
   const columns = [
@@ -191,27 +202,29 @@ export const TripList = () => {
     },
     {
       header: 'Actions',
-      cell: (row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/trips/${row.id}`)}
-            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-605 dark:text-slate-300 transition-colors"
-            title="View Details"
-          >
-            <FiEye className="w-4 h-4" />
-          </button>
-          
-          {canModify && (
-            <>
-              {row.status !== 'COMPLETED' && row.status !== 'CANCELLED' && (
-                <>
-                  <button
-                    onClick={() => navigate(`/trips/edit/${row.id}`)}
-                    className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
-                    title="Edit Trip"
-                  >
-                    <FiEdit className="w-4 h-4" />
-                  </button>
+      cell: (row) => {
+        const publicId = row.publicId || encodeId('TRP', row.id);
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/trips/${publicId}`)}
+              className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-605 dark:text-slate-300 transition-colors"
+              title="View Details"
+            >
+              <FiEye className="w-4 h-4" />
+            </button>
+            
+            {canModify && (
+              <>
+                {row.status !== 'COMPLETED' && row.status !== 'CANCELLED' && (
+                  <>
+                    <button
+                      onClick={() => navigate(`/trips/edit/${publicId}`)}
+                      className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
+                      title="Edit Trip"
+                    >
+                      <FiEdit className="w-4 h-4" />
+                    </button>
                   
                   <button
                     onClick={() => setCancelTripId(row.id)}
@@ -225,7 +238,8 @@ export const TripList = () => {
             </>
           )}
         </div>
-      )
+        );
+      }
     }
   ];
 

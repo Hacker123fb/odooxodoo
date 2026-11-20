@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { apiMutationLimiter, apiQueryLimiter } from '../middleware/rateLimiter.js';
 import healthRouter from './health.js';
 import authRouter from './auth.js';
 import vehicleRouter from './vehicle.routes.js';
@@ -10,8 +11,19 @@ import expenseRouter from './expense.routes.js';
 import dashboardRouter from './dashboard.routes.js';
 import reportRouter from './report.routes.js';
 import notificationRouter from './notification.routes.js';
+import auditRouter from './audit.routes.js';
 
 const router = Router();
+
+// Apply fast rate limiting across all API endpoints:
+// - Rapid write mutations: 120 / min
+// - High-speed queries: 240 / min
+router.use((req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
+    return apiMutationLimiter(req, res, next);
+  }
+  return apiQueryLimiter(req, res, next);
+});
 
 // 1. Health check routes
 router.use('/', healthRouter);
@@ -45,5 +57,8 @@ router.use('/reports', reportRouter);
 
 // 11. Notifications routes
 router.use('/notifications', notificationRouter);
+
+// 12. Admin Security & Audit Activity Logs
+router.use('/admin/audit-logs', auditRouter);
 
 export default router;

@@ -50,50 +50,43 @@ export const Landing = () => {
     }
   });
 
-  // Verify IP status asynchronously on Landing Page mount to immediately catch blocked IPs
+  // Fast synchronous state sync with storage events & background prefetch without artificial delays
   useEffect(() => {
-    let isMounted = true;
-    const verifyIp = async () => {
+    const handleLockoutChange = () => {
       try {
-        const res = await authService.getIpStatus();
-        if (isMounted && res?.blocked) {
-          const remainingSeconds = res.remainingSeconds || ((res.remainingMinutes || 15) * 60);
-          const lockData = {
-            message: res.message || 'Access Denied: Your IP has been temporarily blocked.',
-            remainingMinutes: res.remainingMinutes || 15,
-            remainingSeconds,
-            blockedUntil: res.blockedUntil || (Date.now() + remainingSeconds * 1000),
-            reason: res.reason || 'IP_BLOCKED',
-            timestamp: Date.now()
-          };
-          sessionStorage.setItem('lockout_info', JSON.stringify(lockData));
-          localStorage.setItem('lockout_info', JSON.stringify(lockData));
-          setIsBlocked(true);
-        } else if (isMounted && res && !res.blocked) {
-          sessionStorage.removeItem('lockout_info');
-          localStorage.removeItem('lockout_info');
-          setIsBlocked(false);
+        const raw = sessionStorage.getItem('lockout_info') || localStorage.getItem('lockout_info');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.blockedUntil && Date.now() < parsed.blockedUntil) {
+            setIsBlocked(true);
+            return;
+          }
         }
-      } catch (e) {
-        if (e.status === 403 && isMounted) {
-          setIsBlocked(true);
-        }
-      }
+      } catch {}
+      setIsBlocked(false);
     };
-    verifyIp();
 
-    // Idle background prefetch for zero-delay navigation when user clicks portal or register
-    const prefetchTimer = setTimeout(() => {
+    window.addEventListener('lockout_changed', handleLockoutChange);
+    window.addEventListener('storage', handleLockoutChange);
+
+    // Immediate non-blocking prefetch on browser idle for instant click-throughs
+    const idlePrefetch = () => {
       prefetchRoute('/login');
       prefetchRoute('/register');
       if (isAuthenticated) {
         prefetchRoute('/dashboard');
       }
-    }, 150);
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(idlePrefetch);
+    } else {
+      setTimeout(idlePrefetch, 50);
+    }
 
     return () => {
-      isMounted = false;
-      clearTimeout(prefetchTimer);
+      window.removeEventListener('lockout_changed', handleLockoutChange);
+      window.removeEventListener('storage', handleLockoutChange);
     };
   }, [isAuthenticated]);
 
@@ -509,10 +502,13 @@ export const Landing = () => {
                     </p>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center text-xs font-semibold text-primary-600 dark:text-primary-400">
+                  <Link
+                    to="/learn-more"
+                    className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                  >
                     <span>Learn more</span>
                     <FiChevronRight className="w-4 h-4 ml-1" />
-                  </div>
+                  </Link>
                 </div>
               );
             })}
@@ -720,6 +716,7 @@ export const Landing = () => {
               <a href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">Features</a>
               <a href="#capabilities" className="hover:text-slate-900 dark:hover:text-white transition-colors">Capabilities</a>
               <a href="#security" className="hover:text-slate-900 dark:hover:text-white transition-colors">Security</a>
+              <Link to="/learn-more" className="hover:text-slate-900 dark:hover:text-white transition-colors">Platform Overview</Link>
               <Link to="/terms" className="font-semibold text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white transition-colors underline underline-offset-4">
                 Terms and Conditions
               </Link>

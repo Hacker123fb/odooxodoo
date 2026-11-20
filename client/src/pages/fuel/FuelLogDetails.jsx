@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Button from '../../components/common/Button.jsx';
 import { FiArrowLeft, FiEdit, FiInfo, FiCalendar, FiTruck, FiSettings, FiUser } from 'react-icons/fi';
+import { encodeId } from '../../utils/idCodec.js';
 
 export const FuelLogDetails = () => {
   const { id } = useParams();
@@ -95,7 +96,7 @@ export const FuelLogDetails = () => {
         {canModify && (
           <Button
             variant="primary"
-            onClick={() => navigate(`/fuel/edit/${record.id}`)}
+            onClick={() => navigate(`/fuel/edit/${record.publicId || encodeId('FUL', record.id)}`)}
             className="flex items-center gap-2"
           >
             <FiEdit className="w-4 h-4" /> Edit Details

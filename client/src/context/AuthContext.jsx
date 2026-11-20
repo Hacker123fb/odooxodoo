@@ -69,6 +69,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
+    // Notify server to clear secure SameSite cookies in background
+    authService.logout().catch(() => {});
+
     setUser(null);
     setToken(null);
 

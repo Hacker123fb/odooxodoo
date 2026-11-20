@@ -7,6 +7,8 @@ import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2, FiAward, FiAlertTriangle } from 'react-icons/fi';
+import { useDebounce } from '../../hooks/useDebounce.js';
+import { encodeId } from '../../utils/idCodec.js';
 
 /**
  * Page displaying the responsive list of operators / drivers
@@ -22,6 +24,7 @@ export const DriverList = () => {
 
   // Search and status filters
   const [searchVal, setSearchVal] = useState('');
+  const debouncedSearch = useDebounce(searchVal, 300);
   const [statusVal, setStatusVal] = useState('');
 
   // Delete modal confirmation
@@ -36,11 +39,11 @@ export const DriverList = () => {
   const canModify = user?.role === 'SUPER_ADMIN' || user?.role === 'FLEET_MANAGER';
 
   // Load driver data from backend
-  const loadDrivers = React.useCallback(async (targetPage = page) => {
+  const loadDrivers = React.useCallback(async (targetPage = page, querySearch = debouncedSearch) => {
     setIsLoading(true);
     try {
       const res = await driverService.getAll({
-        search: searchVal,
+        search: querySearch,
         status: statusVal,
         page: targetPage,
         limit: 25
@@ -56,36 +59,40 @@ export const DriverList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchVal, statusVal, page, showToast]);
+  }, [debouncedSearch, statusVal, page, showToast]);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      loadDrivers(1);
+      loadDrivers(1, debouncedSearch);
       return;
     }
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadDrivers(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchVal, statusVal, loadDrivers]);
+    setPage(1);
+    loadDrivers(1, debouncedSearch);
+  }, [debouncedSearch, statusVal]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteDriverId) return;
-    setIsDeleting(true);
-    try {
-      const res = await driverService.delete(deleteDriverId);
-      if (res.success) {
-        showToast('Driver profile deleted successfully.', 'success');
-        setDeleteDriverId(null);
-        loadDrivers();
-      }
-    } catch (err) {
-      showToast(err.message || 'Failed to delete driver.', 'error');
-    } finally {
-      setIsDeleting(false);
-    }
+    const targetId = deleteDriverId;
+    const prevDrivers = [...drivers];
+
+    // Optimistic UI: Close modal immediately and remove record from table view
+    setDeleteDriverId(null);
+    setDrivers(prev => prev.filter(d => d.id !== targetId));
+    showToast('Driver profile deleted successfully.', 'success');
+
+    // Execute deletion in background without UI blocking
+    driverService.delete(targetId)
+      .then((res) => {
+        if (!res || !res.success) {
+          setDrivers(prevDrivers);
+          showToast(res?.message || 'Failed to delete driver.', 'error');
+        }
+      })
+      .catch((err) => {
+        setDrivers(prevDrivers);
+        showToast(err.message || 'Failed to delete driver.', 'error');
+      });
   };
 
   const columns = [
@@ -149,37 +156,40 @@ export const DriverList = () => {
     },
     {
       header: 'Actions',
-      cell: (row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/drivers/${row.id}`)}
-            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
-            title="View Profile"
-          >
-            <FiEye className="w-4 h-4" />
-          </button>
-          
-          {canModify && (
-            <>
-              <button
-                onClick={() => navigate(`/drivers/edit/${row.id}`)}
-                className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
-                title="Edit Profile"
-              >
-                <FiEdit className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDeleteDriverId(row.id)}
-                className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
-                title="Delete Profile"
-              >
-                <FiTrash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
-      )
+      cell: (row) => {
+        const publicId = row.publicId || encodeId('DRV', row.id);
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/drivers/${publicId}`)}
+              className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
+              title="View Profile"
+            >
+              <FiEye className="w-4 h-4" />
+            </button>
+            
+            {canModify && (
+              <>
+                <button
+                  onClick={() => navigate(`/drivers/edit/${publicId}`)}
+                  className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
+                  title="Edit Profile"
+                >
+                  <FiEdit className="w-4 h-4" />
+                </button>
+                
+                <button
+                  onClick={() => setDeleteDriverId(row.id)}
+                  className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
+                  title="Delete Profile"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      }
     }
   ];
 

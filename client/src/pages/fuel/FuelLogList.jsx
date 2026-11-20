@@ -7,6 +7,8 @@ import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { useDebounce } from '../../hooks/useDebounce.js';
+import { encodeId } from '../../utils/idCodec.js';
 
 export const FuelLogList = () => {
   const [records, setRecords] = useState([]);
@@ -16,6 +18,7 @@ export const FuelLogList = () => {
 
   // Filters
   const [searchVal, setSearchVal] = useState('');
+  const debouncedSearch = useDebounce(searchVal, 300);
   const [vehicleVal, setVehicleVal] = useState('');
   const [typeVal, setTypeVal] = useState('');
   const [paymentVal, setPaymentVal] = useState('');
@@ -38,11 +41,11 @@ export const FuelLogList = () => {
   const [paginationMeta, setPaginationMeta] = useState(null);
   const isInitialMount = React.useRef(true);
 
-  const loadData = React.useCallback(async (targetPage = page) => {
+  const loadData = React.useCallback(async (targetPage = page, querySearch = debouncedSearch) => {
     setIsLoading(true);
     try {
       const res = await fuelService.getAll({
-        search: searchVal,
+        search: querySearch,
         vehicleId: vehicleVal,
         fuelTypeId: typeVal,
         paymentMethod: paymentVal,
@@ -62,20 +65,17 @@ export const FuelLogList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchVal, vehicleVal, typeVal, paymentVal, startDate, endDate, page, showToast]);
+  }, [debouncedSearch, vehicleVal, typeVal, paymentVal, startDate, endDate, page, showToast]);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      loadData(1);
+      loadData(1, debouncedSearch);
       return;
     }
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadData(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchVal, vehicleVal, typeVal, paymentVal, startDate, endDate, loadData]);
+    setPage(1);
+    loadData(1, debouncedSearch);
+  }, [debouncedSearch, vehicleVal, typeVal, paymentVal, startDate, endDate]);
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -95,21 +95,28 @@ export const FuelLogList = () => {
     fetchMetadata();
   }, []);
 
-  const handleDeleteRecord = async () => {
+  const handleDeleteRecord = () => {
     if (!deleteId) return;
-    setIsDeleting(true);
-    try {
-      const res = await fuelService.delete(deleteId);
-      if (res.success) {
-        showToast('Fuel log deleted successfully.', 'success');
-        setDeleteId(null);
-        loadData();
-      }
-    } catch (err) {
-      showToast(err.message || 'Failed to delete fuel log.', 'error');
-    } finally {
-      setIsDeleting(false);
-    }
+    const targetId = deleteId;
+    const prevRecords = [...records];
+
+    // Optimistic UI: Close modal immediately and remove record from table view
+    setDeleteId(null);
+    setRecords(prev => prev.filter(r => r.id !== targetId));
+    showToast('Fuel log deleted successfully.', 'success');
+
+    // Execute deletion in background without UI blocking
+    fuelService.delete(targetId)
+      .then((res) => {
+        if (!res || !res.success) {
+          setRecords(prevRecords);
+          showToast(res?.message || 'Failed to delete fuel log.', 'error');
+        }
+      })
+      .catch((err) => {
+        setRecords(prevRecords);
+        showToast(err.message || 'Failed to delete fuel log.', 'error');
+      });
   };
 
   const columns = [
@@ -164,37 +171,40 @@ export const FuelLogList = () => {
     },
     {
       header: 'Actions',
-      cell: (row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/fuel/${row.id}`)}
-            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-605 dark:text-slate-300 transition-colors"
-            title="View Details"
-          >
-            <FiEye className="w-4 h-4" />
-          </button>
-          
-          {canModify && (
-            <>
-              <button
-                onClick={() => navigate(`/fuel/edit/${row.id}`)}
-                className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
-                title="Edit Log"
-              >
-                <FiEdit className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDeleteId(row.id)}
-                className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
-                title="Delete Log"
-              >
-                <FiTrash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
-      )
+      cell: (row) => {
+        const publicId = row.publicId || encodeId('FUL', row.id);
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/fuel/${publicId}`)}
+              className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-605 dark:text-slate-300 transition-colors"
+              title="View Details"
+            >
+              <FiEye className="w-4 h-4" />
+            </button>
+            
+            {canModify && (
+              <>
+                <button
+                  onClick={() => navigate(`/fuel/edit/${publicId}`)}
+                  className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
+                  title="Edit Log"
+                >
+                  <FiEdit className="w-4 h-4" />
+                </button>
+                
+                <button
+                  onClick={() => setDeleteId(row.id)}
+                  className="p-1.5 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-650 dark:text-rose-400 transition-colors"
+                  title="Delete Log"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      }
     }
   ];
 

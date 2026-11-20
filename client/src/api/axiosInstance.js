@@ -68,6 +68,7 @@ export const setCsrfToken = (token) => { memoryCsrfToken = token; };
 const axiosInstance = axios.create({
   baseURL: formatBaseUrl(),
   timeout: 30000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest'
@@ -241,7 +242,7 @@ axiosInstance.interceptors.response.use(
     }
 
     // Public routes that should never be forcefully redirected away during navigation
-    const publicPaths = ['/', '/landing', '/terms', '/privacy', '/login', '/register', '/verify-otp', '/forgot-password', '/blocked', '/401', '/403', '/404'];
+    const publicPaths = ['/', '/landing', '/terms', '/privacy', '/learn-more', '/login', '/register', '/verify-otp', '/forgot-password', '/blocked', '/401', '/403', '/404', '/429'];
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
     const isPublicRoute = publicPaths.includes(currentPath);
 
@@ -257,6 +258,13 @@ axiosInstance.interceptors.response.use(
           // Direct cleanly to /login with replace so back button doesn't bounce back
           window.location.replace('/login');
         }
+      }
+    }
+
+    // Auto-redirect to custom 429 page when rate limit is exceeded (and not a brute force IP lockout)
+    if (customError.status === 429 && !isLockout) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/429') {
+        window.location.replace('/429');
       }
     }
 

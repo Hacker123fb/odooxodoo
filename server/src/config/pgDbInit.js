@@ -55,6 +55,27 @@ export const pgDbInit = async () => {
         CREATE INDEX IF NOT EXISTS idx_fuel_receipt_number ON fuel_logs(receipt_number);
         CREATE INDEX IF NOT EXISTS idx_vehicle_models_name ON vehicle_models(name);
         CREATE INDEX IF NOT EXISTS idx_vehicle_makes_name ON vehicle_makes(name);
+
+        -- Audit & Activity Logs Table
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id SERIAL PRIMARY KEY,
+          timestamp TIMESTAMPTZ DEFAULT NOW(),
+          ip_address VARCHAR(100),
+          user_id INT NULL,
+          user_email VARCHAR(255),
+          user_role VARCHAR(50),
+          user_name VARCHAR(255),
+          action VARCHAR(100) NOT NULL,
+          status VARCHAR(50) NOT NULL,
+          details JSONB NULL,
+          user_agent TEXT NULL,
+          path VARCHAR(255) NULL,
+          method VARCHAR(10) NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_ip ON audit_logs(ip_address);
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_email ON audit_logs(user_email);
       `);
       console.log('[DATABASE] Verified read-heavy search indexes.');
     } catch (idxErr) {

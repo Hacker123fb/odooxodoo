@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Button from '../../components/common/Button.jsx';
 import { FiArrowLeft, FiEdit, FiInfo, FiCalendar, FiTruck, FiSettings, FiUser } from 'react-icons/fi';
+import { encodeId } from '../../utils/idCodec.js';
 
 export const MaintenanceDetails = () => {
   const { id } = useParams();
@@ -102,7 +103,7 @@ export const MaintenanceDetails = () => {
         {canModify && (
           <Button
             variant="primary"
-            onClick={() => navigate(`/maintenance/edit/${record.id}`)}
+            onClick={() => navigate(`/maintenance/edit/${record.publicId || encodeId('MNT', record.id)}`)}
             className="flex items-center gap-2"
           >
             <FiEdit className="w-4 h-4" /> Edit Details

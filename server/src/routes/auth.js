@@ -57,6 +57,12 @@ router.post('/reset-password', otpVerifyLimiter, validateResetPassword, asyncHan
 router.post('/login', loginLimiter, validateLogin, asyncHandler(authController.login));
 
 /**
+ * @route POST /api/v1/auth/logout
+ * @desc Clear secure SameSite session cookies and revoke session
+ */
+router.post('/logout', asyncHandler(authController.logout));
+
+/**
  * @route GET /api/v1/auth/ip-status
  * @desc Check if caller IP is currently blocked/locked out
  */

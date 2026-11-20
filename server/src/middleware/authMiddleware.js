@@ -12,9 +12,11 @@ import { asyncHandler } from './asyncHandler.js';
 export const protect = asyncHandler(async (req, res, next) => {
   let token = null;
 
-  // 1. Read Bearer token from headers
+  // 1. Read Bearer token from Authorization headers OR secure SameSite cookies
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies && (req.cookies.token || req.cookies.auth_token)) {
+    token = req.cookies.token || req.cookies.auth_token;
   }
 
   if (!token) {

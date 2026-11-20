@@ -8,6 +8,7 @@ import {
   FiTool,
   FiDroplet,
   FiBarChart2,
+  FiShield,
   FiLogOut,
   FiTrash2,
   FiChevronLeft,
@@ -37,7 +38,8 @@ export const Sidebar = ({
     { name: 'Maintenance', path: '/maintenance', icon: FiTool },
     { name: 'Fuel Logs', path: '/fuel', icon: FiDroplet },
     { name: 'Expenses', path: '/expenses', icon: FaIndianRupeeSign },
-    { name: 'Reports', path: '/reports', icon: FiBarChart2 }
+    { name: 'Reports', path: '/reports', icon: FiBarChart2 },
+    { name: 'Audit Logs', path: '/audit-logs', icon: FiShield }
   ];
 
   // Hide unauthorized menu items based on roles

@@ -215,33 +215,129 @@ export const emailService = {
    * Sends the 6-digit numeric OTP to the user's email address for Registration
    */
   async sendOtpEmail(email, otp) {
+    const formattedDate = new Date().toUTCString();
     const htmlBody = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-        <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #edf2f7; padding-bottom: 16px;">
-          <h2 style="color: #2b6cb0; margin: 0; font-size: 24px; letter-spacing: 0.5px;">Transit<span style="color: #4a5568;">Ops</span></h2>
-          <p style="color: #718096; font-size: 12px; margin-top: 4px; margin-bottom: 0;">Logistics &amp; Fleet Intelligence</p>
-        </div>
-        <h3 style="color: #2d3748; font-size: 18px; margin-top: 0; margin-bottom: 12px;">Verify Your Email</h3>
-        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
-          Thank you for signing up for TransitOps. Please use the 6-digit verification code below to activate your account:
-        </p>
-        <div style="text-align: center; background-color: #f7fafc; border: 1px dashed #cbd5e0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-          <span style="font-family: monospace; font-size: 32px; font-weight: bold; color: #2b6cb0; letter-spacing: 4px;">${otp}</span>
-          <p style="color: #a0aec0; font-size: 11px; margin-top: 8px; margin-bottom: 0;">Code expires in 3 minutes</p>
-        </div>
-        <p style="color: #718096; font-size: 12px; line-height: 1.5; margin-bottom: 0;">
-          If you did not request this code, you can safely ignore this email.
-        </p>
-        <div style="text-align: center; margin-top: 32px; border-top: 1px solid #edf2f7; padding-top: 16px; font-size: 10px; color: #a0aec0;">
-          © 2026 TransitOps. All rights reserved.
-        </div>
-      </div>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TransitOps Verification Code</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; padding: 40px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05); overflow: hidden;">
+                
+                <!-- Brand Header -->
+                <tr>
+                  <td style="background-color: #0f172a; padding: 28px 36px; border-bottom: 3px solid #2563eb;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td>
+                          <div style="font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff;">
+                            Transit<span style="color: #38bdf8;">Ops</span>
+                          </div>
+                          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-top: 3px; font-weight: 600;">
+                            Enterprise Fleet Intelligence
+                          </div>
+                        </td>
+                        <td align="right" valign="middle">
+                          <span style="display: inline-block; background-color: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 20px;">
+                            Security Verified
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Content Body -->
+                <tr>
+                  <td style="padding: 36px 36px 28px 36px;">
+                    <h1 style="color: #0f172a; font-size: 20px; font-weight: 700; margin: 0 0 10px 0; letter-spacing: -0.3px;">
+                      Verify Your Email Address
+                    </h1>
+                    <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+                      Thank you for creating an account with <strong>TransitOps</strong>. To activate your operational profile and proceed with registration verification, please enter the one-time passcode below:
+                    </p>
+
+                    <!-- High-Impact OTP Display Card -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 26px 0;">
+                      <tr>
+                        <td align="center" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 14px; padding: 26px 20px; border: 1px solid #334155;">
+                          <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; margin-bottom: 12px;">
+                            One-Time Verification Passcode
+                          </div>
+                          <div style="font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace; font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: 10px; padding-left: 10px; line-height: 1;">
+                            ${otp}
+                          </div>
+                          <div style="margin-top: 16px;">
+                            <span style="display: inline-block; background-color: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.4); color: #fde047; font-size: 11px; font-weight: 600; padding: 4px 14px; border-radius: 20px;">
+                              ⏱ Valid for 3 minutes only
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Security Alert Advisory -->
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px;">
+                      <div style="font-weight: 700; font-size: 12px; color: #1e293b; margin-bottom: 4px;">
+                        🛡️ Important Security Protocol
+                      </div>
+                      <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
+                        Never share this 6-digit code with anyone. TransitOps platform administrators will never ask for your verification passcode by phone, SMS, or email.
+                      </div>
+                    </div>
+
+                    <!-- Request Metadata -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                      <tr>
+                        <td style="font-size: 11px; color: #64748b; padding: 3px 0; font-weight: 600; width: 35%;">Account:</td>
+                        <td style="font-size: 11px; color: #0f172a; padding: 3px 0; font-family: monospace;">${email}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 11px; color: #64748b; padding: 3px 0; font-weight: 600;">Purpose:</td>
+                        <td style="font-size: 11px; color: #0f172a; padding: 3px 0;">New Account Registration</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 11px; color: #64748b; padding: 3px 0; font-weight: 600;">Issued At:</td>
+                        <td style="font-size: 11px; color: #0f172a; padding: 3px 0;">${formattedDate}</td>
+                      </tr>
+                    </table>
+
+                    <p style="color: #94a3b8; font-size: 11px; line-height: 1.5; margin: 0;">
+                      If you did not initiate this request, you can safely disregard this email. Your email address will not be registered without code verification.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 20px 36px; border-top: 1px solid #e2e8f0; text-align: center;">
+                    <div style="font-size: 11px; color: #64748b; line-height: 1.5; margin-bottom: 6px;">
+                      This is an automated security dispatch. Please do not reply directly to this email.
+                    </div>
+                    <div style="font-size: 10px; color: #94a3b8;">
+                      © 2026 TransitOps Fleet Operations System. All rights reserved.
+                    </div>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `;
-    const textBody = `Welcome to TransitOps! Your registration verification code is: ${otp}. This code is valid for 3 minutes.`;
+    const textBody = `TransitOps Security Verification Code: ${otp}\n\nUse this 6-digit code to complete your registration. This code expires in 3 minutes.\n\nAccount: ${email}\nSecurity Tip: Never share this code with anyone.\n\n© 2026 TransitOps`;
 
     return dispatchEmail({
       to: email,
-      subject: 'TransitOps - User Registration Verification Code',
+      subject: 'TransitOps - Registration Verification Code',
       html: htmlBody,
       text: textBody,
       type: 'REGISTRATION_OTP'
@@ -252,33 +348,129 @@ export const emailService = {
    * Sends the 6-digit numeric OTP to the user's email address for Password Reset
    */
   async sendPasswordResetEmail(email, otp) {
+    const formattedDate = new Date().toUTCString();
     const htmlBody = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-        <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #edf2f7; padding-bottom: 16px;">
-          <h2 style="color: #2b6cb0; margin: 0; font-size: 24px; letter-spacing: 0.5px;">Transit<span style="color: #4a5568;">Ops</span></h2>
-          <p style="color: #718096; font-size: 12px; margin-top: 4px; margin-bottom: 0;">Logistics &amp; Fleet Intelligence</p>
-        </div>
-        <h3 style="color: #2d3748; font-size: 18px; margin-top: 0; margin-bottom: 12px;">Password Reset Request</h3>
-        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
-          We received a request to reset the password for your TransitOps account. Use the 6-digit verification code below to proceed:
-        </p>
-        <div style="text-align: center; background-color: #f7fafc; border: 1px dashed #cbd5e0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-          <span style="font-family: monospace; font-size: 32px; font-weight: bold; color: #e53e3e; letter-spacing: 4px;">${otp}</span>
-          <p style="color: #a0aec0; font-size: 11px; margin-top: 8px; margin-bottom: 0;">Code expires in 10 minutes</p>
-        </div>
-        <p style="color: #718096; font-size: 12px; line-height: 1.5; margin-bottom: 0;">
-          If you did not request a password reset, please ignore this message or ensure your account is secure.
-        </p>
-        <div style="text-align: center; margin-top: 32px; border-top: 1px solid #edf2f7; padding-top: 16px; font-size: 10px; color: #a0aec0;">
-          © 2026 TransitOps. All rights reserved.
-        </div>
-      </div>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TransitOps Password Reset Code</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; padding: 40px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05); overflow: hidden;">
+                
+                <!-- Brand Header -->
+                <tr>
+                  <td style="background-color: #0f172a; padding: 28px 36px; border-bottom: 3px solid #dc2626;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td>
+                          <div style="font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff;">
+                            Transit<span style="color: #f87171;">Ops</span>
+                          </div>
+                          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-top: 3px; font-weight: 600;">
+                            Account Security Service
+                          </div>
+                        </td>
+                        <td align="right" valign="middle">
+                          <span style="display: inline-block; background-color: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #f87171; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 20px;">
+                            Password Reset
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Content Body -->
+                <tr>
+                  <td style="padding: 36px 36px 28px 36px;">
+                    <h1 style="color: #0f172a; font-size: 20px; font-weight: 700; margin: 0 0 10px 0; letter-spacing: -0.3px;">
+                      Password Reset Request
+                    </h1>
+                    <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+                      We received an authorization request to reset the password for your <strong>TransitOps</strong> account. Please use the 6-digit recovery code below to proceed:
+                    </p>
+
+                    <!-- High-Impact OTP Display Card -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 26px 0;">
+                      <tr>
+                        <td align="center" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 14px; padding: 26px 20px; border: 1px solid #334155;">
+                          <div style="color: #fca5a5; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; margin-bottom: 12px;">
+                            Password Recovery Passcode
+                          </div>
+                          <div style="font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace; font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: 10px; padding-left: 10px; line-height: 1;">
+                            ${otp}
+                          </div>
+                          <div style="margin-top: 16px;">
+                            <span style="display: inline-block; background-color: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.4); color: #fde047; font-size: 11px; font-weight: 600; padding: 4px 14px; border-radius: 20px;">
+                              ⏱ Code expires in 10 minutes
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Security Alert Advisory -->
+                    <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px;">
+                      <div style="font-weight: 700; font-size: 12px; color: #991b1b; margin-bottom: 4px;">
+                        ⚠️ Security Alert
+                      </div>
+                      <div style="font-size: 12px; color: #b91c1c; line-height: 1.5;">
+                        If you did not request this password reset, please contact your organization Super Admin immediately. Your existing password remains secure until reset.
+                      </div>
+                    </div>
+
+                    <!-- Request Metadata -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                      <tr>
+                        <td style="font-size: 11px; color: #64748b; padding: 3px 0; font-weight: 600; width: 35%;">Account:</td>
+                        <td style="font-size: 11px; color: #0f172a; padding: 3px 0; font-family: monospace;">${email}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 11px; color: #64748b; padding: 3px 0; font-weight: 600;">Purpose:</td>
+                        <td style="font-size: 11px; color: #0f172a; padding: 3px 0;">Account Recovery</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 11px; color: #64748b; padding: 3px 0; font-weight: 600;">Issued At:</td>
+                        <td style="font-size: 11px; color: #0f172a; padding: 3px 0;">${formattedDate}</td>
+                      </tr>
+                    </table>
+
+                    <p style="color: #94a3b8; font-size: 11px; line-height: 1.5; margin: 0;">
+                      For your protection, never forward or disclose this passcode to any individual.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 20px 36px; border-top: 1px solid #e2e8f0; text-align: center;">
+                    <div style="font-size: 11px; color: #64748b; line-height: 1.5; margin-bottom: 6px;">
+                      This is an automated security dispatch. Please do not reply directly to this email.
+                    </div>
+                    <div style="font-size: 10px; color: #94a3b8;">
+                      © 2026 TransitOps Fleet Operations System. All rights reserved.
+                    </div>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `;
-    const textBody = `You have requested to reset your TransitOps password. Your verification code is: ${otp}. This code is valid for 10 minutes.`;
+    const textBody = `TransitOps Password Reset Code: ${otp}\n\nUse this 6-digit code to reset your account password. This code expires in 10 minutes.\n\nAccount: ${email}\nSecurity Alert: If you did not request this reset, your account may be at risk. Contact your administrator.\n\n© 2026 TransitOps`;
 
     return dispatchEmail({
       to: email,
-      subject: 'TransitOps - Password Reset Request Code',
+      subject: 'TransitOps - Password Reset Verification Code',
       html: htmlBody,
       text: textBody,
       type: 'PASSWORD_RESET_OTP'

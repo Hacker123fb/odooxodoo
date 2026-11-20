@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import requestLogger from './middleware/requestLogger.js';
 import responseFormatter from './middleware/responseFormatter.js';
 import apiRouter from './routes/index.js';
@@ -63,9 +64,10 @@ app.use((req, res, next) => {
 // 2. IP Blocker & Defense (inspects after CORS is established)
 app.use(ipBlocker);
 
-// 3. Body parsers
+// 3. Body parsers & Cookie parser
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(cookieParser());
 
 // 4. Cross-Site Request Forgery (CSRF) Protection
 app.use(csrfProtection);

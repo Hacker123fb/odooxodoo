@@ -9,6 +9,7 @@ import { otpService } from '../services/otp.service.js';
 import { emailService } from '../services/email.service.js';
 import { passwordResetOtpModel } from '../models/passwordResetOtp.model.js';
 import pool from '../config/db.js';
+import auditService from '../services/audit.service.js';
 import {
   recordFailedLogin,
   recordSuccessfulLogin,
@@ -29,6 +30,22 @@ const signToken = (userId, roleName) => {
     env.jwt.secret,
     { expiresIn: env.jwt.expiresIn }
   );
+};
+
+/**
+ * Enterprise Secure SameSite Cookie Options Helper
+ * Enforces HttpOnly, Secure, and SameSite policies to prevent CSRF, XSS token harvesting, and cookie hijacking.
+ */
+export const getSecureCookieOptions = (req) => {
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
+  const sameSiteSetting = (process.env.COOKIE_SAMESITE || 'strict').toLowerCase();
+  return {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: sameSiteSetting, // 'strict' prevents CSRF and cross-site leakage
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    path: '/'
+  };
 };
 
 // Cryptographic Backend Signature Generator for Critical Security Operations
@@ -240,6 +257,13 @@ export const authController = {
         const details = getBlockDetails(clientIp);
         const mins = details ? details.remainingMinutes : 15;
         const remainingSeconds = details ? details.remainingSeconds : mins * 60;
+        auditService.logAuthEvent({
+          req,
+          action: 'LOGIN_FAILED',
+          status: 'FAILED',
+          email,
+          details: { reason: 'IP_BLOCKED', remainingMinutes: mins, message: 'Access denied: IP temporarily blocked' }
+        });
         return res.status(HttpStatusCodes.FORBIDDEN).json({
           success: false,
           blocked: true,
@@ -253,12 +277,17 @@ export const authController = {
         });
       }
 
-
-
       const user = await userModel.findByEmail(email);
 
       if (!user) {
         recordFailedLogin(clientIp, email);
+        auditService.logAuthEvent({
+          req,
+          action: 'LOGIN_FAILED',
+          status: 'FAILED',
+          email,
+          details: { reason: 'USER_NOT_FOUND', message: 'No account registered with this email address' }
+        });
         if (isIpBlocked(clientIp)) {
           const details = getBlockDetails(clientIp);
           const mins = details ? details.remainingMinutes : 15;
@@ -284,6 +313,14 @@ export const authController = {
       }
 
       if (user.status !== 'ACTIVE') {
+        auditService.logAuthEvent({
+          req,
+          action: 'LOGIN_FAILED',
+          status: 'FAILED',
+          email,
+          user: { id: user.id, name: user.full_name, email: user.email, role: user.role_name },
+          details: { reason: `ACCOUNT_${user.status}`, message: `Account status is ${user.status}` }
+        });
         if (user.status === 'PENDING_APPROVAL') {
           return next(
             new AppError(
@@ -313,6 +350,14 @@ export const authController = {
       if (!passwordMatched) {
         // Record failed attempt on both IP and Target Account!
         recordFailedLogin(clientIp, email);
+        auditService.logAuthEvent({
+          req,
+          action: 'LOGIN_FAILED',
+          status: 'FAILED',
+          email,
+          user: { id: user.id, name: user.full_name, email: user.email, role: user.role_name },
+          details: { reason: 'INVALID_PASSWORD', message: 'Wrong password submitted' }
+        });
         if (isIpBlocked(clientIp)) {
           const details = getBlockDetails(clientIp);
           const mins = details ? details.remainingMinutes : 15;
@@ -344,6 +389,26 @@ export const authController = {
       // Reset strike counters for both IP and Account on success
       recordSuccessfulLogin(getClientIp(req), email);
 
+      // Set secure SameSite cookies for session persistence
+      const cookieOptions = getSecureCookieOptions(req);
+      res.cookie('token', token, cookieOptions);
+      res.cookie('auth_token', token, cookieOptions);
+
+      // Audit Log Successful Login
+      auditService.logAuthEvent({
+        req,
+        action: 'LOGIN_SUCCESS',
+        status: 'SUCCESS',
+        email,
+        user: {
+          id: user.id,
+          name: user.full_name,
+          email: user.email,
+          role: user.role_name
+        },
+        details: { message: 'Authentication successful. Access granted to portal.' }
+      });
+
       return res.ok(
         {
           token,
@@ -356,6 +421,27 @@ export const authController = {
         },
         'Authentication successful.'
       );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Logout User (Clears secure SameSite session cookies)
+   */
+  logout: async (req, res, next) => {
+    try {
+      const cookieOptions = getSecureCookieOptions(req);
+      res.clearCookie('token', { ...cookieOptions, maxAge: 0 });
+      res.clearCookie('auth_token', { ...cookieOptions, maxAge: 0 });
+      auditService.logAuthEvent({
+        req,
+        action: 'LOGOUT',
+        status: 'SUCCESS',
+        user: req.user,
+        details: { message: 'User logged out and session cookies destroyed.' }
+      });
+      return res.ok(null, 'Logged out successfully. Session cookies cleared.');
     } catch (error) {
       next(error);
     }

@@ -7,6 +7,8 @@ import Table from '../../components/common/Table.jsx';
 import Button from '../../components/common/Button.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import { FiSearch, FiPlus, FiEye, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { useDebounce } from '../../hooks/useDebounce.js';
+import { encodeId } from '../../utils/idCodec.js';
 
 const CATEGORIES = [
   'Maintenance', 'Fuel', 'Insurance', 'Toll', 'Parking',
@@ -24,6 +26,7 @@ export const ExpenseList = () => {
 
   // Filters
   const [searchVal, setSearchVal] = useState('');
+  const debouncedSearch = useDebounce(searchVal, 300);
   const [categoryVal, setCategoryVal] = useState('');
   const [statusVal, setStatusVal] = useState('');
   const [paymentVal, setPaymentVal] = useState('');
@@ -47,11 +50,11 @@ export const ExpenseList = () => {
   const [paginationMeta, setPaginationMeta] = useState(null);
   const isInitialMount = React.useRef(true);
 
-  const loadData = React.useCallback(async (targetPage = page) => {
+  const loadData = React.useCallback(async (targetPage = page, querySearch = debouncedSearch) => {
     setIsLoading(true);
     try {
       const res = await expenseService.getAll({
-        search: searchVal,
+        search: querySearch,
         category: categoryVal,
         status: statusVal,
         paymentMethod: paymentVal,
@@ -72,20 +75,17 @@ export const ExpenseList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchVal, categoryVal, statusVal, paymentVal, vehicleVal, startDate, endDate, page, showToast]);
+  }, [debouncedSearch, categoryVal, statusVal, paymentVal, vehicleVal, startDate, endDate, page, showToast]);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      loadData(1);
+      loadData(1, debouncedSearch);
       return;
     }
-    const timer = setTimeout(() => {
-      setPage(1);
-      loadData(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchVal, categoryVal, statusVal, paymentVal, vehicleVal, startDate, endDate, loadData]);
+    setPage(1);
+    loadData(1, debouncedSearch);
+  }, [debouncedSearch, categoryVal, statusVal, paymentVal, vehicleVal, startDate, endDate]);
 
   useEffect(() => {
     const fetchVehicles = async () => {
@@ -99,21 +99,28 @@ export const ExpenseList = () => {
     fetchVehicles();
   }, []);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteId) return;
-    setIsDeleting(true);
-    try {
-      const res = await expenseService.delete(deleteId);
-      if (res.success) {
-        showToast('Expense deleted successfully.', 'success');
-        setDeleteId(null);
-        loadData();
-      }
-    } catch (err) {
-      showToast(err.message || 'Failed to delete expense.', 'error');
-    } finally {
-      setIsDeleting(false);
-    }
+    const targetId = deleteId;
+    const prevRecords = [...records];
+
+    // Optimistic UI: Close modal immediately and remove record from table view
+    setDeleteId(null);
+    setRecords(prev => prev.filter(r => r.id !== targetId));
+    showToast('Expense deleted successfully.', 'success');
+
+    // Execute deletion in background without UI blocking
+    expenseService.delete(targetId)
+      .then((res) => {
+        if (!res || !res.success) {
+          setRecords(prevRecords);
+          showToast(res?.message || 'Failed to delete expense.', 'error');
+        }
+      })
+      .catch((err) => {
+        setRecords(prevRecords);
+        showToast(err.message || 'Failed to delete expense.', 'error');
+      });
   };
 
   const getStatusStyle = (status) => {
@@ -171,24 +178,26 @@ export const ExpenseList = () => {
     },
     {
       header: 'Actions',
-      cell: (row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/expenses/${row.id}`)}
-            className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
-            title="View Details"
-          >
-            <FiEye className="w-4 h-4" />
-          </button>
-          {canCreate && (
+      cell: (row) => {
+        const publicId = row.publicId || encodeId('EXP', row.id);
+        return (
+          <div className="flex gap-2">
             <button
-              onClick={() => navigate(`/expenses/edit/${row.id}`)}
-              className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
-              title="Edit"
+              onClick={() => navigate(`/expenses/${publicId}`)}
+              className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
+              title="View Details"
             >
-              <FiEdit className="w-4 h-4" />
+              <FiEye className="w-4 h-4" />
             </button>
-          )}
+            {canCreate && (
+              <button
+                onClick={() => navigate(`/expenses/edit/${publicId}`)}
+                className="p-1.5 rounded bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 transition-colors"
+                title="Edit"
+              >
+                <FiEdit className="w-4 h-4" />
+              </button>
+            )}
           {canDelete && (
             <button
               onClick={() => setDeleteId(row.id)}
@@ -199,7 +208,8 @@ export const ExpenseList = () => {
             </button>
           )}
         </div>
-      )
+        );
+      }
     }
   ];
 

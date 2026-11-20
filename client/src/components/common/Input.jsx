@@ -10,6 +10,7 @@ export const Input = forwardRef(({
   placeholder = '',
   error = null,
   className = '',
+  inputClassName = '',
   icon: Icon = null,
   rightElement = null,
   ...props
@@ -49,7 +50,7 @@ export const Input = forwardRef(({
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
               : 'border-slate-300 dark:border-slate-700 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 dark:focus:border-slate-300 dark:focus:ring-slate-300'
-          }`}
+          } ${inputClassName}`}
           {...props}
         />
 

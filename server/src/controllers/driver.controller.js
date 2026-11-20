@@ -2,35 +2,48 @@ import driverService from '../services/driver.service.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
+import { encodeId, decodeId } from '../utils/idCodec.js';
+import auditService from '../services/audit.service.js';
 
 export const driverController = {
   /**
    * GET /api/v1/drivers
-   * List drivers matching filters
+   * List drivers matching filters with unique alphanumeric public IDs
    */
   getAll: asyncHandler(async (req, res) => {
     const { search = '', status = '', page, limit } = req.query;
     const result = await driverService.getDrivers({ search, status, page, limit });
+    
     if (result && result.pagination) {
-      return res.ok(result.data, 'Drivers retrieved successfully.', result.pagination);
+      const dataWithPublicIds = (result.data || []).map(d => ({
+        ...d,
+        publicId: encodeId('DRV', d.id)
+      }));
+      return res.ok(dataWithPublicIds, 'Drivers retrieved successfully.', result.pagination);
     }
-    return res.ok(result, 'Drivers retrieved successfully.');
+    
+    const dataWithPublicIds = Array.isArray(result) 
+      ? result.map(d => ({ ...d, publicId: encodeId('DRV', d.id) }))
+      : result;
+
+    return res.ok(dataWithPublicIds, 'Drivers retrieved successfully.');
   }),
 
   /**
    * GET /api/v1/drivers/:id
-   * Fetch single driver profile with parameter validation
+   * Fetch single driver profile supporting alphanumeric public IDs (e.g. DRV-LC3A5W)
    */
   getById: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const numId = parseInt(id, 10);
-    if (isNaN(numId) || numId <= 0) {
+    const numId = decodeId(id);
+    if (!numId) {
       throw new AppError('Invalid driver identifier parameter.', HttpStatusCodes.BAD_REQUEST);
     }
     const driver = await driverService.getDriverById(numId);
     if (!driver) {
-      throw new AppError(`Driver #${numId} was not found.`, HttpStatusCodes.NOT_FOUND);
+      throw new AppError(`Driver profile was not found.`, HttpStatusCodes.NOT_FOUND);
     }
+    driver.publicId = encodeId('DRV', driver.id);
     return res.ok(driver, 'Driver details retrieved successfully.');
   }),
 
@@ -40,6 +53,23 @@ export const driverController = {
    */
   create: asyncHandler(async (req, res) => {
     const driver = await driverService.createDriver(req.body, req.user.id);
+    if (driver) {
+      driver.publicId = encodeId('DRV', driver.id);
+    }
+
+    auditService.logActionEvent({
+      req,
+      action: 'CREATE_DRIVER',
+      status: 'SUCCESS',
+      resourceType: 'driver',
+      resourceId: driver?.publicId || driver?.id,
+      details: {
+        driverName: driver?.full_name || req.body?.fullName,
+        licenseNumber: req.body?.licenseNumber,
+        employeeId: req.body?.employeeId
+      }
+    });
+
     return res.created(driver, 'Driver registered successfully.');
   }),
 
@@ -49,7 +79,27 @@ export const driverController = {
    */
   update: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const driver = await driverService.updateDriver(id, req.body);
+    const numId = decodeId(id);
+    if (!numId) {
+      throw new AppError('Invalid driver identifier parameter.', HttpStatusCodes.BAD_REQUEST);
+    }
+    const driver = await driverService.updateDriver(numId, req.body);
+    if (driver) {
+      driver.publicId = encodeId('DRV', driver.id);
+    }
+
+    auditService.logActionEvent({
+      req,
+      action: 'UPDATE_DRIVER',
+      status: 'SUCCESS',
+      resourceType: 'driver',
+      resourceId: encodeId('DRV', numId),
+      details: {
+        driverName: driver?.full_name || req.body?.fullName,
+        updatedFields: Object.keys(req.body)
+      }
+    });
+
     return res.ok(driver, 'Driver profile updated successfully.');
   }),
 
@@ -59,7 +109,21 @@ export const driverController = {
    */
   delete: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    await driverService.deleteDriver(id);
+    const numId = decodeId(id);
+    if (!numId) {
+      throw new AppError('Invalid driver identifier parameter.', HttpStatusCodes.BAD_REQUEST);
+    }
+    await driverService.deleteDriver(numId);
+
+    auditService.logActionEvent({
+      req,
+      action: 'DELETE_DRIVER',
+      status: 'SUCCESS',
+      resourceType: 'driver',
+      resourceId: encodeId('DRV', numId),
+      details: { deletedDriverId: numId }
+    });
+
     return res.ok(null, 'Driver profile deleted successfully.');
   })
 };

@@ -19,6 +19,7 @@ export const Login = () => {
   const navigate = useNavigate();
   const [formError, setFormError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Preload dashboard bundle immediately on login page mount so redirect is instantaneous
   useEffect(() => {
@@ -39,12 +40,17 @@ export const Login = () => {
 
   const onSubmit = async (data) => {
     setFormError(null);
-    const result = await login(data.email, data.password);
-    
-    if (result.success) {
-      sessionStorage.removeItem('login_failed_strikes');
-      navigate('/dashboard', { replace: true });
-    } else {
+    setIsSubmitting(true);
+
+    try {
+      const result = await login(data.email, data.password);
+      
+      if (result.success) {
+        sessionStorage.removeItem('login_failed_strikes');
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+
       // Track consecutive failed logins
       const currentStrikes = parseInt(sessionStorage.getItem('login_failed_strikes') || '0', 10) + 1;
       sessionStorage.setItem('login_failed_strikes', currentStrikes.toString());
@@ -83,6 +89,10 @@ export const Login = () => {
         setFormError(errorMsg);
         showToast(errorMsg, 'error');
       }
+    } catch (err) {
+      setFormError(err.message || 'An unexpected error occurred during sign in.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -102,7 +112,14 @@ export const Login = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full transition-all">
+    <div className="relative bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-800 p-8 sm:p-10 rounded-xl shadow-sm w-full transition-all overflow-hidden">
+      
+      {/* Top fast progress bar when authenticating */}
+      {(isLoading || isSubmitting) && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-slate-100 dark:bg-slate-800 overflow-hidden">
+          <div className="h-full bg-slate-900 dark:bg-white animate-[pulse_1s_infinite] w-full" />
+        </div>
+      )}
       
       {/* Executive Portal Header */}
       <div className="mb-6">
@@ -191,10 +208,21 @@ export const Login = () => {
           <Button
             type="submit"
             variant="primary"
-            className="w-full"
-            isLoading={isLoading}
+            className="w-full relative py-2.5"
+            isLoading={isLoading || isSubmitting}
+            disabled={isLoading || isSubmitting}
           >
-            Sign In to Dashboard
+            {(isLoading || isSubmitting) ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-4 w-4 text-white dark:text-slate-900 shrink-0" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Verifying Credentials...</span>
+              </span>
+            ) : (
+              'Sign In to Dashboard'
+            )}
           </Button>
 
           <Button
@@ -202,7 +230,7 @@ export const Login = () => {
             variant="outline"
             className="w-full"
             onClick={() => navigate('/register')}
-            disabled={isLoading}
+            disabled={isLoading || isSubmitting}
           >
             Register Staff Account
           </Button>
