@@ -1,0 +1,54 @@
+# Vercel Web Analytics Installation
+
+Successfully installed and configured Vercel Web Analytics for the transitops project.
+
+## Changes Made
+
+### 1. Package Installation
+- **File Modified**: `package.json`
+- **Change**: Added `@vercel/analytics` version `^2.0.1` as a dependency
+- **Package Manager**: Used npm to install the package
+
+### 2. Analytics Integration
+- **File Modified**: `client/src/App.jsx`
+- **Changes**:
+  - Added import statement: `import { Analytics } from '@vercel/analytics/react';`
+  - Added `<Analytics />` component inside the ToastProvider context, ensuring it's wrapped by all necessary providers (ThemeProvider, AuthProvider, ToastProvider) and the BrowserRouter
+
+### 3. Lock File Update
+- **File Modified**: `package-lock.json`
+- **Change**: Updated with the new @vercel/analytics package and its 166 dependencies
+
+## Implementation Details
+
+The Analytics component was placed at the end of the component tree within the App component, after the AppRoutes component and inside all context providers. This ensures that:
+- The component has access to all context providers (Theme, Auth, Toast)
+- It's within the BrowserRouter for proper routing integration
+- It follows React best practices for third-party analytics integration
+
+## Framework Information
+- **Framework**: React 19.0.0 with Vite 6.0.7
+- **Build Tool**: Vite
+- **Installation Source**: Official Vercel Documentation (https://vercel.com/docs/analytics/quickstart)
+- **Package Version**: @vercel/analytics@2.0.1
+
+## Testing Performed
+- ✅ Build completed successfully (`npm run build`)
+- ✅ All 167 modules transformed without errors
+- ✅ Production build generated without issues
+- ⚠️  No linter configured in project (skipped)
+- ⚠️  No tests configured in project (skipped)
+
+## Next Steps for User
+
+To complete the setup:
+1. Deploy the application to Vercel using `vercel deploy`
+2. Enable Analytics in the Vercel dashboard by navigating to your project's Analytics section and clicking "Enable"
+3. After deployment, verify the setup by checking the browser's Network tab for a Fetch/XHR request from `/<unique-path>/view`
+4. Analytics data will appear in the Vercel dashboard after a few days of visitor traffic
+
+## Notes
+- The Analytics component will automatically track page views
+- No additional configuration is required for basic analytics
+- For custom event tracking, refer to the Vercel Analytics documentation for Pro and Enterprise plans
+- The implementation follows the official Vercel documentation for React/Vite projects

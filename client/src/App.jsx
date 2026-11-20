@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
@@ -28,6 +29,7 @@ function App() {
           <AuthProvider>
             <ToastProvider>
               <AppRoutes />
+              <Analytics />
             </ToastProvider>
           </AuthProvider>
         </ThemeProvider>
