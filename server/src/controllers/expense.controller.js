@@ -1,4 +1,5 @@
 import { expenseService } from '../services/expense.service.js';
+import expenseModel from '../models/expense.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
@@ -89,12 +90,14 @@ export const expenseController = {
       action: 'RECORD_EXPENSE',
       status: 'SUCCESS',
       resourceType: 'expense',
-      resourceId: record?.publicId || record?.id,
+      resourceId: record?.publicId || encodeId('EXP', record?.id),
       details: {
+        rawId: record?.id,
         category: body.category,
         amount: body.amount,
         paymentMethod: body.paymentMethod,
-        receiptNumber: body.receiptNumber
+        receiptNumber: body.receiptNumber,
+        newState: record
       }
     });
 
@@ -116,6 +119,7 @@ export const expenseController = {
     if (body.vehicleId) body.vehicleId = decodeId(body.vehicleId);
     if (body.tripId) body.tripId = decodeId(body.tripId);
 
+    const previousExpense = await expenseModel.findById(numId);
     const record = await expenseService.updateRecord(numId, body, req.user);
     if (record) {
       record.publicId = encodeId('EXP', record.id);
@@ -128,8 +132,11 @@ export const expenseController = {
       resourceType: 'expense',
       resourceId: encodeId('EXP', numId),
       details: {
+        rawId: numId,
         status: body.status,
-        updatedFields: Object.keys(body)
+        updatedFields: Object.keys(body),
+        previousState: previousExpense,
+        newState: record
       }
     });
 
@@ -146,6 +153,7 @@ export const expenseController = {
     if (!numId) {
       throw new AppError('Invalid expense record identifier parameter.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousExpense = await expenseModel.findById(numId);
     await expenseService.deleteRecord(numId);
 
     auditService.logActionEvent({
@@ -154,7 +162,11 @@ export const expenseController = {
       status: 'SUCCESS',
       resourceType: 'expense',
       resourceId: encodeId('EXP', numId),
-      details: { deletedExpenseId: numId }
+      details: {
+        rawId: numId,
+        deletedExpenseId: numId,
+        previousState: previousExpense
+      }
     });
 
     return res.ok(null, 'Expense deleted successfully.');

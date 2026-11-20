@@ -1,4 +1,5 @@
 import tripService from '../services/trip.service.js';
+import tripModel from '../models/trip.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
@@ -88,12 +89,14 @@ export const tripController = {
       action: 'CREATE_TRIP',
       status: 'SUCCESS',
       resourceType: 'trip',
-      resourceId: trip?.publicId || trip?.id,
+      resourceId: trip?.publicId || encodeId('TRP', trip?.id),
       details: {
+        rawId: trip?.id,
         source: body.sourceLocation,
         destination: body.destinationLocation,
         vehicleId: body.vehicleId,
-        driverId: body.driverId
+        driverId: body.driverId,
+        newState: trip
       }
     });
 
@@ -115,6 +118,7 @@ export const tripController = {
     if (body.vehicleId) body.vehicleId = decodeId(body.vehicleId);
     if (body.driverId) body.driverId = decodeId(body.driverId);
 
+    const previousTrip = await tripModel.findById(numId);
     const trip = await tripService.updateTrip(numId, body);
     if (trip) {
       trip.publicId = encodeId('TRP', trip.id);
@@ -127,8 +131,11 @@ export const tripController = {
       resourceType: 'trip',
       resourceId: encodeId('TRP', numId),
       details: {
+        rawId: numId,
         status: body.status,
-        updatedFields: Object.keys(body)
+        updatedFields: Object.keys(body),
+        previousState: previousTrip,
+        newState: trip
       }
     });
 
@@ -145,6 +152,7 @@ export const tripController = {
     if (!numId) {
       throw new AppError('Invalid trip identifier parameter.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousTrip = await tripModel.findById(numId);
     await tripService.deleteTrip(numId);
 
     auditService.logActionEvent({
@@ -153,7 +161,11 @@ export const tripController = {
       status: 'SUCCESS',
       resourceType: 'trip',
       resourceId: encodeId('TRP', numId),
-      details: { deletedTripId: numId }
+      details: {
+        rawId: numId,
+        deletedTripId: numId,
+        previousState: previousTrip
+      }
     });
 
     return res.ok(null, 'Trip deleted successfully.');

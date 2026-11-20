@@ -1,4 +1,5 @@
 import { fuelService } from '../services/fuel.service.js';
+import fuelModel from '../models/fuel.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
@@ -86,12 +87,14 @@ export const fuelController = {
       action: 'CREATE_FUEL_LOG',
       status: 'SUCCESS',
       resourceType: 'fuel',
-      resourceId: record?.publicId || record?.id,
+      resourceId: record?.publicId || encodeId('FUL', record?.id),
       details: {
+        rawId: record?.id,
         vehicleId: body.vehicleId,
         quantity: body.quantityLiters,
         totalCost: body.totalCost,
-        receiptNumber: body.receiptNumber
+        receiptNumber: body.receiptNumber,
+        newState: record
       }
     });
 
@@ -113,6 +116,7 @@ export const fuelController = {
     if (body.vehicleId) body.vehicleId = decodeId(body.vehicleId);
     if (body.tripId) body.tripId = decodeId(body.tripId);
 
+    const previousFuel = await fuelModel.findById(numId);
     const record = await fuelService.updateRecord(numId, body);
     if (record) {
       record.publicId = encodeId('FUL', record.id);
@@ -125,8 +129,11 @@ export const fuelController = {
       resourceType: 'fuel',
       resourceId: encodeId('FUL', numId),
       details: {
+        rawId: numId,
         receiptNumber: body.receiptNumber,
-        updatedFields: Object.keys(body)
+        updatedFields: Object.keys(body),
+        previousState: previousFuel,
+        newState: record
       }
     });
 
@@ -143,6 +150,7 @@ export const fuelController = {
     if (!numId) {
       throw new AppError('Invalid fuel record identifier parameter.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousFuel = await fuelModel.findById(numId);
     await fuelService.deleteRecord(numId);
 
     auditService.logActionEvent({
@@ -151,7 +159,11 @@ export const fuelController = {
       status: 'SUCCESS',
       resourceType: 'fuel',
       resourceId: encodeId('FUL', numId),
-      details: { deletedFuelRecordId: numId }
+      details: {
+        rawId: numId,
+        deletedFuelRecordId: numId,
+        previousState: previousFuel
+      }
     });
 
     return res.ok(null, 'Fuel log deleted successfully.');

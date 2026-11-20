@@ -1,4 +1,5 @@
 import vehicleService from '../services/vehicle.service.js';
+import vehicleModel from '../models/vehicle.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
@@ -62,11 +63,13 @@ export const vehicleController = {
       action: 'CREATE_VEHICLE',
       status: 'SUCCESS',
       resourceType: 'vehicle',
-      resourceId: vehicle?.publicId || vehicle?.id,
+      resourceId: vehicle?.publicId || encodeId('VEH', vehicle?.id),
       details: {
+        rawId: vehicle?.id,
         registrationNumber: req.body?.registrationNumber,
         vin: req.body?.vin,
-        status: req.body?.status
+        status: req.body?.status,
+        newState: vehicle
       }
     });
 
@@ -83,6 +86,7 @@ export const vehicleController = {
     if (!numId) {
       throw new AppError('Invalid vehicle identifier.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousVehicle = await vehicleModel.findById(numId);
     const vehicle = await vehicleService.updateVehicle(numId, req.body);
     if (vehicle) {
       vehicle.publicId = encodeId('VEH', vehicle.id);
@@ -95,8 +99,11 @@ export const vehicleController = {
       resourceType: 'vehicle',
       resourceId: encodeId('VEH', numId),
       details: {
+        rawId: numId,
         registrationNumber: vehicle?.registration_number,
-        updatedFields: Object.keys(req.body)
+        updatedFields: Object.keys(req.body),
+        previousState: previousVehicle,
+        newState: vehicle
       }
     });
 
@@ -113,6 +120,7 @@ export const vehicleController = {
     if (!numId) {
       throw new AppError('Invalid vehicle identifier.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousVehicle = await vehicleModel.findById(numId);
     await vehicleService.deleteVehicle(numId);
 
     auditService.logActionEvent({
@@ -121,7 +129,11 @@ export const vehicleController = {
       status: 'SUCCESS',
       resourceType: 'vehicle',
       resourceId: encodeId('VEH', numId),
-      details: { deletedVehicleId: numId }
+      details: {
+        rawId: numId,
+        deletedVehicleId: numId,
+        previousState: previousVehicle
+      }
     });
 
     return res.ok(null, 'Vehicle deleted successfully.');

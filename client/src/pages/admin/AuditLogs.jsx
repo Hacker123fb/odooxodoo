@@ -18,7 +18,8 @@ import {
   FiChevronRight,
   FiLock,
   FiUnlock,
-  FiSlash
+  FiSlash,
+  FiRotateCcw
 } from 'react-icons/fi';
 import { auditLogService, securityService } from '../../api/apiService.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -72,6 +73,20 @@ export const AuditLogs = () => {
   // Modals
   const [ipModal, setIpModal] = useState({ isOpen: false, ip: '', reason: '', duration: '1440' });
   const [accountModal, setAccountModal] = useState({ isOpen: false, email: '', name: '', reason: '', duration: '1440' });
+  const [rollbackModal, setRollbackModal] = useState({ isOpen: false, log: null });
+
+  // Eligibility check for rollback
+  const isRollbackEligible = (action) => {
+    if (!action) return false;
+    return (
+      action.startsWith('CREATE_') ||
+      action.startsWith('UPDATE_') ||
+      action.startsWith('DELETE_') ||
+      action === 'RECORD_EXPENSE' ||
+      action === 'ADMIN_REVOKE_IP_ACCESS' ||
+      action === 'ADMIN_LOCK_ACCOUNT'
+    );
+  };
 
   // Fetch audit logs and overview stats
   const fetchLogs = useCallback(async (page = 1, isRefresh = false) => {
@@ -223,7 +238,32 @@ export const AuditLogs = () => {
     }
   };
 
+  // Super Admin Action: Rollback action to previous state
+  const handleRollback = async (logId) => {
+    if (!logId) return;
+    setActionLoading(true);
+    try {
+      const res = await securityService.rollbackAction(logId);
+      showToast(res.message || 'Action state successfully rolled back to previous state.', 'success');
+      setRollbackModal({ isOpen: false, log: null });
+      if (selectedLogDetail && selectedLogDetail.id === logId) {
+        setSelectedLogDetail(null);
+      }
+      fetchLogs(pagination.page, true);
+      if (activeTab === 'security') {
+        fetchSecurityData();
+      }
+    } catch (err) {
+      showToast(err.message || 'Rollback execution failed.', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getActionBadgeColor = (action, status) => {
+    if (action?.includes('ROLLBACK')) {
+      return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/50';
+    }
     if (status === 'FAILED' || action?.includes('FAIL') || action?.includes('BLOCKED') || action?.includes('REVOKE') || action?.includes('LOCK')) {
       return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/50';
     }
@@ -404,6 +444,7 @@ export const AuditLogs = () => {
                 <option value="LOGIN">Authentication (Login/Logout)</option>
                 <option value="ADMIN_REVOKE">IP Revocations</option>
                 <option value="ADMIN_LOCK">Account Lockdowns</option>
+                <option value="ADMIN_ROLLBACK">Rollback Operations</option>
                 <option value="DRIVER">Driver Actions</option>
                 <option value="VEHICLE">Vehicle Actions</option>
                 <option value="TRIP">Trip Actions</option>
@@ -566,14 +607,33 @@ export const AuditLogs = () => {
                             )}
                           </td>
 
-                          {/* Details View */}
-                          <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => setSelectedLogDetail(log)}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            >
-                              Inspect
-                            </button>
+                          {/* Details & Rollback Actions */}
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {log.details?.rolledBack && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
+                                  ROLLED BACK
+                                </span>
+                              )}
+
+                              {isSuperAdmin && !log.details?.rolledBack && isRollbackEligible(log.action) && (
+                                <button
+                                  title="Super Admin: Rollback this action to previous state"
+                                  onClick={() => setRollbackModal({ isOpen: true, log })}
+                                  className="px-2 py-1 text-xs font-semibold rounded-md bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:hover:bg-amber-900/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800 transition-colors cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <FiRotateCcw className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                  <span>Rollback</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => setSelectedLogDetail(log)}
+                                className="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              >
+                                Inspect
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1140,13 +1200,115 @@ export const AuditLogs = () => {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+              {isSuperAdmin && !selectedLogDetail.details?.rolledBack && isRollbackEligible(selectedLogDetail.action) ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const targetLog = selectedLogDetail;
+                    setRollbackModal({ isOpen: true, log: targetLog });
+                  }}
+                  className="text-amber-700 border-amber-300 hover:bg-amber-50 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/40 flex items-center gap-1.5"
+                >
+                  <FiRotateCcw className="w-3.5 h-3.5" />
+                  <span>Rollback to Previous State</span>
+                </Button>
+              ) : <div />}
+
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => setSelectedLogDetail(null)}
               >
                 Close Inspector
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ROLLBACK CONFIRMATION MODAL */}
+      {rollbackModal.isOpen && rollbackModal.log && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                <FiRotateCcw className="w-4 h-4" />
+                Rollback Action to Previous State
+              </h3>
+              <button
+                onClick={() => setRollbackModal({ isOpen: false, log: null })}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-1">
+                <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <FiAlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>State Reversion Security Guard</span>
+                </div>
+                <p className="text-amber-800 dark:text-amber-300 text-[11px] leading-relaxed">
+                  Rolling back will reverse the effects of this operational action and restore the affected database record to its verified prior state.
+                </p>
+              </div>
+
+              <div className="space-y-2 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-lg border border-slate-200 dark:border-slate-800/80 font-mono text-[11px]">
+                <div>
+                  <span className="text-slate-400 font-sans font-semibold uppercase">Action: </span>
+                  <span className="font-bold text-slate-900 dark:text-white">{rollbackModal.log.action}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-sans font-semibold uppercase">Target Resource: </span>
+                  <span className="text-slate-900 dark:text-white">{rollbackModal.log.details?.resourceType || rollbackModal.log.action.split('_')[1] || 'Entity'} ({rollbackModal.log.details?.resourceId || rollbackModal.log.details?.rawId || rollbackModal.log.id})</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-sans font-semibold uppercase">Performed By: </span>
+                  <span className="text-slate-900 dark:text-white">{rollbackModal.log.user_name} ({rollbackModal.log.user_email})</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-sans font-semibold uppercase">Origin IP: </span>
+                  <span className="text-slate-900 dark:text-white">{rollbackModal.log.ip_address}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-sans font-semibold uppercase">Recorded At: </span>
+                  <span className="text-slate-900 dark:text-white">{new Date(rollbackModal.log.timestamp).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {rollbackModal.log.action.startsWith('CREATE_') || rollbackModal.log.action === 'RECORD_EXPENSE' ? (
+                  <p>Impact: The newly created record will be permanently deleted from the database to restore previous state.</p>
+                ) : rollbackModal.log.action.startsWith('DELETE_') ? (
+                  <p>Impact: The deleted record will be resurrected and re-inserted with its historical attributes.</p>
+                ) : rollbackModal.log.action.startsWith('UPDATE_') ? (
+                  <p>Impact: Modified fields will be reverted back to their values prior to this update.</p>
+                ) : (
+                  <p>Impact: Security state will be restored to its previous operational standing.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRollbackModal({ isOpen: false, log: null })}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={actionLoading}
+                onClick={() => handleRollback(rollbackModal.log.id)}
+                className="bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1.5"
+              >
+                <FiRotateCcw className={`w-3.5 h-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
+                <span>Confirm & Rollback State</span>
               </Button>
             </div>
           </div>

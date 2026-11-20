@@ -1,4 +1,5 @@
 import { maintenanceService } from '../services/maintenance.service.js';
+import maintenanceModel from '../models/maintenance.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
@@ -82,11 +83,13 @@ export const maintenanceController = {
       action: 'CREATE_MAINTENANCE',
       status: 'SUCCESS',
       resourceType: 'maintenance',
-      resourceId: record?.publicId || record?.id,
+      resourceId: record?.publicId || encodeId('MNT', record?.id),
       details: {
+        rawId: record?.id,
         vehicleId: body.vehicleId,
         type: body.maintenanceType,
-        cost: body.cost
+        cost: body.cost,
+        newState: record
       }
     });
 
@@ -107,6 +110,7 @@ export const maintenanceController = {
     const body = { ...req.body };
     if (body.vehicleId) body.vehicleId = decodeId(body.vehicleId);
 
+    const previousRecord = await maintenanceModel.findById(numId);
     const record = await maintenanceService.updateRecord(numId, body);
     if (record) {
       record.publicId = encodeId('MNT', record.id);
@@ -119,8 +123,11 @@ export const maintenanceController = {
       resourceType: 'maintenance',
       resourceId: encodeId('MNT', numId),
       details: {
+        rawId: numId,
         status: body.status,
-        updatedFields: Object.keys(body)
+        updatedFields: Object.keys(body),
+        previousState: previousRecord,
+        newState: record
       }
     });
 
@@ -137,6 +144,7 @@ export const maintenanceController = {
     if (!numId) {
       throw new AppError('Invalid maintenance identifier parameter.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousRecord = await maintenanceModel.findById(numId);
     await maintenanceService.deleteRecord(numId);
 
     auditService.logActionEvent({
@@ -145,7 +153,11 @@ export const maintenanceController = {
       status: 'SUCCESS',
       resourceType: 'maintenance',
       resourceId: encodeId('MNT', numId),
-      details: { deletedMaintenanceId: numId }
+      details: {
+        rawId: numId,
+        deletedMaintenanceId: numId,
+        previousState: previousRecord
+      }
     });
 
     return res.ok(null, 'Maintenance record deleted successfully.');

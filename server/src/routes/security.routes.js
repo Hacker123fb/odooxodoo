@@ -22,4 +22,9 @@ router.post('/lock-account', securityController.lockAccount);
 router.post('/unlock-account', securityController.unlockAccount);
 router.get('/locked-accounts', securityController.getLockedAccounts);
 
+/**
+ * State Rollback for Malicious / Suspicious Actions
+ */
+router.post('/rollback/:id', securityController.rollbackAction);
+
 export default router;

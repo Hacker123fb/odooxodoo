@@ -11,6 +11,7 @@ import {
 } from '../middleware/ipBlocker.js';
 import { userModel } from '../models/userModel.js';
 import auditService from '../services/audit.service.js';
+import rollbackService from '../services/rollback.service.js';
 import pool from '../config/db.js';
 
 export const securityController = {
@@ -218,6 +219,16 @@ export const securityController = {
     });
 
     return res.ok(combined, 'Locked accounts retrieved successfully.');
+  }),
+
+  /**
+   * POST /api/v1/admin/security/rollback/:id
+   * Rolls back a suspicious or malicious action to its previous state
+   */
+  rollbackAction: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await rollbackService.rollbackLogAction(id, req.user, req);
+    return res.ok(result, result.message || 'Action state successfully rolled back.');
   })
 };
 

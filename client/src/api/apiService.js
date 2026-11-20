@@ -137,5 +137,6 @@ export const securityService = {
   getBlockedIps: (config = {}) => axiosInstance.get('/admin/security/blocked-ips', { cache: false, ...config }),
   lockAccount: (data) => axiosInstance.post('/admin/security/lock-account', data, { cache: false }),
   unlockAccount: (data) => axiosInstance.post('/admin/security/unlock-account', data, { cache: false }),
-  getLockedAccounts: (config = {}) => axiosInstance.get('/admin/security/locked-accounts', { cache: false, ...config })
+  getLockedAccounts: (config = {}) => axiosInstance.get('/admin/security/locked-accounts', { cache: false, ...config }),
+  rollbackAction: (logId) => axiosInstance.post(`/admin/security/rollback/${logId}`, {}, { cache: false })
 };

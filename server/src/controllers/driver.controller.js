@@ -1,4 +1,5 @@
 import driverService from '../services/driver.service.js';
+import { driverModel } from '../models/driver.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { AppError } from '../utils/customError.js';
 import { HttpStatusCodes } from '../utils/httpStatusCodes.js';
@@ -62,11 +63,13 @@ export const driverController = {
       action: 'CREATE_DRIVER',
       status: 'SUCCESS',
       resourceType: 'driver',
-      resourceId: driver?.publicId || driver?.id,
+      resourceId: driver?.publicId || encodeId('DRV', driver?.id),
       details: {
+        rawId: driver?.id,
         driverName: driver?.full_name || req.body?.fullName,
         licenseNumber: req.body?.licenseNumber,
-        employeeId: req.body?.employeeId
+        employeeId: req.body?.employeeId,
+        newState: driver
       }
     });
 
@@ -83,6 +86,7 @@ export const driverController = {
     if (!numId) {
       throw new AppError('Invalid driver identifier parameter.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousDriver = await driverModel.findById(numId);
     const driver = await driverService.updateDriver(numId, req.body);
     if (driver) {
       driver.publicId = encodeId('DRV', driver.id);
@@ -95,8 +99,11 @@ export const driverController = {
       resourceType: 'driver',
       resourceId: encodeId('DRV', numId),
       details: {
+        rawId: numId,
         driverName: driver?.full_name || req.body?.fullName,
-        updatedFields: Object.keys(req.body)
+        updatedFields: Object.keys(req.body),
+        previousState: previousDriver,
+        newState: driver
       }
     });
 
@@ -113,6 +120,7 @@ export const driverController = {
     if (!numId) {
       throw new AppError('Invalid driver identifier parameter.', HttpStatusCodes.BAD_REQUEST);
     }
+    const previousDriver = await driverModel.findById(numId);
     await driverService.deleteDriver(numId);
 
     auditService.logActionEvent({
@@ -121,7 +129,11 @@ export const driverController = {
       status: 'SUCCESS',
       resourceType: 'driver',
       resourceId: encodeId('DRV', numId),
-      details: { deletedDriverId: numId }
+      details: {
+        rawId: numId,
+        deletedDriverId: numId,
+        previousState: previousDriver
+      }
     });
 
     return res.ok(null, 'Driver profile deleted successfully.');
