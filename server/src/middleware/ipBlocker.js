@@ -174,6 +174,49 @@ export const unblockAll = () => {
   console.log('[SECURITY] All IP and account blocks forcefully reset.');
 };
 
+/**
+ * Super Admin Manual Access Revocation for Suspicious IPs
+ */
+export const blockIpManual = (ip, reason = 'ADMIN_REVOKED_ACCESS', durationMinutes = 1440) => {
+  if (!ip) return false;
+  const cleanIp = ip.replace(/^::ffff:/, '').trim();
+  const now = Date.now();
+  const durationMs = (parseInt(durationMinutes, 10) || 1440) * 60 * 1000;
+  ipBlockedMap.set(cleanIp, {
+    blockedAt: now,
+    blockedUntil: now + durationMs,
+    reason,
+    tier: 4,
+    source: 'ADMIN_MANUAL'
+  });
+  console.warn(`[SECURITY] Super Admin REVOKED access for IP ${cleanIp} for ${durationMinutes}m. Reason: ${reason}`);
+  return true;
+};
+
+/**
+ * Retrieve list of all currently active blocked / revoked IPs
+ */
+export const getAllBlockedIps = () => {
+  const list = [];
+  const now = Date.now();
+  for (const [ip, record] of ipBlockedMap.entries()) {
+    if (now <= record.blockedUntil) {
+      const remainingMs = Math.max(0, record.blockedUntil - now);
+      list.push({
+        ip,
+        reason: record.reason || 'SUSPICIOUS_ACTIVITY',
+        blockedAt: new Date(record.blockedAt).toISOString(),
+        blockedUntil: new Date(record.blockedUntil).toISOString(),
+        remainingMinutes: Math.ceil(remainingMs / 60000),
+        remainingSeconds: Math.ceil(remainingMs / 1000),
+        formattedDuration: formatDurationDesc(remainingMs),
+        source: record.source || 'SYSTEM_AUTO'
+      });
+    }
+  }
+  return list;
+};
+
 // ============================================================================
 // 2. ACCOUNT-LEVEL DEFENSE (ANTI-IP-HOPPING / DISTRIBUTED BRUTE FORCE)
 // ============================================================================
@@ -247,6 +290,49 @@ export const unlockAccount = (email, resetHistory = true) => {
     accountHistoryMap.delete(cleanEmail);
   }
   console.log(`[SECURITY] Account active lockout cleared: ${cleanEmail}`);
+};
+
+/**
+ * Super Admin Manual Account Lockdown for Compromised / Suspicious Accounts
+ */
+export const lockAccountManual = (email, reason = 'ADMIN_SECURITY_LOCKDOWN', durationMinutes = 1440) => {
+  if (!email) return false;
+  const cleanEmail = email.toLowerCase().trim();
+  const now = Date.now();
+  const durationMs = (parseInt(durationMinutes, 10) || 1440) * 60 * 1000;
+  accountBlockedMap.set(cleanEmail, {
+    blockedAt: now,
+    blockedUntil: now + durationMs,
+    reason,
+    tier: 4,
+    source: 'ADMIN_MANUAL'
+  });
+  console.warn(`[SECURITY] Super Admin LOCKED account ${cleanEmail} for ${durationMinutes}m. Reason: ${reason}`);
+  return true;
+};
+
+/**
+ * Retrieve list of all currently active locked accounts
+ */
+export const getAllLockedAccounts = () => {
+  const list = [];
+  const now = Date.now();
+  for (const [email, record] of accountBlockedMap.entries()) {
+    if (now <= record.blockedUntil) {
+      const remainingMs = Math.max(0, record.blockedUntil - now);
+      list.push({
+        email,
+        reason: record.reason || 'SUSPICIOUS_ACTIVITY',
+        blockedAt: new Date(record.blockedAt).toISOString(),
+        blockedUntil: new Date(record.blockedUntil).toISOString(),
+        remainingMinutes: Math.ceil(remainingMs / 60000),
+        remainingSeconds: Math.ceil(remainingMs / 1000),
+        formattedDuration: formatDurationDesc(remainingMs),
+        source: record.source || 'SYSTEM_AUTO'
+      });
+    }
+  }
+  return list;
 };
 
 // ============================================================================

@@ -130,3 +130,12 @@ export const auditLogService = {
     return `${baseURL}/admin/audit-logs/download`;
   }
 };
+
+export const securityService = {
+  revokeIpAccess: (data) => axiosInstance.post('/admin/security/revoke-ip', data, { cache: false }),
+  restoreIpAccess: (data) => axiosInstance.post('/admin/security/unblock-ip', data, { cache: false }),
+  getBlockedIps: (config = {}) => axiosInstance.get('/admin/security/blocked-ips', { cache: false, ...config }),
+  lockAccount: (data) => axiosInstance.post('/admin/security/lock-account', data, { cache: false }),
+  unlockAccount: (data) => axiosInstance.post('/admin/security/unlock-account', data, { cache: false }),
+  getLockedAccounts: (config = {}) => axiosInstance.get('/admin/security/locked-accounts', { cache: false, ...config })
+};

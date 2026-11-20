@@ -12,6 +12,7 @@ import dashboardRouter from './dashboard.routes.js';
 import reportRouter from './report.routes.js';
 import notificationRouter from './notification.routes.js';
 import auditRouter from './audit.routes.js';
+import securityRouter from './security.routes.js';
 
 const router = Router();
 
@@ -60,5 +61,8 @@ router.use('/notifications', notificationRouter);
 
 // 12. Admin Security & Audit Activity Logs
 router.use('/admin/audit-logs', auditRouter);
+
+// 13. Super Admin Security Access Control (IP Revocation & Account Lockdown)
+router.use('/admin/security', securityRouter);
 
 export default router;
